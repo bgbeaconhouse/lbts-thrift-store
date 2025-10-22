@@ -505,15 +505,31 @@
           <textarea id="description" placeholder="List of items..."></textarea>
         </div>
 
-        <div class="signature-section">
-          <label>Customer Signature</label>
-          <div class="signature-pad-container">
-            <canvas id="signatureCanvas" class="signature-canvas"></canvas>
-          </div>
-          <div class="signature-controls">
-            <button type="button" class="btn btn-secondary" onclick="clearSignature()">Clear Signature</button>
-          </div>
-        </div>
+     <div class="signature-section">
+  <div id="termsBox" style="display: none; background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin-bottom: 20px; color: #856404;">
+    <h3 style="margin-top: 0; color: #856404;">⚠️ Terms and Conditions</h3>
+    <p style="line-height: 1.8; margin-bottom: 15px;">
+      You are agreeing you understand you have <strong>48 hours upon purchase</strong> to pick your item up. 
+      After 48 hours the item will be placed back on the sales floor and <strong>no refunds will be issued</strong>.
+    </p>
+    <p style="line-height: 1.8; margin-bottom: 15px;">
+      We will gladly assist you in loading your items. Please be aware that it is the customer's responsibility 
+      to ensure items are properly loaded and secured. We are not responsible for any damage caused by loading 
+      or failure to secure items.
+    </p>
+    <p style="line-height: 1.8; margin: 0; font-weight: bold;">
+      Your signature below acknowledges that you have read and understand the terms and conditions covered above.
+    </p>
+  </div>
+  
+  <label>Customer Signature *</label>
+  <div class="signature-pad-container">
+    <canvas id="signatureCanvas" class="signature-canvas"></canvas>
+  </div>
+  <div class="signature-controls">
+    <button type="button" class="btn btn-secondary" onclick="clearSignature()">Clear Signature</button>
+  </div>
+</div>
 
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
@@ -764,6 +780,15 @@ function initSignaturePad() {
       document.getElementById('descriptionLabel').textContent = descLabels[currentFormType];
       document.getElementById('customerForm').reset();
       clearSignature();
+
+        // Show terms box only for pickup forms
+  const termsBox = document.getElementById('termsBox');
+  if (currentFormType === 'pickup') {
+    termsBox.style.display = 'block';
+  } else {
+    termsBox.style.display = 'none';
+  }
+
       document.getElementById('formModal').classList.add('active');
 
         // Re-initialize canvas after modal is visible
