@@ -10,6 +10,8 @@ const { Pool } = require('pg');
 // Import routes (we'll create these next)
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
+const discountItemsRoutes = require('./routes/discount-items');
+const communicationRoutes = require('./routes/communication');
 
 // Initialize Express app
 const app = express();
@@ -50,6 +52,8 @@ app.use(express.static(path.join(__dirname, '../public')));
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/discount-items', discountItemsRoutes);
+app.use('/api/communication', communicationRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
