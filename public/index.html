@@ -303,14 +303,10 @@
       }
     }
 
-    function displayUserInfo(user, token) {
-      document.getElementById('loginForm').style.display = 'none';
-      document.getElementById('userInfo').style.display = 'block';
-      document.getElementById('displayUsername').textContent = user.username;
-      document.getElementById('displayRole').textContent = user.role;
-      document.getElementById('displayEmail').textContent = user.email || 'Not set';
-      document.getElementById('displayToken').textContent = token.substring(0, 50) + '...';
-    }
+   function displayUserInfo(user, token) {
+  // Redirect to dashboard instead of showing user info
+  window.location.href = '/dashboard.html';
+}
 
     function handleLogout() {
       localStorage.removeItem('token');
