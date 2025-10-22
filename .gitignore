@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Environment variables (contains passwords!)
+.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Uploaded files (keep structure but not actual uploads)
+uploads/*
+!uploads/.gitkeep
+uploads/exclusive/*
+!uploads/exclusive/.gitkeep
+uploads/discount/*
+!uploads/discount/.gitkeep
+uploads/pickup/*
+!uploads/pickup/.gitkeep
+uploads/delivery/*
+!uploads/delivery/.gitkeep
+uploads/signatures/*
+!uploads/signatures/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+
+# Build files
+dist/
+build/
