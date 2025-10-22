@@ -13,6 +13,7 @@ const userRoutes = require('./routes/users');
 const discountItemsRoutes = require('./routes/discount-items');
 const communicationRoutes = require('./routes/communication');
 const exclusiveItemsRoutes = require('./routes/exclusive-items');
+const customerFormsRoutes = require('./routes/customer-forms');
 
 // Initialize Express app
 const app = express();
@@ -56,6 +57,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/discount-items', discountItemsRoutes);
 app.use('/api/communication', communicationRoutes);
 app.use('/api/exclusive-items', exclusiveItemsRoutes);
+app.use('/api/customer-forms', customerFormsRoutes);
+
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
