@@ -15,6 +15,7 @@ const communicationRoutes = require('./routes/communication');
 const exclusiveItemsRoutes = require('./routes/exclusive-items');
 const customerFormsRoutes = require('./routes/customer-forms');
 const sendEmailsRoutes = require('./routes/send-emails');
+const inventoryLogRoutes = require('./routes/inventory-log');
 
 // Initialize Express app
 const app = express();
@@ -60,6 +61,7 @@ app.use('/api/communication', communicationRoutes);
 app.use('/api/exclusive-items', exclusiveItemsRoutes);
 app.use('/api/customer-forms', customerFormsRoutes);
 app.use('/api/send-emails', sendEmailsRoutes);
+app.use('/api/inventory-log', inventoryLogRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
