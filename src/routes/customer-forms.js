@@ -130,7 +130,7 @@ router.get('/delivery', async (req, res) => {
     const db = req.app.locals.db;
     
     const result = await db.query(
-      `SELECT id, customer_name, phone, email, items_description, 
+      `SELECT id, customer_name, phone, email, items_description, delivery_cost, delivery_date,
               signature_url, date, emailed, created_at
        FROM delivery_forms 
        WHERE deleted_at IS NULL 
@@ -146,7 +146,7 @@ router.get('/delivery', async (req, res) => {
 
 // POST /api/customer-forms/delivery - Create delivery form
 router.post('/delivery', upload.single('signature'), async (req, res) => {
-  const { customer_name, phone, email, items_description } = req.body;
+  const { customer_name, phone, email, items_description, delivery_cost, delivery_date } = req.body;
 
   // Validation
   if (!customer_name || !phone) {
@@ -159,10 +159,10 @@ router.post('/delivery', upload.single('signature'), async (req, res) => {
     const signatureUrl = req.file ? `/uploads/signatures/${req.file.filename}` : null;
 
     const result = await db.query(
-      `INSERT INTO delivery_forms (customer_name, phone, email, items_description, signature_url, date)
-       VALUES ($1, $2, $3, $4, $5, CURRENT_DATE)
-       RETURNING id, customer_name, phone, email, items_description, signature_url, date, emailed, created_at`,
-      [customer_name, phone, email || null, items_description || null, signatureUrl]
+      `INSERT INTO delivery_forms (customer_name, phone, email, items_description, delivery_cost, delivery_date, signature_url, date)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_DATE)
+       RETURNING id, customer_name, phone, email, items_description, delivery_cost, delivery_date, signature_url, date, emailed, created_at`,
+      [customer_name, phone, email || null, items_description || null, delivery_cost || null, delivery_date || null, signatureUrl]
     );
 
     res.status(201).json({ 

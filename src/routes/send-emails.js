@@ -174,36 +174,79 @@ for (const form of pickupForms.rows) {
     }
 
     // Get all pending delivery forms
-    const deliveryForms = await db.query(
-      `SELECT id, customer_name, phone, email, items_description, date
-       FROM delivery_forms 
-       WHERE emailed = FALSE AND deleted_at IS NULL AND email IS NOT NULL`
-    );
+ const deliveryForms = await db.query(
+  `SELECT id, customer_name, phone, email, items_description, delivery_cost, delivery_date, date
+   FROM delivery_forms 
+   WHERE emailed = FALSE AND deleted_at IS NULL AND email IS NOT NULL`
+);
 
-    // Send delivery emails
-    for (const form of deliveryForms.rows) {
-      try {
-        await transporter.sendMail({
-          from: process.env.SMTP_FROM || 'LBTS Thrift Store <noreply@lbts.local>',
-          to: form.email,
-          subject: 'LBTS - Delivery Receipt',
-          html: `
-            <h2>Delivery Receipt</h2>
-            <p>Dear ${form.customer_name},</p>
-            <p>Thank you for your purchase! Your items will be delivered soon.</p>
-            <h3>Details:</h3>
-            <ul>
-              <li><strong>Name:</strong> ${form.customer_name}</li>
-              <li><strong>Phone:</strong> ${form.phone}</li>
-              <li><strong>Date:</strong> ${new Date(form.date).toLocaleDateString()}</li>
-            </ul>
-            ${form.items_description ? `<h3>Items:</h3><p>${form.items_description}</p>` : ''}
-            <p>We will contact you to schedule the delivery.</p>
-            <p>If you have any questions, please contact us at ${form.phone}.</p>
-            <br>
-            <p>Thank you,<br>LBTS Thrift Store</p>
-          `
-        });
+   // Send delivery emails
+for (const form of deliveryForms.rows) {
+  try {
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || 'Beacon House Thrift Shop - Long Beach <noreply@lbts.local>',
+      to: form.email,
+      subject: 'Beacon House Thrift Shop Long Beach - Delivery Receipt',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
+            <h1 style="margin: 0;">Beacon House Thrift Shop - Long Beach</h1>
+            <h2 style="margin: 10px 0 0 0; font-weight: normal;">Delivery Receipt</h2>
+          </div>
+          
+          <div style="padding: 30px; background: white;">
+            <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
+              Dear ${form.customer_name},
+            </p>
+            
+            <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
+              Thank you for your purchase! Your items will be delivered as scheduled.
+            </p>
+            
+            <div style="background: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="color: #2d3748; margin-top: 0;">Purchase Details:</h3>
+              <p style="color: #4a5568; line-height: 1.8; margin: 5px 0;">
+                <strong>Name:</strong> ${form.customer_name}<br>
+                <strong>Phone:</strong> ${form.phone}<br>
+                <strong>Date:</strong> ${new Date(form.date).toLocaleDateString()}
+                ${form.delivery_cost ? `<br><strong>Delivery Cost:</strong> $${parseFloat(form.delivery_cost).toFixed(2)}` : ''}
+                ${form.delivery_date ? `<br><strong>Delivery Date:</strong> ${form.delivery_date}` : ''}
+              </p>
+              ${form.items_description ? `
+                <p style="color: #4a5568; line-height: 1.8; margin-top: 15px;">
+                  <strong>Items:</strong><br>
+                  ${form.items_description}
+                </p>
+              ` : ''}
+            </div>
+            
+            <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
+              <h3 style="color: #856404; margin-top: 0;">⚠️ Important Terms & Conditions</h3>
+              <p style="color: #856404; line-height: 1.8; margin: 0;">
+                By accepting delivery you hereby acknowledge that cost of delivery is solely for the delivery of the item(s) 
+                to the residence indicated at the time of purchase. The Beacon House Thrift Shop is not responsible 
+                for moving said item(s) into said residence due to issues with liability. The item(s) will be placed 
+                in the driveway or the front yard.
+              </p>
+            </div>
+            
+            <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-top: 30px;">
+              If you have any questions, please contact us at <strong>(562) 343-7804</strong>.
+            </p>
+            
+            <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 30px;">
+              Thank you,<br>
+              <strong>Beacon House Thrift Shop - Long Beach</strong>
+            </p>
+          </div>
+          
+          <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
+            <p style="margin: 0;">Beacon House Thrift Shop Long Beach</p>
+            <p style="margin: 5px 0;">Phone: (562) 343-7804</p>
+          </div>
+        </div>
+      `
+    });
 
         // Mark as emailed
         await db.query(
