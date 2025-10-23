@@ -10,6 +10,65 @@ const router = express.Router();
 router.use(authenticateToken);
 router.use(requireManagerOrAbove);
 
+// GET /api/communication/unread-count - Get unread message count for current user
+router.get('/unread-count', async (req, res) => {
+  try {
+    const db = req.app.locals.db;
+    
+    const result = await db.query(
+      `SELECT COUNT(*) as unread_count
+       FROM communication_log c
+       WHERE c.deleted_at IS NULL
+         AND c.user_id != $1
+         AND NOT EXISTS (
+           SELECT 1 FROM communication_log_reads clr
+           WHERE clr.message_id = c.id AND clr.user_id = $1
+         )`,
+      [req.user.id]
+    );
+
+    res.json({ unread_count: parseInt(result.rows[0].unread_count) });
+  } catch (error) {
+    console.error('Get unread count error:', error);
+    res.status(500).json({ error: 'Failed to get unread count' });
+  }
+});
+
+// POST /api/communication/mark-all-read - Mark all messages as read for current user
+router.post('/mark-all-read', async (req, res) => {
+  try {
+    const db = req.app.locals.db;
+
+    // Get all unread message IDs for this user
+    const unreadMessages = await db.query(
+      `SELECT c.id
+       FROM communication_log c
+       WHERE c.deleted_at IS NULL
+         AND c.user_id != $1
+         AND NOT EXISTS (
+           SELECT 1 FROM communication_log_reads clr
+           WHERE clr.message_id = c.id AND clr.user_id = $1
+         )`,
+      [req.user.id]
+    );
+
+    // Insert read records for all unread messages
+    for (const msg of unreadMessages.rows) {
+      await db.query(
+        `INSERT INTO communication_log_reads (message_id, user_id)
+         VALUES ($1, $2)
+         ON CONFLICT (message_id, user_id) DO NOTHING`,
+        [msg.id, req.user.id]
+      );
+    }
+
+    res.json({ success: true, marked_read: unreadMessages.rows.length });
+  } catch (error) {
+    console.error('Mark all as read error:', error);
+    res.status(500).json({ error: 'Failed to mark messages as read' });
+  }
+});
+
 // GET /api/communication - Get all communication log entries
 router.get('/', async (req, res) => {
   try {

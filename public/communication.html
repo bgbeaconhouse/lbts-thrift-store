@@ -516,27 +516,35 @@
       loadEntries();
     };
 
-    async function loadEntries() {
-      const token = localStorage.getItem('token');
+  async function loadEntries() {
+  const token = localStorage.getItem('token');
 
-      try {
-        const response = await fetch('/api/communication', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) throw new Error('Failed to load entries');
-
-        const data = await response.json();
-        allEntries = data.entries;
-        displayEntries(allEntries);
-      } catch (error) {
-        console.error('Load entries error:', error);
-        showMessage('Failed to load entries', 'error');
+  try {
+    // First, mark all messages as read
+    await fetch('/api/communication/mark-all-read', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
       }
-    }
+    });
 
+    // Then load the entries
+    const response = await fetch('/api/communication', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) throw new Error('Failed to load entries');
+
+    const data = await response.json();
+    allEntries = data.entries;
+    displayEntries(allEntries);
+  } catch (error) {
+    console.error('Load entries error:', error);
+    showMessage('Failed to load entries', 'error');
+  }
+}
     function filterByCategory(category) {
       currentFilter = category;
       
