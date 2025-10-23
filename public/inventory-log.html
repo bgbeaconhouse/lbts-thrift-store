@@ -548,19 +548,16 @@
     let selectedFiles = [];
     let existingPhotos = [];
 
-    // Check authentication
-    window.onload = function() {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        window.location.href = '/';
-        return;
-      }
-      
-      // Set today's date as default
-      document.getElementById('date_field').valueAsDate = new Date();
-      
-      loadItems();
-    };
+// Check authentication
+window.onload = function() {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    window.location.href = '/';
+    return;
+  }
+  
+  loadItems();
+};
 
   function switchType(type) {
   currentType = type;
@@ -716,7 +713,7 @@ function openCreateModal() {
   document.getElementById('itemModal').classList.add('active');
 }
 
-  async function openEditModal(itemId) {
+async function openEditModal(itemId) {
   const token = localStorage.getItem('token');
   
   try {
@@ -761,8 +758,16 @@ function openCreateModal() {
       deliveryAddressGroup.style.display = 'none';
       deliveryAddressInput.required = false;
       
-      document.getElementById('date_purchased').value = item.date_purchased;
-      document.getElementById('date_pickup').value = item.date_stored;
+      // Format dates properly for date input (YYYY-MM-DD)
+      if (item.date_purchased) {
+        const purchasedDate = new Date(item.date_purchased);
+        document.getElementById('date_purchased').value = purchasedDate.toISOString().split('T')[0];
+      }
+      if (item.date_stored) {
+        const storedDate = new Date(item.date_stored);
+        document.getElementById('date_pickup').value = storedDate.toISOString().split('T')[0];
+      }
+      
       document.getElementById('date_purchased').required = true;
       document.getElementById('date_pickup').required = true;
       document.getElementById('date_delivery').required = false;
@@ -774,7 +779,12 @@ function openCreateModal() {
       deliveryAddressInput.required = true;
       deliveryAddressInput.value = item.delivery_address || '';
       
-      document.getElementById('date_delivery').value = item.date_scheduled;
+      // Format date properly for date input (YYYY-MM-DD)
+      if (item.date_scheduled) {
+        const scheduledDate = new Date(item.date_scheduled);
+        document.getElementById('date_delivery').value = scheduledDate.toISOString().split('T')[0];
+      }
+      
       document.getElementById('date_purchased').required = false;
       document.getElementById('date_pickup').required = false;
       document.getElementById('date_delivery').required = true;

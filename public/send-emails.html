@@ -359,25 +359,29 @@
         Forms will be marked as "Emailed" after successful delivery.
       </div>
 
-      <!-- Stats Grid -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-number" id="pickupCount">-</div>
-          <div class="stat-label">Pick-Up Forms</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number" id="deliveryCount">-</div>
-          <div class="stat-label">Delivery Forms</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-number" id="donationCount">-</div>
-          <div class="stat-label">Donation Forms</div>
-        </div>
-        <div class="stat-card total">
-          <div class="stat-number" id="totalCount">-</div>
-          <div class="stat-label">Total Pending</div>
-        </div>
-      </div>
+   <!-- Stats Grid -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-number" id="pickupCount">-</div>
+    <div class="stat-label">Pick-Up Forms</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number" id="deliveryCount">-</div>
+    <div class="stat-label">Delivery Forms</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number" id="donationCount">-</div>
+    <div class="stat-label">Donation Forms</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number" id="waiverCount">-</div>
+    <div class="stat-label">Waiver Forms</div>
+  </div>
+  <div class="stat-card total">
+    <div class="stat-number" id="totalCount">-</div>
+    <div class="stat-label">Total Pending</div>
+  </div>
+</div>
 
       <!-- Warning if no emails -->
       <div id="noEmailsWarning" class="info-box warning" style="display: none;">
@@ -453,42 +457,42 @@
       loadPendingCounts();
     };
 
-    async function loadPendingCounts() {
-      const token = localStorage.getItem('token');
+ async function loadPendingCounts() {
+  const token = localStorage.getItem('token');
 
-      try {
-        const response = await fetch('/api/send-emails/pending', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) throw new Error('Failed to load pending counts');
-
-        const data = await response.json();
-        pendingCounts = data;
-
-        // Update display
-        document.getElementById('totalCount').textContent = data.total;
-        document.getElementById('pickupCount').textContent = data.pickup;
-        document.getElementById('deliveryCount').textContent = data.delivery;
-        document.getElementById('donationCount').textContent = data.donation;
-
-        // Show warning if no emails
-        if (data.total === 0) {
-          document.getElementById('noEmailsWarning').style.display = 'block';
-          document.getElementById('sendBtn').disabled = true;
-        } else {
-          document.getElementById('noEmailsWarning').style.display = 'none';
-          document.getElementById('sendBtn').disabled = false;
-        }
-
-      } catch (error) {
-        console.error('Load pending counts error:', error);
-        showResults('Failed to load pending email counts', 'error', 'results');
+  try {
+    const response = await fetch('/api/send-emails/pending', {
+      headers: {
+        'Authorization': `Bearer ${token}`
       }
+    });
+
+    if (!response.ok) throw new Error('Failed to load pending counts');
+
+    const data = await response.json();
+    pendingCounts = data;
+
+    // Update display
+    document.getElementById('totalCount').textContent = data.total;
+    document.getElementById('pickupCount').textContent = data.pickup;
+    document.getElementById('deliveryCount').textContent = data.delivery;
+    document.getElementById('donationCount').textContent = data.donation;
+    document.getElementById('waiverCount').textContent = data.waiver;
+
+    // Show warning if no emails
+    if (data.total === 0) {
+      document.getElementById('noEmailsWarning').style.display = 'block';
+      document.getElementById('sendBtn').disabled = true;
+    } else {
+      document.getElementById('noEmailsWarning').style.display = 'none';
+      document.getElementById('sendBtn').disabled = false;
     }
 
+  } catch (error) {
+    console.error('Load pending counts error:', error);
+    showResults('Failed to load pending email counts', 'error', 'results');
+  }
+}
     async function sendEmails() {
       if (pendingCounts.total === 0) {
         showResults('No pending emails to send', 'error', 'results');

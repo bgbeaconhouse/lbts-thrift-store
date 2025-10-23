@@ -294,6 +294,107 @@ router.delete('/donation/:id', async (req, res) => {
   }
 });
 
+// ==================== WAIVER FORMS ====================
+
+// GET /api/customer-forms/waiver - Get all waiver forms
+router.get('/waiver', async (req, res) => {
+  try {
+    const db = req.app.locals.db;
+    
+    const result = await db.query(
+      `SELECT id, customer_name, phone, email, 
+              signature_url, manager_signature_url, date, emailed, created_at
+       FROM waiver_forms 
+       WHERE deleted_at IS NULL 
+       ORDER BY created_at DESC`
+    );
+
+    res.json({ forms: result.rows });
+  } catch (error) {
+    console.error('Get waiver forms error:', error);
+    res.status(500).json({ error: 'Failed to get waiver forms' });
+  }
+});
+
+// POST /api/customer-forms/waiver - Create waiver form
+router.post('/waiver', upload.fields([
+  { name: 'signature', maxCount: 1 },
+  { name: 'manager_signature', maxCount: 1 }
+]), async (req, res) => {
+  const { customer_name, phone, email } = req.body;
+
+  // Validation
+  if (!customer_name || !phone) {
+    return res.status(400).json({ error: 'Customer name and phone are required' });
+  }
+
+  try {
+    const db = req.app.locals.db;
+    
+    const signatureUrl = req.files['signature'] ? `/uploads/signatures/${req.files['signature'][0].filename}` : null;
+    const managerSignatureUrl = req.files['manager_signature'] ? `/uploads/signatures/${req.files['manager_signature'][0].filename}` : null;
+
+    const result = await db.query(
+      `INSERT INTO waiver_forms (customer_name, phone, email, signature_url, manager_signature_url, date)
+       VALUES ($1, $2, $3, $4, $5, CURRENT_DATE)
+       RETURNING id, customer_name, phone, email, signature_url, manager_signature_url, date, emailed, created_at`,
+      [customer_name, phone, email || null, signatureUrl, managerSignatureUrl]
+    );
+
+    res.status(201).json({ 
+      message: 'Waiver form created successfully',
+      form: result.rows[0] 
+    });
+  } catch (error) {
+    console.error('Create waiver form error:', error);
+    
+    if (req.files) {
+      // Delete uploaded files if database insert failed
+      if (req.files['signature']) {
+        fs.unlink(req.files['signature'][0].path, (err) => {
+          if (err) console.error('Error deleting file:', err);
+        });
+      }
+      if (req.files['manager_signature']) {
+        fs.unlink(req.files['manager_signature'][0].path, (err) => {
+          if (err) console.error('Error deleting file:', err);
+        });
+      }
+    }
+    
+    res.status(500).json({ error: 'Failed to create waiver form' });
+  }
+});
+
+// DELETE /api/customer-forms/waiver/:id - Soft delete waiver form
+router.delete('/waiver/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const db = req.app.locals.db;
+
+    const result = await db.query(
+      `UPDATE waiver_forms 
+       SET deleted_at = NOW() 
+       WHERE id = $1 AND deleted_at IS NULL
+       RETURNING id`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Form not found' });
+    }
+
+    res.json({ message: 'Waiver form deleted successfully' });
+  } catch (error) {
+    console.error('Delete waiver form error:', error);
+    res.status(500).json({ error: 'Failed to delete waiver form' });
+  }
+});
+
+
+
+
 // ==================== EMAIL QUEUE ====================
 
 // GET /api/customer-forms/pending - Get count of pending emails (Admin only)
@@ -310,16 +411,21 @@ router.get('/pending', requireRole('Admin'), async (req, res) => {
     const donation = await db.query(
       'SELECT COUNT(*) FROM donation_forms WHERE emailed = FALSE AND deleted_at IS NULL'
     );
+    const waiver = await db.query(
+      'SELECT COUNT(*) FROM waiver_forms WHERE emailed = FALSE AND deleted_at IS NULL'
+    );
 
     const total = parseInt(pickup.rows[0].count) + 
                   parseInt(delivery.rows[0].count) + 
-                  parseInt(donation.rows[0].count);
+                  parseInt(donation.rows[0].count) +
+                  parseInt(waiver.rows[0].count);
 
     res.json({ 
       total,
       pickup: parseInt(pickup.rows[0].count),
       delivery: parseInt(delivery.rows[0].count),
-      donation: parseInt(donation.rows[0].count)
+      donation: parseInt(donation.rows[0].count),
+      waiver: parseInt(waiver.rows[0].count)
     });
   } catch (error) {
     console.error('Get pending emails error:', error);

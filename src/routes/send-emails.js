@@ -38,16 +38,21 @@ router.get('/pending', async (req, res) => {
     const donation = await db.query(
       'SELECT COUNT(*) FROM donation_forms WHERE emailed = FALSE AND deleted_at IS NULL'
     );
+    const waiver = await db.query(
+      'SELECT COUNT(*) FROM waiver_forms WHERE emailed = FALSE AND deleted_at IS NULL'
+    );
 
     const total = parseInt(pickup.rows[0].count) + 
                   parseInt(delivery.rows[0].count) + 
-                  parseInt(donation.rows[0].count);
+                  parseInt(donation.rows[0].count) +
+                  parseInt(waiver.rows[0].count);
 
     res.json({ 
       total,
       pickup: parseInt(pickup.rows[0].count),
       delivery: parseInt(delivery.rows[0].count),
-      donation: parseInt(donation.rows[0].count)
+      donation: parseInt(donation.rows[0].count),
+      waiver: parseInt(waiver.rows[0].count)
     });
   } catch (error) {
     console.error('Get pending emails error:', error);
@@ -83,81 +88,81 @@ router.post('/send', async (req, res) => {
     let failedCount = 0;
     const errors = [];
 
-    // Get all pending pickup forms
+    // ==================== PICKUP FORMS ====================
     const pickupForms = await db.query(
       `SELECT id, customer_name, phone, email, items_description, date
        FROM pickup_forms 
        WHERE emailed = FALSE AND deleted_at IS NULL AND email IS NOT NULL`
     );
 
-// Send pickup emails
-for (const form of pickupForms.rows) {
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'Beacon House Thrift Shop - Long Beach <noreply@lbts.local>',
-      to: form.email,
-      subject: 'Beacon House Thrift Shop - Long Beach - Pick-Up Receipt',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
-            <h1 style="margin: 0;">Beacon House Thrift Shop - Long Beach</h1>
-            <h2 style="margin: 10px 0 0 0; font-weight: normal;">Pick-Up Receipt</h2>
-          </div>
-          
-          <div style="padding: 30px; background: white;">
-            <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
-              Dear ${form.customer_name},
-            </p>
-            
-            <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
-              Thank you for your purchase! <strong>You have 48 hours from when you purchased the item to pick it up.</strong>
-            </p>
-            
-            <div style="background: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="color: #2d3748; margin-top: 0;">Purchase Details:</h3>
-              <p style="color: #4a5568; line-height: 1.8; margin: 5px 0;">
-                <strong>Name:</strong> ${form.customer_name}<br>
-                <strong>Phone:</strong> ${form.phone}<br>
-                <strong>Date:</strong> ${new Date(form.date).toLocaleDateString()}
-              </p>
-              ${form.items_description ? `
-                <p style="color: #4a5568; line-height: 1.8; margin-top: 15px;">
-                  <strong>Items:</strong><br>
-                  ${form.items_description}
+    // Send pickup emails
+    for (const form of pickupForms.rows) {
+      try {
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || 'Beacon House Long Beach Thrift Store <noreply@lbts.local>',
+          to: form.email,
+          subject: 'LBTS - Pick-Up Receipt',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
+                <h1 style="margin: 0;">LBTS Thrift Store</h1>
+                <h2 style="margin: 10px 0 0 0; font-weight: normal;">Pick-Up Receipt</h2>
+              </div>
+              
+              <div style="padding: 30px; background: white;">
+                <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
+                  Dear ${form.customer_name},
                 </p>
-              ` : ''}
+                
+                <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
+                  Thank you for your purchase! <strong>You have 48 hours from when you purchased the item to pick it up.</strong>
+                </p>
+                
+                <div style="background: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <h3 style="color: #2d3748; margin-top: 0;">Purchase Details:</h3>
+                  <p style="color: #4a5568; line-height: 1.8; margin: 5px 0;">
+                    <strong>Name:</strong> ${form.customer_name}<br>
+                    <strong>Phone:</strong> ${form.phone}<br>
+                    <strong>Date:</strong> ${new Date(form.date).toLocaleDateString()}
+                  </p>
+                  ${form.items_description ? `
+                    <p style="color: #4a5568; line-height: 1.8; margin-top: 15px;">
+                      <strong>Items:</strong><br>
+                      ${form.items_description}
+                    </p>
+                  ` : ''}
+                </div>
+                
+                <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                  <h3 style="color: #856404; margin-top: 0;">⚠️ Important Terms & Conditions</h3>
+                  <p style="color: #856404; line-height: 1.8; margin-bottom: 15px;">
+                    You have <strong>48 hours upon purchase</strong> to pick your item up. After 48 hours the item will be placed back on the sales floor and <strong>no refunds will be issued</strong>.
+                  </p>
+                  <p style="color: #856404; line-height: 1.8; margin-bottom: 15px;">
+                    We will gladly assist you in loading your items. Please be aware that it is the customer's responsibility to ensure items are properly loaded and secured. We are not responsible for any damage caused by loading or failure to secure items.
+                  </p>
+                  <p style="color: #856404; line-height: 1.8; margin: 0;">
+                    Your signature acknowledges that you have read and understand the terms and conditions covered above.
+                  </p>
+                </div>
+                
+                <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-top: 30px;">
+                  If you have any questions, please contact us at <strong>(562) 343-7804</strong>.
+                </p>
+                
+                <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 30px;">
+                  Thank you,<br>
+                  <strong>LBTS Thrift Store</strong>
+                </p>
+              </div>
+              
+              <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
+                <p style="margin: 0;">LBTS Thrift Store</p>
+                <p style="margin: 5px 0;">Phone: (562) 343-7804</p>
+              </div>
             </div>
-            
-            <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
-              <h3 style="color: #856404; margin-top: 0;">⚠️ Important Terms & Conditions</h3>
-              <p style="color: #856404; line-height: 1.8; margin-bottom: 15px;">
-                You have <strong>48 hours upon purchase</strong> to pick your item up. After 48 hours the item will be placed back on the sales floor and <strong>no refunds will be issued</strong>.
-              </p>
-              <p style="color: #856404; line-height: 1.8; margin-bottom: 15px;">
-                We will gladly assist you in loading your items. Please be aware that it is the customer's responsibility to ensure items are properly loaded and secured. We are not responsible for any damage caused by loading or failure to secure items.
-              </p>
-              <p style="color: #856404; line-height: 1.8; margin: 0;">
-                Your signature acknowledges that you have read and understand the terms and conditions covered above.
-              </p>
-            </div>
-            
-            <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-top: 30px;">
-              If you have any questions, please contact us at <strong>(562) 343-7804</strong>.
-            </p>
-            
-            <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 30px;">
-              Thank you,<br>
-              <strong>Beacon House Thrift Shop Long Beach</strong>
-            </p>
-          </div>
-          
-          <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
-            <p style="margin: 0;">Beacon House Thrift Shop - Long Beach</p>
-            <p style="margin: 5px 0;">Phone: (562) 343-7804</p>
-          </div>
-        </div>
-      `
-    });
+          `
+        });
 
         // Mark as emailed
         await db.query(
@@ -173,80 +178,80 @@ for (const form of pickupForms.rows) {
       }
     }
 
-    // Get all pending delivery forms
- const deliveryForms = await db.query(
-  `SELECT id, customer_name, phone, email, items_description, delivery_cost, delivery_date, date
-   FROM delivery_forms 
-   WHERE emailed = FALSE AND deleted_at IS NULL AND email IS NOT NULL`
-);
+    // ==================== DELIVERY FORMS ====================
+    const deliveryForms = await db.query(
+      `SELECT id, customer_name, phone, email, items_description, delivery_cost, delivery_date, date
+       FROM delivery_forms 
+       WHERE emailed = FALSE AND deleted_at IS NULL AND email IS NOT NULL`
+    );
 
-   // Send delivery emails
-for (const form of deliveryForms.rows) {
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'Beacon House Thrift Shop - Long Beach <noreply@lbts.local>',
-      to: form.email,
-      subject: 'Beacon House Thrift Shop Long Beach - Delivery Receipt',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
-            <h1 style="margin: 0;">Beacon House Thrift Shop - Long Beach</h1>
-            <h2 style="margin: 10px 0 0 0; font-weight: normal;">Delivery Receipt</h2>
-          </div>
-          
-          <div style="padding: 30px; background: white;">
-            <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
-              Dear ${form.customer_name},
-            </p>
-            
-            <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
-              Thank you for your purchase! Your items will be delivered as scheduled.
-            </p>
-            
-            <div style="background: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="color: #2d3748; margin-top: 0;">Purchase Details:</h3>
-              <p style="color: #4a5568; line-height: 1.8; margin: 5px 0;">
-                <strong>Name:</strong> ${form.customer_name}<br>
-                <strong>Phone:</strong> ${form.phone}<br>
-                <strong>Date:</strong> ${new Date(form.date).toLocaleDateString()}
-                ${form.delivery_cost ? `<br><strong>Delivery Cost:</strong> $${parseFloat(form.delivery_cost).toFixed(2)}` : ''}
-                ${form.delivery_date ? `<br><strong>Delivery Date:</strong> ${form.delivery_date}` : ''}
-              </p>
-              ${form.items_description ? `
-                <p style="color: #4a5568; line-height: 1.8; margin-top: 15px;">
-                  <strong>Items:</strong><br>
-                  ${form.items_description}
+    // Send delivery emails
+    for (const form of deliveryForms.rows) {
+      try {
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || 'Beacon House Long Beach Thrift Store <noreply@lbts.local>',
+          to: form.email,
+          subject: 'Beacon House - Delivery Receipt',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
+                <h1 style="margin: 0;">Beacon House Long Beach Thrift Store</h1>
+                <h2 style="margin: 10px 0 0 0; font-weight: normal;">Delivery Receipt</h2>
+              </div>
+              
+              <div style="padding: 30px; background: white;">
+                <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
+                  Dear ${form.customer_name},
                 </p>
-              ` : ''}
+                
+                <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
+                  Thank you for your purchase! Your items will be delivered as scheduled.
+                </p>
+                
+                <div style="background: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <h3 style="color: #2d3748; margin-top: 0;">Purchase Details:</h3>
+                  <p style="color: #4a5568; line-height: 1.8; margin: 5px 0;">
+                    <strong>Name:</strong> ${form.customer_name}<br>
+                    <strong>Phone:</strong> ${form.phone}<br>
+                    <strong>Date:</strong> ${new Date(form.date).toLocaleDateString()}
+                    ${form.delivery_cost ? `<br><strong>Delivery Cost:</strong> $${parseFloat(form.delivery_cost).toFixed(2)}` : ''}
+                    ${form.delivery_date ? `<br><strong>Delivery Date:</strong> ${form.delivery_date}` : ''}
+                  </p>
+                  ${form.items_description ? `
+                    <p style="color: #4a5568; line-height: 1.8; margin-top: 15px;">
+                      <strong>Items:</strong><br>
+                      ${form.items_description}
+                    </p>
+                  ` : ''}
+                </div>
+                
+                <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                  <h3 style="color: #856404; margin-top: 0;">⚠️ Important Terms & Conditions</h3>
+                  <p style="color: #856404; line-height: 1.8; margin: 0;">
+                    By accepting delivery you hereby acknowledge that cost of delivery is solely for the delivery of the item(s) 
+                    to the residence indicated at the time of purchase. The Beacon House Thrift Shop is not responsible 
+                    for moving said item(s) into said residence due to issues with liability. The item(s) will be placed 
+                    in the driveway or the front yard.
+                  </p>
+                </div>
+                
+                <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-top: 30px;">
+                  If you have any questions, please contact us at <strong>(562) 343-7804</strong>.
+                </p>
+                
+                <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 30px;">
+                  Thank you,<br>
+                  <strong>Beacon House Long Beach Thrift Store</strong>
+                </p>
+              </div>
+              
+              <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
+                <p style="margin: 0;">Beacon House Long Beach Thrift Store</p>
+                <p style="margin: 5px 0;">Phone: (562) 343-7804</p>
+              </div>
             </div>
-            
-            <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
-              <h3 style="color: #856404; margin-top: 0;">⚠️ Important Terms & Conditions</h3>
-              <p style="color: #856404; line-height: 1.8; margin: 0;">
-                By accepting delivery you hereby acknowledge that cost of delivery is solely for the delivery of the item(s) 
-                to the residence indicated at the time of purchase. The Beacon House Thrift Shop is not responsible 
-                for moving said item(s) into said residence due to issues with liability. The item(s) will be placed 
-                in the driveway or the front yard.
-              </p>
-            </div>
-            
-            <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-top: 30px;">
-              If you have any questions, please contact us at <strong>(562) 343-7804</strong>.
-            </p>
-            
-            <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 30px;">
-              Thank you,<br>
-              <strong>Beacon House Thrift Shop - Long Beach</strong>
-            </p>
-          </div>
-          
-          <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
-            <p style="margin: 0;">Beacon House Thrift Shop Long Beach</p>
-            <p style="margin: 5px 0;">Phone: (562) 343-7804</p>
-          </div>
-        </div>
-      `
-    });
+          `
+        });
 
         // Mark as emailed
         await db.query(
@@ -262,70 +267,70 @@ for (const form of deliveryForms.rows) {
       }
     }
 
-    // Get all pending donation forms
+    // ==================== DONATION FORMS ====================
     const donationForms = await db.query(
       `SELECT id, customer_name, phone, email, donation_description, date
        FROM donation_forms 
        WHERE emailed = FALSE AND deleted_at IS NULL AND email IS NOT NULL`
     );
 
-// Send donation emails
-for (const form of donationForms.rows) {
-  try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'The Beacon House Association <contact@thebeaconhouse.org>',
-      to: form.email,
-      subject: 'Donation Receipt - The Beacon House Association',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
-            <h1 style="margin: 0;">The Beacon House Association of San Pedro</h1>
-            <p style="margin: 5px 0;">1003 S. Beacon St, San Pedro, CA 90731</p>
-            <p style="margin: 5px 0;">thebeaconhouse.org | contact@thebeaconhouse.org | (310) 514-4940</p>
-          </div>
-          
-          <div style="padding: 30px; background: white;">
-            <h2 style="color: #2d3748; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
-              Donation Receipt
-            </h2>
-            
-            <p style="color: #4a5568; line-height: 1.6; margin-top: 20px;">
-              <strong>Donor Name:</strong> ${form.customer_name}<br>
-              <strong>Date:</strong> ${new Date(form.date).toLocaleDateString()}
-            </p>
-            
-            ${form.donation_description ? `
-              <p style="color: #4a5568; line-height: 1.6; margin-top: 15px;">
-                <strong>Donated Items:</strong><br>
-                ${form.donation_description}
-              </p>
-            ` : ''}
-            
-            <div style="margin-top: 30px; padding: 20px; background: #f7fafc; border-left: 4px solid #667eea; line-height: 1.8; color: #2d3748;">
-              <p style="margin: 0 0 15px 0;">
-                Thank you for your generous donation. No one has ever been turned away from the Beacon House Association of San Pedro due to their inability to pay, and because of friends like you, this policy will continue in the future.
-              </p>
-              <p style="margin: 0 0 15px 0;">
-                No goods or services will be transferred to you in connection with this donation.
-              </p>
-              <p style="margin: 0; font-weight: bold;">
-                For your records our tax ID is #23-7376148
-              </p>
+    // Send donation emails
+    for (const form of donationForms.rows) {
+      try {
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || 'The Beacon House Association <contact@thebeaconhouse.org>',
+          to: form.email,
+          subject: 'Donation Receipt - The Beacon House Association',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
+                <h1 style="margin: 0;">The Beacon House Association of San Pedro</h1>
+                <p style="margin: 5px 0;">1003 S. Beacon St, San Pedro, CA 90731</p>
+                <p style="margin: 5px 0;">thebeaconhouse.org | contact@thebeaconhouse.org | (310) 514-4940</p>
+              </div>
+              
+              <div style="padding: 30px; background: white;">
+                <h2 style="color: #2d3748; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+                  Donation Receipt
+                </h2>
+                
+                <p style="color: #4a5568; line-height: 1.6; margin-top: 20px;">
+                  <strong>Donor Name:</strong> ${form.customer_name}<br>
+                  <strong>Date:</strong> ${new Date(form.date).toLocaleDateString()}
+                </p>
+                
+                ${form.donation_description ? `
+                  <p style="color: #4a5568; line-height: 1.6; margin-top: 15px;">
+                    <strong>Donated Items:</strong><br>
+                    ${form.donation_description}
+                  </p>
+                ` : ''}
+                
+                <div style="margin-top: 30px; padding: 20px; background: #f7fafc; border-left: 4px solid #667eea; line-height: 1.8; color: #2d3748;">
+                  <p style="margin: 0 0 15px 0;">
+                    Thank you for your generous donation. No one has ever been turned away from the Beacon House Association of San Pedro due to their inability to pay, and because of friends like you, this policy will continue in the future.
+                  </p>
+                  <p style="margin: 0 0 15px 0;">
+                    No goods or services will be transferred to you in connection with this donation.
+                  </p>
+                  <p style="margin: 0; font-weight: bold;">
+                    For your records our tax ID is #23-7376148
+                  </p>
+                </div>
+                
+                <p style="margin-top: 30px; color: #718096; font-size: 14px; text-align: center;">
+                  Please keep this receipt for your tax records.
+                </p>
+              </div>
+              
+              <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
+                <p style="margin: 0;">The Beacon House Association of San Pedro</p>
+                <p style="margin: 5px 0;">1003 S. Beacon St, San Pedro, CA 90731</p>
+                <p style="margin: 5px 0;">Tax ID: #23-7376148</p>
+              </div>
             </div>
-            
-            <p style="margin-top: 30px; color: #718096; font-size: 14px; text-align: center;">
-              Please keep this receipt for your tax records.
-            </p>
-          </div>
-          
-          <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
-            <p style="margin: 0;">The Beacon House Association of San Pedro</p>
-            <p style="margin: 5px 0;">1003 S. Beacon St, San Pedro, CA 90731</p>
-            <p style="margin: 5px 0;">Tax ID: #23-7376148</p>
-          </div>
-        </div>
-      `
-    });
+          `
+        });
 
         // Mark as emailed
         await db.query(
@@ -338,6 +343,102 @@ for (const form of donationForms.rows) {
         console.error('Failed to send donation email:', error);
         failedCount++;
         errors.push(`Donation form ${form.id} (${form.email}): ${error.message}`);
+      }
+    }
+
+    // ==================== WAIVER FORMS ====================
+    const waiverForms = await db.query(
+      `SELECT id, customer_name, phone, email, date
+       FROM waiver_forms 
+       WHERE emailed = FALSE AND deleted_at IS NULL AND email IS NOT NULL`
+    );
+
+    // Send waiver emails
+    for (const form of waiverForms.rows) {
+      try {
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || 'Beacon House Long Beach Thrift Store <noreply@lbts.local>',
+          to: form.email,
+          subject: 'Beacon House - Release of Liability Form',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
+                <h1 style="margin: 0;">Beacon House Association of San Pedro</h1>
+                <p style="margin: 5px 0;">1003 S. Beacon St, San Pedro, CA 90731</p>
+                <p style="margin: 5px 0;">thebeaconhouse.org</p>
+              </div>
+              
+              <div style="padding: 30px; background: white;">
+                <h2 style="color: #2d3748; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+                  Release of Liability Form for Loading Purchased Furniture
+                </h2>
+                
+                <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 20px;">
+                  Dear ${form.customer_name},
+                </p>
+                
+                <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
+                  Thank you for your purchase. This email serves as confirmation that you have completed our Release of Liability Form.
+                </p>
+                
+                <div style="background: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <h3 style="color: #2d3748; margin-top: 0;">Form Details:</h3>
+                  <p style="color: #4a5568; line-height: 1.8; margin: 5px 0;">
+                    <strong>Name:</strong> ${form.customer_name}<br>
+                    <strong>Phone:</strong> ${form.phone}<br>
+                    <strong>Date:</strong> ${new Date(form.date).toLocaleDateString()}
+                  </p>
+                </div>
+                
+                <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                  <h3 style="color: #856404; margin-top: 0;">Acknowledgment Summary:</h3>
+                  
+                  <p style="color: #856404; line-height: 1.8; margin-bottom: 15px;">
+                    By signing this form, you have acknowledged and agreed to the following:
+                  </p>
+                  
+                  <ul style="color: #856404; line-height: 1.8; margin-left: 20px;">
+                    <li><strong>Voluntary Participation:</strong> The loading of furniture into your vehicle is a voluntary service.</li>
+                    <li><strong>Release of Liability:</strong> You release The Beacon House Association of San Pedro from any claims related to loss, damage, or injury during the loading process.</li>
+                    <li><strong>Assumption of Risks:</strong> You voluntarily assume all risks associated with loading furniture.</li>
+                    <li><strong>Care and Supervision:</strong> You are responsible for ensuring your vehicle is suitable for loading furniture.</li>
+                    <li><strong>Indemnification:</strong> You agree to hold harmless The Beacon House Association from any claims arising from the loading service.</li>
+                    <li><strong>Vehicle Inspection:</strong> Your vehicle was inspected before loading to ensure it is safe and suitable.</li>
+                    <li><strong>Personal Property:</strong> You are responsible for any personal belongings left in your vehicle.</li>
+                    <li><strong>Compliance:</strong> You agree to follow all instructions provided by staff during the loading process.</li>
+                  </ul>
+                </div>
+                
+                <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-top: 30px;">
+                  Please keep this email for your records. If you have any questions, please contact us at <strong>(562) 343-7804</strong>.
+                </p>
+                
+                <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 30px;">
+                  Thank you,<br>
+                  <strong>Beacon House Association of San Pedro</strong>
+                </p>
+              </div>
+              
+              <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
+                <p style="margin: 0;">Beacon House Association of San Pedro</p>
+                <p style="margin: 5px 0;">1003 S. Beacon St, San Pedro, CA 90731</p>
+                <p style="margin: 5px 0;">Phone: (562) 343-7804</p>
+              </div>
+            </div>
+          `
+        });
+
+        // Mark as emailed
+        await db.query(
+          'UPDATE waiver_forms SET emailed = TRUE WHERE id = $1',
+          [form.id]
+        );
+        
+        successCount++;
+      } catch (error) {
+        console.error('Failed to send waiver email:', error);
+        failedCount++;
+        errors.push(`Waiver form ${form.id} (${form.email}): ${error.message}`);
       }
     }
 

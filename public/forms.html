@@ -445,18 +445,21 @@
   <div class="container">
     <div id="message" class="message"></div>
 
-    <!-- Form Type Tabs -->
-    <div class="form-tabs">
-      <button class="form-tab active" data-type="pickup" onclick="switchFormType('pickup')">
-        📦 Pick-Up Forms
-      </button>
-      <button class="form-tab" data-type="delivery" onclick="switchFormType('delivery')">
-        🚚 Delivery Forms
-      </button>
-      <button class="form-tab" data-type="donation" onclick="switchFormType('donation')">
-        🎁 Donation Forms
-      </button>
-    </div>
+  <!-- Form Type Tabs -->
+<div class="form-tabs">
+  <button class="form-tab active" data-type="pickup" onclick="switchFormType('pickup')">
+    📦 Pick-Up Forms
+  </button>
+  <button class="form-tab" data-type="delivery" onclick="switchFormType('delivery')">
+    🚚 Delivery Forms
+  </button>
+  <button class="form-tab" data-type="donation" onclick="switchFormType('donation')">
+    🎁 Donation Forms
+  </button>
+  <button class="form-tab" data-type="waiver" onclick="switchFormType('waiver')">
+    📝 Waiver Forms
+  </button>
+</div>
 
     <!-- Top Bar -->
     <div class="top-bar">
@@ -500,7 +503,7 @@
           <input type="email" id="email" placeholder="customer@example.com">
         </div>
 
-       <div class="form-group">
+<div class="form-group" id="descriptionGroup">
   <label for="description" id="descriptionLabel">Items Description</label>
   <textarea id="description" placeholder="List of items..."></textarea>
 </div>
@@ -543,6 +546,37 @@
       in the driveway or the front yard.
     </p>
   </div>
+
+  <!-- Waiver Terms -->
+<div id="waiverTermsBox" style="display: none; background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin-bottom: 20px; color: #856404; max-height: 400px; overflow-y: auto;">
+  <h3 style="margin-top: 0; color: #856404;">📝 Release of Liability Form for Loading Purchased Furniture</h3>
+  
+  <p style="line-height: 1.8; margin-bottom: 15px;">
+    I hereby acknowledge and agree to the following terms and conditions when The Beacon House Association of San Pedro employees load furniture into my vehicle:
+  </p>
+  
+  <ul style="line-height: 1.8; margin-left: 20px; margin-bottom: 15px;">
+    <li><strong>Acknowledgment of Voluntary Participation:</strong> I understand that the loading of furniture into my vehicle is a voluntary service offered by The Beacon House Association of San Pedro, and I choose to participate in this service willingly.</li>
+    
+    <li><strong>Release and Waiver of Liability:</strong> In consideration of The Beacon House Association of San Pedro providing assistance in loading furniture into my vehicle, I hereby release, waive, and discharge The Beacon House Association of San Pedro and its employees, agents, volunteers, and representatives from any and all claims, liabilities, demands, actions, and causes of action whatsoever, arising out of or related to any loss, damage, or injury that may occur during the loading process.</li>
+    
+    <li><strong>Assumption of Risks:</strong> I acknowledge that loading furniture into my vehicle involves certain risks, including but not limited to the risk of bodily injury, property damage, or other harm. I voluntarily assume all risks associated with this service.</li>
+    
+    <li><strong>Care and Supervision:</strong> I understand that the employees of The Beacon House Association of San Pedro will exercise reasonable care and caution during the loading process. However, I am solely responsible for ensuring that my vehicle is suitable for loading furniture, and I will provide any necessary instructions to the loading staff.</li>
+    
+    <li><strong>Indemnification:</strong> I agree to indemnify and hold harmless The Beacon House Association of San Pedro, its employees, agents, volunteers, and representatives from any claims, actions, damages, liabilities, or expenses, including attorney fees, arising out of my use of the loading service or any injury or damage resulting from the loading process.</li>
+    
+    <li><strong>Vehicle Inspection:</strong> I agree to have my vehicle inspected before the furniture is loaded to ensure it is in a safe and suitable condition to transport the furniture.</li>
+    
+    <li><strong>Personal Property Responsibility:</strong> I understand that any personal belongings left in my vehicle during the loading process are my responsibility. The Beacon House Association of San Pedro and its employees shall not be liable for any loss or damage to personal property.</li>
+    
+    <li><strong>Compliance with Instructions:</strong> I agree to follow all instructions provided by The Beacon House Association of San Pedro employees during the loading process for the safety of all parties involved.</li>
+  </ul>
+  
+  <p style="line-height: 1.8; margin: 0; font-weight: bold;">
+    I have read and understood this Release of Liability Form, and I voluntarily sign it with my signature below.
+  </p>
+</div>
   
   <label>Customer Signature *</label>
   <div class="signature-pad-container">
@@ -551,7 +585,22 @@
   <div class="signature-controls">
     <button type="button" class="btn btn-secondary" onclick="clearSignature()">Clear Signature</button>
   </div>
+
+<!-- Manager Signature (Waiver Only) -->
+<div id="managerSignatureSection" style="display: none; margin-top: 30px;">
+  <label>Manager Signature *</label>
+  <div class="signature-pad-container">
+    <canvas id="managerSignatureCanvas" class="signature-canvas"></canvas>
+  </div>
+  <div class="signature-controls">
+    <button type="button" class="btn btn-secondary" onclick="clearManagerSignature()">Clear Manager Signature</button>
+  </div>
 </div>
+
+
+</div>
+
+
 
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
@@ -568,6 +617,7 @@
     // Signature pad variables
     let canvas, ctx;
     let isDrawing = false;
+    let managerCanvas, managerCtx, isManagerDrawing = false;
     let lastX = 0;
     let lastY = 0;
 
@@ -584,6 +634,7 @@
     };
 
 function initSignaturePad() {
+  // Customer signature
   canvas = document.getElementById('signatureCanvas');
   ctx = canvas.getContext('2d');
   
@@ -620,6 +671,34 @@ function initSignaturePad() {
   canvas.addEventListener('touchstart', handleTouchStart);
   canvas.addEventListener('touchmove', handleTouchMove);
   canvas.addEventListener('touchend', stopDrawing);
+
+  // Manager signature (for waiver forms)
+  managerCanvas = document.getElementById('managerSignatureCanvas');
+  if (managerCanvas) {
+    managerCtx = managerCanvas.getContext('2d');
+    
+    // Set canvas size properly
+    const managerContainer = managerCanvas.parentElement;
+    managerCanvas.width = managerContainer.offsetWidth - 4;
+    managerCanvas.height = 200;
+    
+    // Set drawing style
+    managerCtx.strokeStyle = '#000';
+    managerCtx.lineWidth = 2;
+    managerCtx.lineCap = 'round';
+    managerCtx.lineJoin = 'round';
+
+    // Mouse events
+    managerCanvas.addEventListener('mousedown', startManagerDrawing);
+    managerCanvas.addEventListener('mousemove', drawManager);
+    managerCanvas.addEventListener('mouseup', stopManagerDrawing);
+    managerCanvas.addEventListener('mouseout', stopManagerDrawing);
+
+    // Touch events
+    managerCanvas.addEventListener('touchstart', handleManagerTouchStart);
+    managerCanvas.addEventListener('touchmove', handleManagerTouchMove);
+    managerCanvas.addEventListener('touchend', stopManagerDrawing);
+  }
 }
 
     function startDrawing(e) {
@@ -690,27 +769,97 @@ function initSignaturePad() {
   return !imageData.data.some(channel => channel !== 0);
 }
 
-    function switchFormType(type) {
-      currentFormType = type;
+// Manager signature functions
+function startManagerDrawing(e) {
+  isManagerDrawing = true;
+  const rect = managerCanvas.getBoundingClientRect();
+  lastX = e.clientX - rect.left;
+  lastY = e.clientY - rect.top;
+}
 
-      // Update active tab
-      document.querySelectorAll('.form-tab').forEach(tab => {
-        tab.classList.remove('active');
-        if (tab.dataset.type === type) {
-          tab.classList.add('active');
-        }
-      });
+function drawManager(e) {
+  if (!isManagerDrawing) return;
+  
+  const rect = managerCanvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
 
-      // Update title
-      const titles = {
-        pickup: 'Pick-Up Forms',
-        delivery: 'Delivery Forms',
-        donation: 'Donation Forms'
-      };
-      document.getElementById('formTitle').textContent = titles[type];
+  managerCtx.beginPath();
+  managerCtx.moveTo(lastX, lastY);
+  managerCtx.lineTo(x, y);
+  managerCtx.stroke();
 
-      loadForms();
+  lastX = x;
+  lastY = y;
+}
+
+function stopManagerDrawing() {
+  isManagerDrawing = false;
+}
+
+function handleManagerTouchStart(e) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const rect = managerCanvas.getBoundingClientRect();
+  lastX = touch.clientX - rect.left;
+  lastY = touch.clientY - rect.top;
+  isManagerDrawing = true;
+}
+
+function handleManagerTouchMove(e) {
+  if (!isManagerDrawing) return;
+  e.preventDefault();
+  
+  const touch = e.touches[0];
+  const rect = managerCanvas.getBoundingClientRect();
+  const x = touch.clientX - rect.left;
+  const y = touch.clientY - rect.top;
+
+  managerCtx.beginPath();
+  managerCtx.moveTo(lastX, lastY);
+  managerCtx.lineTo(x, y);
+  managerCtx.stroke();
+
+  lastX = x;
+  lastY = y;
+}
+
+function clearManagerSignature() {
+  managerCtx.clearRect(0, 0, managerCanvas.width, managerCanvas.height);
+}
+
+function isManagerSignatureEmpty() {
+  // Check if canvas has valid dimensions
+  if (managerCanvas.width === 0 || managerCanvas.height === 0) {
+    return true;
+  }
+  
+  const imageData = managerCtx.getImageData(0, 0, managerCanvas.width, managerCanvas.height);
+  return !imageData.data.some(channel => channel !== 0);
+}
+
+function switchFormType(type) {
+  currentFormType = type;
+
+  // Update active tab
+  document.querySelectorAll('.form-tab').forEach(tab => {
+    tab.classList.remove('active');
+    if (tab.dataset.type === type) {
+      tab.classList.add('active');
     }
+  });
+
+  // Update title
+  const titles = {
+    pickup: 'Pick-Up Forms',
+    delivery: 'Delivery Forms',
+    donation: 'Donation Forms',
+    waiver: 'Waiver Forms'
+  };
+  document.getElementById('formTitle').textContent = titles[type];
+
+  loadForms();
+}
 
     async function loadForms() {
       const token = localStorage.getItem('token');
@@ -736,21 +885,22 @@ function initSignaturePad() {
  function displayForms(forms) {
   const list = document.getElementById('formsList');
   
-  if (forms.length === 0) {
-    const typeNames = {
-      pickup: 'pick-up',
-      delivery: 'delivery',
-      donation: 'donation'
-    };
-    list.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-state-icon">📋</div>
-        <h3>No ${typeNames[currentFormType]} forms yet</h3>
-        <p>Click "New Form" to create your first ${typeNames[currentFormType]} form</p>
-      </div>
-    `;
-    return;
-  }
+ if (forms.length === 0) {
+  const typeNames = {
+    pickup: 'pick-up',
+    delivery: 'delivery',
+    donation: 'donation',
+    waiver: 'waiver'
+  };
+  list.innerHTML = `
+    <div class="empty-state">
+      <div class="empty-state-icon">📋</div>
+      <h3>No ${typeNames[currentFormType]} forms yet</h3>
+      <p>Click "New Form" to create your first ${typeNames[currentFormType]} form</p>
+    </div>
+  `;
+  return;
+}
 
 list.innerHTML = forms.map(form => {
   const descriptionField = currentFormType === 'donation' 
@@ -770,11 +920,17 @@ list.innerHTML = forms.map(form => {
             ${form.delivery_date ? `<span>🚚 Delivery: ${escapeHtml(form.delivery_date)}</span>` : ''}
             <span>${form.emailed ? '<span class="emailed-badge">✓ Emailed</span>' : '<span class="pending-badge">Pending</span>'}</span>
           </div>
-          ${descriptionField ? `<div class="form-description">${escapeHtml(descriptionField)}</div>` : ''}
+          ${descriptionField && currentFormType !== 'waiver' ? `<div class="form-description">${escapeHtml(descriptionField)}</div>` : ''}
           ${form.signature_url ? `
             <div class="signature-preview">
               <div style="font-size: 12px; color: #718096; margin-bottom: 5px;">Customer Signature:</div>
               <img src="${form.signature_url}" alt="Signature">
+            </div>
+          ` : ''}
+          ${form.manager_signature_url ? `
+            <div class="signature-preview">
+              <div style="font-size: 12px; color: #718096; margin-bottom: 5px;">Manager Signature:</div>
+              <img src="${form.manager_signature_url}" alt="Manager Signature">
             </div>
           ` : ''}
         </div>
@@ -791,19 +947,40 @@ function openCreateModal() {
   const titles = {
     pickup: 'New Pick-Up Form',
     delivery: 'New Delivery Form',
-    donation: 'New Donation Form'
+    donation: 'New Donation Form',
+    waiver: 'New Waiver Form'
   };
   
   const descLabels = {
     pickup: 'Items Description',
     delivery: 'Items Description',
-    donation: 'Donation Description'
+    donation: 'Donation Description',
+    waiver: 'Items Description'
   };
 
   document.getElementById('modalTitle').textContent = titles[currentFormType];
   document.getElementById('descriptionLabel').textContent = descLabels[currentFormType];
   document.getElementById('customerForm').reset();
   clearSignature();
+  if (typeof clearManagerSignature === 'function') {
+    clearManagerSignature();
+  }
+  
+  // Show/hide description field (hide for waiver)
+  const descriptionGroup = document.getElementById('descriptionGroup');
+  if (currentFormType === 'waiver') {
+    descriptionGroup.style.display = 'none';
+  } else {
+    descriptionGroup.style.display = 'block';
+  }
+  
+  // Show/hide manager signature (only for waiver)
+  const managerSignatureSection = document.getElementById('managerSignatureSection');
+  if (currentFormType === 'waiver') {
+    managerSignatureSection.style.display = 'block';
+  } else {
+    managerSignatureSection.style.display = 'none';
+  }
   
   // Show/hide delivery cost and date fields
   const deliveryCostGroup = document.getElementById('deliveryCostGroup');
@@ -823,16 +1000,24 @@ function openCreateModal() {
   // Show appropriate terms box
   const pickupTermsBox = document.getElementById('pickupTermsBox');
   const deliveryTermsBox = document.getElementById('deliveryTermsBox');
+  const waiverTermsBox = document.getElementById('waiverTermsBox');
   
   if (currentFormType === 'pickup') {
     pickupTermsBox.style.display = 'block';
     deliveryTermsBox.style.display = 'none';
+    waiverTermsBox.style.display = 'none';
   } else if (currentFormType === 'delivery') {
     pickupTermsBox.style.display = 'none';
     deliveryTermsBox.style.display = 'block';
+    waiverTermsBox.style.display = 'none';
+  } else if (currentFormType === 'waiver') {
+    pickupTermsBox.style.display = 'none';
+    deliveryTermsBox.style.display = 'none';
+    waiverTermsBox.style.display = 'block';
   } else {
     pickupTermsBox.style.display = 'none';
     deliveryTermsBox.style.display = 'none';
+    waiverTermsBox.style.display = 'none';
   }
   
   document.getElementById('formModal').classList.add('active');
@@ -859,11 +1044,14 @@ async function handleSubmit(event) {
   formData.append('phone', document.getElementById('phone').value);
   formData.append('email', document.getElementById('email').value);
   
-  const description = document.getElementById('description').value;
-  if (currentFormType === 'donation') {
-    formData.append('donation_description', description);
-  } else {
-    formData.append('items_description', description);
+  // Only add description if not a waiver form
+  if (currentFormType !== 'waiver') {
+    const description = document.getElementById('description').value;
+    if (currentFormType === 'donation') {
+      formData.append('donation_description', description);
+    } else {
+      formData.append('items_description', description);
+    }
   }
   
   // Add delivery cost and date if it's a delivery form
@@ -874,10 +1062,16 @@ async function handleSubmit(event) {
     formData.append('delivery_date', deliveryDate);
   }
 
-  // Add signature if not empty
+  // Add customer signature if not empty
   if (!isSignatureEmpty()) {
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     formData.append('signature', blob, 'signature.png');
+  }
+  
+  // Add manager signature if it's a waiver form and not empty
+  if (currentFormType === 'waiver' && !isManagerSignatureEmpty()) {
+    const managerBlob = await new Promise(resolve => managerCanvas.toBlob(resolve, 'image/png'));
+    formData.append('manager_signature', managerBlob, 'manager_signature.png');
   }
 
   try {
