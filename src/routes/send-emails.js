@@ -101,11 +101,11 @@ router.post('/send', async (req, res) => {
         await transporter.sendMail({
           from: process.env.SMTP_FROM || 'Beacon House Long Beach Thrift Store <noreply@lbts.local>',
           to: form.email,
-          subject: 'LBTS - Pick-Up Receipt',
+          subject: 'Beacon House - Pick-Up Receipt',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
-                <h1 style="margin: 0;">LBTS Thrift Store</h1>
+                <h1 style="margin: 0;">Beacon House Long Beach Thrift Store</h1>
                 <h2 style="margin: 10px 0 0 0; font-weight: normal;">Pick-Up Receipt</h2>
               </div>
               
@@ -422,7 +422,7 @@ router.post('/send', async (req, res) => {
               <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
                 <p style="margin: 0;">Beacon House Association of San Pedro</p>
                 <p style="margin: 5px 0;">1003 S. Beacon St, San Pedro, CA 90731</p>
-                <p style="margin: 5px 0;">Phone: (562) 343-7804</p>
+                <p style="margin: 5px 0;">Phone: (310) 514-4940</p>
               </div>
             </div>
           `
