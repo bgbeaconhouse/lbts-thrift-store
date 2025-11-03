@@ -447,12 +447,12 @@
         return;
       }
 
-      // Check if user is Admin
-      if (user.role !== 'Admin') {
-        alert('Access denied. Admin only.');
-        window.location.href = '/dashboard.html';
-        return;
-      }
+      // // Check if user is Admin
+      // if (user.role !== 'Admin') {
+      //   alert('Access denied. Admin only.');
+      //   window.location.href = '/dashboard.html';
+      //   return;
+      // }
 
       loadPendingCounts();
     };
