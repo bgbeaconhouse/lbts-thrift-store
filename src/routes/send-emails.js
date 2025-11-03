@@ -104,7 +104,7 @@ router.post('/send', async (req, res) => {
           subject: 'Beacon House - Pick-Up Receipt',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
+              <div style="text-align: center; padding: 20px; background: #90D5FF; color: black;">
                 <h1 style="margin: 0;">Beacon House Long Beach Thrift Store</h1>
                 <h2 style="margin: 10px 0 0 0; font-weight: normal;">Pick-Up Receipt</h2>
               </div>
@@ -152,12 +152,12 @@ router.post('/send', async (req, res) => {
                 
                 <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 30px;">
                   Thank you,<br>
-                  <strong>LBTS Thrift Store</strong>
+                  <strong>Beacon House Long Beach Thrift Store</strong>
                 </p>
               </div>
               
               <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
-                <p style="margin: 0;">LBTS Thrift Store</p>
+                <p style="margin: 0;">Beacon House Long Beach Thrift Store</p>
                 <p style="margin: 5px 0;">Phone: (562) 343-7804</p>
               </div>
             </div>
@@ -194,7 +194,7 @@ router.post('/send', async (req, res) => {
           subject: 'Beacon House - Delivery Receipt',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
+              <div style="text-align: center; padding: 20px; background: #90D5FF; color: black;">
                 <h1 style="margin: 0;">Beacon House Long Beach Thrift Store</h1>
                 <h2 style="margin: 10px 0 0 0; font-weight: normal;">Delivery Receipt</h2>
               </div>
@@ -283,9 +283,8 @@ router.post('/send', async (req, res) => {
           subject: 'Donation Receipt - The Beacon House Association',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
+              <div style="text-align: center; padding: 20px; background: #90D5FF; color: black;">
                 <h1 style="margin: 0;">The Beacon House Association of San Pedro</h1>
-                <p style="margin: 5px 0;">1003 S. Beacon St, San Pedro, CA 90731</p>
                 <p style="margin: 5px 0;">thebeaconhouse.org | contact@thebeaconhouse.org | (310) 514-4940</p>
               </div>
               
@@ -362,10 +361,9 @@ router.post('/send', async (req, res) => {
           subject: 'Beacon House - Release of Liability Form',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
-                <h1 style="margin: 0;">Beacon House Association of San Pedro</h1>
-                <p style="margin: 5px 0;">1003 S. Beacon St, San Pedro, CA 90731</p>
-                <p style="margin: 5px 0;">thebeaconhouse.org</p>
+              <div style="text-align: center; padding: 20px; background: #90D5FF; color: black;">
+                <h1 style="margin: 0;">The Beacon House Association of San Pedro</h1>
+                <p style="margin: 5px 0;">thebeaconhouse.org | contact@thebeaconhouse.org | (310) 514-4940</p>
               </div>
               
               <div style="padding: 30px; background: white;">
