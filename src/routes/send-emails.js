@@ -9,7 +9,7 @@ const router = express.Router();
 
 // All routes require Admin role
 router.use(authenticateToken);
-router.use(requireRole('Admin'));
+
 
 // Create email transporter
 function createTransporter() {

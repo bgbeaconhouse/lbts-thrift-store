@@ -345,29 +345,30 @@ if (currentUser.role !== 'Employee') {
   });
 }
 
-      // Admin only features
-      if (currentUser.role === 'Admin') {
-        navItems.push({
-          icon: '📧',
-          title: 'Send Emails',
-          description: 'Send queued customer form emails',
-          link: '/send-emails.html'
-        });
+   // Everyone can send emails
+navItems.push({
+  icon: '📧',
+  title: 'Send Emails',
+  description: 'Send queued customer form emails',
+  link: '/send-emails.html'
+});
 
-        navItems.push({
-          icon: '👥',
-          title: 'User Management',
-          description: 'Create and manage user accounts',
-          link: '/admin.html'
-        });
+// Admin only features
+if (currentUser.role === 'Admin') {
+  navItems.push({
+    icon: '👥',
+    title: 'User Management',
+    description: 'Create and manage user accounts',
+    link: '/admin.html'
+  });
 
-        navItems.push({
-          icon: '⚙️',
-          title: 'Settings',
-          description: 'System configuration and preferences',
-          link: '/settings.html'
-        });
-      }
+  navItems.push({
+    icon: '⚙️',
+    title: 'Settings',
+    description: 'System configuration and preferences',
+    link: '/settings.html'
+  });
+}
 
       // Build navigation cards
    navGrid.innerHTML = navItems.map(item => `
