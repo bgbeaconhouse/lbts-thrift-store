@@ -441,6 +441,11 @@
       .image-previews {
         grid-template-columns: repeat(3, 1fr);
       }
+      #imageGallery img:hover {
+  transform: scale(1.05);
+  transition: transform 0.2s;
+  cursor: zoom-in;
+}
     }
   </style>
 </head>
@@ -625,12 +630,12 @@ window.onload = function() {
 
     return `
       <div class="item-card">
-        <div class="item-images">
-          ${firstPhoto 
-            ? `<img src="${firstPhoto}" alt="Item">` 
-            : '<div class="no-image">📦</div>'}
-          ${photos.length > 1 ? `<span class="image-count">📷 ${photos.length}</span>` : ''}
-        </div>
+  <div class="item-images" onclick="openImageViewer(${item.id})" style="cursor: pointer;">
+  ${firstPhoto 
+    ? `<img src="${firstPhoto}" alt="Item">` 
+    : '<div class="no-image">📦</div>'}
+  ${photos.length > 1 ? `<span class="image-count">📷 ${photos.length}</span>` : ''}
+</div>
         <div class="item-content">
           <div class="customer-name">${escapeHtml(item.customer_name)}</div>
           <div class="item-meta">
@@ -996,6 +1001,41 @@ async function handleSubmit(event) {
       div.textContent = text;
       return div.innerHTML;
     }
+
+function openImageViewer(itemId) {
+  const item = allItems.find(i => i.id === itemId);
+  if (!item || !item.picture_urls || item.picture_urls.length === 0) {
+    return;
+  }
+
+  const gallery = document.getElementById('imageGallery');
+  gallery.innerHTML = item.picture_urls.map(url => `
+    <div style="position: relative;">
+      <img src="${url}" alt="Item photo" style="width: 100%; height: 200px; object-fit: cover; border-radius: 8px; border: 2px solid #e2e8f0;">
+    </div>
+  `).join('');
+
+  document.getElementById('imageViewerModal').classList.add('active');
+}
+
+function closeImageViewer() {
+  document.getElementById('imageViewerModal').classList.remove('active');
+}
+
   </script>
+
+    <!-- Image Viewer Modal -->
+  <div id="imageViewerModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h2>Item Photos</h2>
+        <button class="close-btn" onclick="closeImageViewer()">&times;</button>
+      </div>
+      
+      <div id="imageGallery" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;">
+        <!-- Images will be inserted here -->
+      </div>
+    </div>
+  </div>
 </body>
 </html>
