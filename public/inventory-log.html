@@ -168,11 +168,30 @@
       overflow: hidden;
     }
 
-    .item-images img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+   .item-images img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Add lazy loading styles */
+.item-images img[data-src] {
+  background: #e2e8f0;
+  min-height: 200px;
+}
+
+.item-images img.loading {
+  opacity: 0.5;
+}
+
+.item-images img.loaded {
+  animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
     .no-image {
       width: 100%;
@@ -632,8 +651,8 @@ window.onload = function() {
       <div class="item-card">
   <div class="item-images" onclick="openImageViewer(${item.id})" style="cursor: pointer;">
   ${firstPhoto 
-    ? `<img src="${firstPhoto}" alt="Item">` 
-    : '<div class="no-image">📦</div>'}
+  ? `<img data-src="${firstPhoto}" alt="Item" class="lazy-load">` 
+  : '<div class="no-image">📦</div>'}
   ${photos.length > 1 ? `<span class="image-count">📷 ${photos.length}</span>` : ''}
 </div>
         <div class="item-content">
@@ -662,7 +681,10 @@ window.onload = function() {
       </div>
     `;
   }).join('');
+    setTimeout(() => initLazyLoading(), 100);
 }
+
+
 
 function openCreateModal() {
   currentEditId = null;
@@ -1021,6 +1043,41 @@ function openImageViewer(itemId) {
 function closeImageViewer() {
   document.getElementById('imageViewerModal').classList.remove('active');
 }
+
+
+// Lazy loading for images
+function initLazyLoading() {
+  const imageObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        const src = img.getAttribute('data-src');
+        
+        if (src) {
+          img.classList.add('loading');
+          img.src = src;
+          
+          img.onload = () => {
+            img.classList.remove('loading');
+            img.classList.add('loaded');
+            img.removeAttribute('data-src');
+          };
+          
+          observer.unobserve(img);
+        }
+      }
+    });
+  }, {
+    rootMargin: '50px' // Start loading 50px before image comes into view
+  });
+
+  // Observe all lazy-load images
+  document.querySelectorAll('img.lazy-load').forEach(img => {
+    imageObserver.observe(img);
+  });
+}
+
+
 
   </script>
 
