@@ -48,8 +48,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Serve uploaded files statically (configurable for cloud deployment)
+const uploadDir = process.env.UPLOAD_DIR || 'uploads';
+app.use('/uploads', express.static(path.join(__dirname, '..', uploadDir)));
 
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, '../public')));

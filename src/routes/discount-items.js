@@ -12,7 +12,8 @@ const router = express.Router();
 // Configure multer for image uploads
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = path.join(__dirname, '../../uploads/discount');
+    const baseUploadDir = process.env.UPLOAD_DIR || 'uploads';
+    const uploadDir = path.join(__dirname, '../..', baseUploadDir, 'discount');
     
     // Create directory if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
