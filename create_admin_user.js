@@ -7,13 +7,22 @@ const bcrypt = require('bcrypt');
 const { Pool } = require('pg');
 
 // Database configuration from environment variables
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'lbts_store',
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT || 5432,
-});
+const pool = new Pool(
+  process.env.DATABASE_URL
+    ? {
+        connectionString: process.env.DATABASE_URL,
+        ssl: {
+          rejectUnauthorized: false
+        }
+      }
+    : {
+        user: process.env.DB_USER,
+        host: process.env.DB_HOST || 'localhost',
+        database: process.env.DB_NAME || 'lbts_store',
+        password: process.env.DB_PASSWORD,
+        port: process.env.DB_PORT || 5432,
+      }
+);
 
 async function createAdminUser() {
   const username = 'admin';
