@@ -214,20 +214,19 @@
   <!-- Header -->
   <div class="header">
     <div class="header-content">
-      <h1>🏪 Thrift Shift</h1>
+      <h1>🏪 Beacon House Thrift Shop - Long Beach</h1>
       <div class="header-right">
         <div class="user-badge" id="userDisplay">
-          <span id="userName"></span>
           <span class="role-badge" id="userRole"></span>
         </div>
         <button class="logout-btn" onclick="handleLogout()">Logout</button>
       </div>
     </div>
   </div>
-
-  <!-- Main Container -->
+<!-- 
+  Main Container
   <div class="container">
-    <!-- Welcome Section -->
+  
     <div class="welcome">
       <h2 id="welcomeMessage">Welcome!</h2>
       <p>Select a feature below to get started with inventory management, customer forms, or communication.</p>
@@ -235,7 +234,7 @@
         <h4>🔔 Your Alert Permissions:</h4>
         <div id="alertBadges"></div>
       </div>
-    </div>
+    </div> -->
 
     <!-- Navigation Grid -->
     <div class="nav-grid" id="navGrid">
@@ -262,7 +261,6 @@
     };
 
     function displayUserInfo() {
-      document.getElementById('userName').textContent = currentUser.username;
       document.getElementById('welcomeMessage').textContent = `Welcome back, ${currentUser.username}!`;
       
       // Display role badge
@@ -316,16 +314,9 @@
       navItems.push({
         icon: '📋',
         title: 'Customer Forms',
-        description: 'Pick-up, delivery, and donation forms',
+        description: 'Create pick-up, delivery, donation, and waiver forms',
         link: '/forms.html'
       });
-
-      navItems.push({
-        icon: '🔍',
-        title: 'View Forms',
-        description: 'View all submitted customer forms with signatures',
-        link: '/view-forms.html'
-});
 
       navItems.push({
         icon: '📦',
@@ -345,30 +336,29 @@ if (currentUser.role !== 'Employee') {
   });
 }
 
-   // Everyone can send emails
-navItems.push({
-  icon: '📧',
-  title: 'Send Emails',
-  description: 'Send queued customer form emails',
-  link: '/send-emails.html'
-});
+      // Admin only features
+      if (currentUser.role === 'Admin') {
+        navItems.push({
+          icon: '📧',
+          title: 'Send Emails',
+          description: 'Send queued customer form emails',
+          link: '/send-emails.html'
+        });
 
-// Admin only features
-if (currentUser.role === 'Admin') {
-  navItems.push({
-    icon: '👥',
-    title: 'User Management',
-    description: 'Create and manage user accounts',
-    link: '/admin.html'
-  });
+        navItems.push({
+          icon: '👥',
+          title: 'User Management',
+          description: 'Create and manage user accounts',
+          link: '/admin.html'
+        });
 
-  navItems.push({
-    icon: '⚙️',
-    title: 'Settings',
-    description: 'System configuration and preferences',
-    link: '/settings.html'
-  });
-}
+        navItems.push({
+          icon: '⚙️',
+          title: 'Settings',
+          description: 'System configuration and preferences',
+          link: '/settings.html'
+        });
+      }
 
       // Build navigation cards
    navGrid.innerHTML = navItems.map(item => `
