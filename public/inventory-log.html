@@ -500,6 +500,14 @@
       max-height: 80vh;
       object-fit: contain;
       border-radius: 8px;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: pan-y pinch-zoom;
+      transition: opacity 0.2s ease;
+    }
+
+    .viewer-main-image.swiping {
+      opacity: 0.7;
     }
 
     .viewer-thumbnails {
@@ -1326,6 +1334,8 @@ async function handleSubmit(event) {
     // Image Viewer Functions
     let viewerImages = [];
     let currentViewerIndex = 0;
+    let touchStartX = 0;
+    let touchEndX = 0;
 
     function openImageViewer(images) {
       viewerImages = images;
@@ -1333,6 +1343,11 @@ async function handleSubmit(event) {
       showViewerImage(0);
       document.getElementById('imageViewerModal').classList.add('active');
       document.body.style.overflow = 'hidden'; // Prevent scrolling
+      
+      // Add touch event listeners for swipe
+      const mainImage = document.getElementById('viewerMainImage');
+      mainImage.addEventListener('touchstart', handleTouchStart, { passive: true });
+      mainImage.addEventListener('touchend', handleTouchEnd, { passive: true });
     }
 
     function closeImageViewer(event) {
@@ -1342,6 +1357,41 @@ async function handleSubmit(event) {
       }
       document.getElementById('imageViewerModal').classList.remove('active');
       document.body.style.overflow = ''; // Re-enable scrolling
+      
+      // Remove touch event listeners
+      const mainImage = document.getElementById('viewerMainImage');
+      mainImage.removeEventListener('touchstart', handleTouchStart);
+      mainImage.removeEventListener('touchend', handleTouchEnd);
+    }
+
+    function handleTouchStart(event) {
+      touchStartX = event.changedTouches[0].screenX;
+      // Add swiping class for visual feedback
+      const mainImage = document.getElementById('viewerMainImage');
+      mainImage.classList.add('swiping');
+    }
+
+    function handleTouchEnd(event) {
+      touchEndX = event.changedTouches[0].screenX;
+      handleSwipe();
+      // Remove swiping class
+      const mainImage = document.getElementById('viewerMainImage');
+      mainImage.classList.remove('swiping');
+    }
+
+    function handleSwipe() {
+      const swipeThreshold = 50; // Minimum distance for a swipe
+      const diff = touchStartX - touchEndX;
+      
+      if (Math.abs(diff) > swipeThreshold) {
+        if (diff > 0) {
+          // Swiped left - show next image
+          viewerNextImage({ stopPropagation: () => {} });
+        } else {
+          // Swiped right - show previous image
+          viewerPrevImage({ stopPropagation: () => {} });
+        }
+      }
     }
 
     function showViewerImage(index) {
