@@ -15,7 +15,9 @@ const storage = multer.diskStorage({
     // Determine destination based on type (pickup or delivery)
     const type = req.body.type || 'pickup';
     const baseUploadDir = process.env.UPLOAD_DIR || 'uploads';
-    const uploadDir = path.join(__dirname, '../..', baseUploadDir, type);
+    const uploadDir = path.isAbsolute(baseUploadDir)
+      ? path.join(baseUploadDir, type)
+      : path.join(__dirname, '../..', baseUploadDir, type);
     
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
