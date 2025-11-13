@@ -1029,12 +1029,13 @@ async function openEditModal(itemId) {
         const file = files[i];
         
         try {
-          // Compression options
+          // More aggressive compression options for mobile photos
           const options = {
-            maxSizeMB: 1, // Max file size in MB
+            maxSizeMB: 0.8, // Target 800KB max (more aggressive)
             maxWidthOrHeight: 1920, // Max dimensions
             useWebWorker: true,
-            fileType: file.type
+            fileType: file.type,
+            initialQuality: 0.8 // Start with 80% quality
           };
           
           // Compress the image
@@ -1214,13 +1215,12 @@ async function handleSubmit(event) {
     formData.append('delivery_address', document.getElementById('delivery_address').value);
   }
 
-  // Add new pictures
-  const picturesInput = document.getElementById('pictures');
-  if (picturesInput.files.length > 0) {
-    uploadStatus.textContent = 'Uploading images...';
+  // Add new pictures (use compressed files from selectedFiles array)
+  if (selectedFiles.length > 0) {
+    uploadStatus.textContent = 'Uploading compressed images...';
     uploadStatus.className = 'upload-status active uploading';
     
-    Array.from(picturesInput.files).forEach(file => {
+    selectedFiles.forEach(file => {
       formData.append('pictures', file);
     });
   }
@@ -1251,11 +1251,22 @@ async function handleSubmit(event) {
       closeModal();
       loadItems();
     } else {
-      showMessage(data.error || 'Operation failed', 'error');
+      // Check if it's a file size error
+      if (data.error && (data.error.includes('too large') || data.error.includes('LIMIT_FILE_SIZE'))) {
+        showMessage('⚠️ One or more images are too large even after compression. Try selecting fewer images or taking new photos at lower quality.', 'error');
+      } else {
+        showMessage(data.error || 'Operation failed', 'error');
+      }
     }
   } catch (error) {
     console.error('Submit error:', error);
-    showMessage('Network error. Please try again.', 'error');
+    
+    // Check if it's a file size error
+    if (error.message && error.message.includes('too large')) {
+      showMessage('⚠️ Images are too large. Please try selecting fewer images or different photos.', 'error');
+    } else {
+      showMessage('Network error. Please try again.', 'error');
+    }
   } finally {
     // Re-enable button
     isSubmitting = false;
