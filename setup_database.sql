@@ -28,7 +28,7 @@ CREATE TABLE exclusive_items (
   picture_url TEXT,
   date_arrived DATE NOT NULL,
   current_price DECIMAL(10,2) NOT NULL,
-  week INTEGER NOT NULL, -- 1, 2, 3, 4
+  week INTEGER NOT NULL, -- 1, 2, 3, 4, 5
   notes TEXT,
   created_by INTEGER REFERENCES users(id),
   created_at TIMESTAMP DEFAULT NOW(),
@@ -69,6 +69,8 @@ CREATE TABLE delivery_forms (
   phone VARCHAR(50) NOT NULL,
   email VARCHAR(255),
   items_description TEXT,
+  delivery_cost DECIMAL(10,2),
+  delivery_date DATE,
   signature_url TEXT,
   date DATE NOT NULL,
   emailed BOOLEAN DEFAULT FALSE,
@@ -90,11 +92,26 @@ CREATE TABLE donation_forms (
   deleted_at TIMESTAMP NULL
 );
 
+-- Waiver Forms table
+CREATE TABLE waiver_forms (
+  id SERIAL PRIMARY KEY,
+  customer_name VARCHAR(255) NOT NULL,
+  phone VARCHAR(50) NOT NULL,
+  email VARCHAR(255),
+  signature_url TEXT,
+  manager_signature_url TEXT,
+  date DATE NOT NULL,
+  emailed BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  deleted_at TIMESTAMP NULL
+);
+
 -- Pick-Up Inventory table
 CREATE TABLE pickup_inventory (
   id SERIAL PRIMARY KEY,
   customer_name VARCHAR(255) NOT NULL,
   phone VARCHAR(50) NOT NULL,
+  date_purchased DATE,
   date_stored DATE NOT NULL,
   picture_urls TEXT[], -- Array of image URLs
   notes TEXT,
@@ -109,6 +126,7 @@ CREATE TABLE delivery_inventory (
   customer_name VARCHAR(255) NOT NULL,
   phone VARCHAR(50) NOT NULL,
   delivery_address TEXT NOT NULL,
+  date_purchased DATE,
   date_scheduled DATE NOT NULL,
   picture_urls TEXT[], -- Array of image URLs
   notes TEXT,
@@ -128,6 +146,15 @@ CREATE TABLE communication_log (
   deleted_at TIMESTAMP NULL
 );
 
+-- Communication Log Reads table (tracks which users have read which messages)
+CREATE TABLE communication_log_reads (
+  id SERIAL PRIMARY KEY,
+  message_id INTEGER REFERENCES communication_log(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  read_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(message_id, user_id)
+);
+
 -- Create indexes for better query performance
 CREATE INDEX idx_exclusive_items_category ON exclusive_items(category) WHERE deleted_at IS NULL;
 CREATE INDEX idx_exclusive_items_week ON exclusive_items(week) WHERE deleted_at IS NULL;
@@ -135,6 +162,8 @@ CREATE INDEX idx_exclusive_items_date_arrived ON exclusive_items(date_arrived) W
 CREATE INDEX idx_discount_items_date_added ON discount_items(date_added) WHERE deleted_at IS NULL;
 CREATE INDEX idx_communication_log_pinned ON communication_log(pinned) WHERE deleted_at IS NULL;
 CREATE INDEX idx_users_username ON users(username) WHERE deleted_at IS NULL;
+CREATE INDEX idx_communication_log_reads_message ON communication_log_reads(message_id);
+CREATE INDEX idx_communication_log_reads_user ON communication_log_reads(user_id);
 
 -- Insert initial admin user
 -- Password is 'admin123' - CHANGE THIS IMMEDIATELY after first login!
