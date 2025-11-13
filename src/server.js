@@ -60,7 +60,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded files statically (configurable for cloud deployment)
 const uploadDir = process.env.UPLOAD_DIR || 'uploads';
-app.use('/uploads', express.static(path.join(__dirname, '..', uploadDir)));
+const uploadPath = path.isAbsolute(uploadDir) ? uploadDir : path.join(__dirname, '..', uploadDir);
+app.use('/uploads', express.static(uploadPath));
 
 // Serve frontend static files
 app.use(express.static(path.join(__dirname, '../public')));
