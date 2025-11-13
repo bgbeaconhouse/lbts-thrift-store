@@ -566,7 +566,12 @@
             showResults(message, 'success', 'results');
           }
 
-          // Reload counts
+          // Restore button immediately after success
+          sendBtn.innerHTML = originalBtnHTML;
+          sendBtn.disabled = false;
+          isSending = false;
+
+          // Reload counts (this will update button state based on remaining emails)
           setTimeout(() => {
             loadPendingCounts();
           }, 1000);
@@ -587,11 +592,6 @@
         sendBtn.innerHTML = originalBtnHTML;
         sendBtn.disabled = false;
         isSending = false;
-      } finally {
-        // Only reset if successful (button stays disabled after successful send)
-        if (!sendBtn.disabled) {
-          isSending = false;
-        }
       }
     }
 
