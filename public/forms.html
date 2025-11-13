@@ -140,6 +140,52 @@
       background: #4a5568;
     }
 
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* Loading Spinner */
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .signature-status {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .signature-status.active {
+      display: block;
+    }
+
+    .signature-status.processing {
+      background: #ebf8ff;
+      color: #2c5282;
+      border: 1px solid #bee3f8;
+    }
+
+    .signature-status.success {
+      background: #f0fff4;
+      color: #22543d;
+      border: 1px solid #9ae6b4;
+    }
+
     /* Forms List */
     .forms-list {
       display: flex;
@@ -585,6 +631,7 @@
   <div class="signature-controls">
     <button type="button" class="btn btn-secondary" onclick="clearSignature()">Clear Signature</button>
   </div>
+  <div class="signature-status" id="signatureStatus"></div>
 
 <!-- Manager Signature (Waiver Only) -->
 <div id="managerSignatureSection" style="display: none; margin-top: 30px;">
@@ -595,7 +642,9 @@
   <div class="signature-controls">
     <button type="button" class="btn btn-secondary" onclick="clearManagerSignature()">Clear Manager Signature</button>
   </div>
+  <div class="signature-status" id="managerSignatureStatus"></div>
 </div>
+
 
 
 </div>
@@ -604,7 +653,7 @@
 
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-          <button type="submit" class="btn btn-primary">Save Form</button>
+          <button type="submit" class="btn btn-primary" id="submitBtn">Save Form</button>
         </div>
       </form>
     </div>
@@ -613,6 +662,7 @@
   <script>
     let currentFormType = 'pickup';
     let allForms = [];
+    let isSubmitting = false; // Prevent double submissions
     
     // Signature pad variables
     let canvas, ctx;
@@ -1031,13 +1081,33 @@ function openCreateModal() {
     function closeModal() {
       document.getElementById('formModal').classList.remove('active');
       document.getElementById('customerForm').reset();
+      document.getElementById('signatureStatus').className = 'signature-status';
+      document.getElementById('managerSignatureStatus').className = 'signature-status';
+      document.getElementById('submitBtn').disabled = false;
       clearSignature();
+      isSubmitting = false;
     }
 
 async function handleSubmit(event) {
   event.preventDefault();
   
+  // Prevent double submission
+  if (isSubmitting) {
+    console.log('Form already submitting...');
+    return;
+  }
+  
   const token = localStorage.getItem('token');
+  const submitBtn = document.getElementById('submitBtn');
+  const signatureStatus = document.getElementById('signatureStatus');
+  const managerSignatureStatus = document.getElementById('managerSignatureStatus');
+  
+  // Disable button and show loading state
+  isSubmitting = true;
+  submitBtn.disabled = true;
+  const originalBtnText = submitBtn.innerHTML;
+  submitBtn.innerHTML = '<span class="loading-spinner"></span>Saving...';
+  
   const formData = new FormData();
 
   formData.append('customer_name', document.getElementById('customer_name').value);
@@ -1064,12 +1134,18 @@ async function handleSubmit(event) {
 
   // Add customer signature if not empty
   if (!isSignatureEmpty()) {
+    signatureStatus.textContent = 'Processing signature...';
+    signatureStatus.className = 'signature-status active processing';
+    
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     formData.append('signature', blob, 'signature.png');
   }
   
   // Add manager signature if it's a waiver form and not empty
   if (currentFormType === 'waiver' && !isManagerSignatureEmpty()) {
+    managerSignatureStatus.textContent = 'Processing manager signature...';
+    managerSignatureStatus.className = 'signature-status active processing';
+    
     const managerBlob = await new Promise(resolve => managerCanvas.toBlob(resolve, 'image/png'));
     formData.append('manager_signature', managerBlob, 'manager_signature.png');
   }
@@ -1095,6 +1171,13 @@ async function handleSubmit(event) {
   } catch (error) {
     console.error('Submit error:', error);
     showMessage('Network error. Please try again.', 'error');
+  } finally {
+    // Re-enable button
+    isSubmitting = false;
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalBtnText;
+    signatureStatus.className = 'signature-status';
+    managerSignatureStatus.className = 'signature-status';
   }
 }
 

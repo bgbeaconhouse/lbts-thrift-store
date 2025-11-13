@@ -176,6 +176,52 @@
       background: #4a5568;
     }
 
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* Loading Spinner */
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .upload-status {
+      margin-top: 10px;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .upload-status.active {
+      display: block;
+    }
+
+    .upload-status.uploading {
+      background: #ebf8ff;
+      color: #2c5282;
+      border: 1px solid #bee3f8;
+    }
+
+    .upload-status.success {
+      background: #f0fff4;
+      color: #22543d;
+      border: 1px solid #9ae6b4;
+    }
+
     /* Week Filter */
     .week-filter {
       display: flex;
@@ -535,34 +581,6 @@
       .category-tabs {
         overflow-x: auto;
       }
-      /* Color Cycle specific styles */
-.color-cycle-card {
-  border: 3px solid #dc3545;
-  background: #fff5f5;
-}
-
-.week-badge.week-5 {
-  background: #dc3545;
-  color: white;
-  font-weight: bold;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.btn-success {
-  background: #28a745;
-  color: white;
-  padding: 8px 16px;
-  font-size: 13px;
-}
-
-.btn-success:hover {
-  background: #218838;
-}
     }
   </style>
 </head>
@@ -602,7 +620,6 @@
       <button class="tab" data-category="Bric-a-Brac" onclick="switchCategory('Bric-a-Brac')">
         🎨 Bric-a-Brac
       </button>
-  
     </div>
 
     <!-- Top Bar -->
@@ -614,7 +631,6 @@
         <button class="week-btn" data-week="2" onclick="filterByWeek(2)">Week 2</button>
         <button class="week-btn" data-week="3" onclick="filterByWeek(3)">Week 3</button>
         <button class="week-btn" data-week="4" onclick="filterByWeek(4)">Week 4</button>
-          <button class="week-btn" data-week="5" onclick="filterByWeek(5)">🔄 Color Cycle</button>
       </div>
       <button class="btn btn-primary" onclick="openCreateModal()">+ Add Item</button>
     </div>
@@ -650,6 +666,7 @@
         <div class="form-group">
           <label for="picture">Picture</label>
           <input type="file" id="picture" accept="image/*" onchange="previewImage(event)">
+          <div class="upload-status" id="uploadStatus"></div>
           <img id="imagePreview" class="image-preview" alt="Preview">
         </div>
 
@@ -658,16 +675,15 @@
           <input type="number" id="current_price" step="0.01" min="0" required placeholder="0.00">
         </div>
 
-      <div class="form-group">
-  <label for="week">Week *</label>
-  <select id="week" required>
-    <option value="1">Week 1 (New arrival)</option>
-    <option value="2">Week 2</option>
-    <option value="3">Week 3</option>
-    <option value="4">Week 4</option>
-    <option value="color-cycle">🔄 Move to Color Cycle</option>
-  </select>
-</div>
+        <div class="form-group">
+          <label for="week">Week *</label>
+          <select id="week" required>
+            <option value="1">Week 1 (New arrival)</option>
+            <option value="2">Week 2</option>
+            <option value="3">Week 3</option>
+            <option value="4">Week 4</option>
+          </select>
+        </div>
 
         <div class="form-group">
           <label for="notes">Notes</label>
@@ -711,6 +727,8 @@
     let allItems = [];
     let alertItems = [];
     let currentEditId = null;
+    let isSubmitting = false; // Prevent double submissions
+    let isUploading = false; // Track image upload status
 
     // Check authentication
     window.onload = function() {
@@ -723,26 +741,27 @@
       checkAlerts();
     };
 
-  async function loadItems() {
-  const token = localStorage.getItem('token');
+    async function loadItems() {
+      const token = localStorage.getItem('token');
 
-  try {
-    const response = await fetch(`/api/exclusive-items?category=${currentCategory}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
+      try {
+        const response = await fetch(`/api/exclusive-items?category=${currentCategory}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to load items');
+
+        const data = await response.json();
+        allItems = data.items;
+        displayItems(allItems);
+      } catch (error) {
+        console.error('Load items error:', error);
+        showMessage('Failed to load items', 'error');
       }
-    });
+    }
 
-    if (!response.ok) throw new Error('Failed to load items');
-
-    const data = await response.json();
-    allItems = data.items;
-    displayItems(allItems);
-  } catch (error) {
-    console.error('Load items error:', error);
-    showMessage('Failed to load items', 'error');
-  }
-}
     async function checkAlerts() {
       const token = localStorage.getItem('token');
 
@@ -759,21 +778,9 @@
         alertItems = data.alerts;
 
         if (alertItems.length > 0) {
-  // Count week 5 items separately
-  const colorCycleItems = alertItems.filter(item => item.week === 5);
-  const priceUpdateItems = alertItems.filter(item => item.week !== 5);
-  
-  let alertText = '';
-  if (colorCycleItems.length > 0 && priceUpdateItems.length > 0) {
-    alertText = `${priceUpdateItems.length} item${priceUpdateItems.length !== 1 ? 's' : ''} need price updates • ${colorCycleItems.length} item${colorCycleItems.length !== 1 ? 's' : ''} in Color Cycle awaiting confirmation`;
-  } else if (colorCycleItems.length > 0) {
-    alertText = `${colorCycleItems.length} item${colorCycleItems.length !== 1 ? 's' : ''} in Color Cycle awaiting confirmation`;
-  } else {
-    alertText = `${priceUpdateItems.length} item${priceUpdateItems.length !== 1 ? 's' : ''} need${priceUpdateItems.length === 1 ? 's' : ''} pricing updates`;
-  }
-  
-  document.getElementById('alertText').textContent = alertText;
-  document.getElementById('alertBanner').classList.add('show');
+          document.getElementById('alertText').textContent = 
+            `${alertItems.length} item${alertItems.length !== 1 ? 's' : ''} need${alertItems.length === 1 ? 's' : ''} pricing updates`;
+          document.getElementById('alertBanner').classList.add('show');
         } else {
           document.getElementById('alertBanner').classList.remove('show');
         }
@@ -782,73 +789,48 @@
       }
     }
 
-   function switchCategory(category) {
-  currentCategory = category;
-  currentWeekFilter = 'all';
-  
+    function switchCategory(category) {
+      currentCategory = category;
+      currentWeekFilter = 'all';
 
-  // Update active tab
-  document.querySelectorAll('.tab').forEach(tab => {
-    tab.classList.remove('active');
-    if (tab.dataset.category === category) {
-      tab.classList.add('active');
+      // Update active tab
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+        if (tab.dataset.category === category) {
+          tab.classList.add('active');
+        }
+      });
+
+      // Reset week filter
+      document.querySelectorAll('.week-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.week === 'all') {
+          btn.classList.add('active');
+        }
+      });
+
+      loadItems();
     }
-  });
 
-  // Reset week filter
-  document.querySelectorAll('.week-btn').forEach(btn => {
-    btn.classList.remove('active');
-    if (btn.dataset.week === 'all') {
-      btn.classList.add('active');
+    function filterByWeek(week) {
+      currentWeekFilter = week;
+
+      // Update active filter button
+      document.querySelectorAll('.week-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.week == week) {
+          btn.classList.add('active');
+        }
+      });
+
+      // Filter and display
+      const filtered = week === 'all' 
+        ? allItems 
+        : allItems.filter(item => item.week == week);
+      
+      displayItems(filtered);
     }
-  });
 
-  loadItems();
-}
-
- function filterByWeek(week) {
-  currentWeekFilter = week;
-
-  // Update active filter button
-  document.querySelectorAll('.week-btn').forEach(btn => {
-    btn.classList.remove('active');
-    if (btn.dataset.week == week) {
-      btn.classList.add('active');
-    }
-  });
-
-  // If color-cycle, load from special endpoint
-  if (week === 'color-cycle') {
-    loadColorCycleItems();
-  } else {
-    // Filter and display regular items
-    const filtered = week === 'all' 
-      ? allItems 
-      : allItems.filter(item => item.week == week);
-    
-    displayItems(filtered);
-  }
-}
-
-async function loadColorCycleItems() {
-  const token = localStorage.getItem('token');
-
-  try {
-    const response = await fetch('/api/exclusive-items/color-cycle', {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (!response.ok) throw new Error('Failed to load color cycle items');
-
-    const data = await response.json();
-    displayItems(data.items);
-  } catch (error) {
-    console.error('Load color cycle items error:', error);
-    showMessage('Failed to load color cycle items', 'error');
-  }
-}
     function displayItems(items) {
       const grid = document.getElementById('itemsGrid');
       
@@ -864,35 +846,7 @@ async function loadColorCycleItems() {
       }
 
       grid.innerHTML = items.map(item => {
-  const needsUpdate = alertItems.some(alert => alert.id === item.id);
-  
-  // Special card for color-cycle tab
-  if (item.week === 5 || currentWeekFilter === 5) {
-    return `
-      <div class="item-card color-cycle-card">
-        <span class="week-badge week-5">⚠️ ${item.days_in_store || 0} days</span>
-        <div class="item-image">
-          ${item.picture_url 
-            ? `<img src="${item.picture_url}" alt="Item">` 
-            : '<span>📦</span>'}
-        </div>
-        <div class="item-content">
-          <span class="item-category">${escapeHtml(item.category)}</span>
-          <div class="item-price">$${parseFloat(item.current_price).toFixed(2)}</div>
-          <div class="item-meta">
-            Arrived: ${new Date(item.date_arrived).toLocaleDateString()}
-            • ${item.days_in_store || 0} days old
-          </div>
-          ${item.notes ? `<div class="item-notes">${escapeHtml(item.notes)}</div>` : ''}
-          <div class="item-actions">
-           <button class="btn btn-primary" onclick="confirmMoveToColorCycle(${item.id}, '${escapeHtml(item.category)}')">
-  ✅ Confirm Moved to Color Tag
-</button>
-          </div>
-        </div>
-      </div>
-    `;
-  }
+        const needsUpdate = alertItems.some(alert => alert.id === item.id);
         
         return `
           <div class="item-card ${needsUpdate ? 'needs-update' : ''}">
@@ -977,31 +931,71 @@ async function loadColorCycleItems() {
       document.getElementById('itemModal').classList.remove('active');
       document.getElementById('itemForm').reset();
       document.getElementById('imagePreview').classList.remove('show');
+      document.getElementById('uploadStatus').className = 'upload-status';
+      document.getElementById('submitBtn').disabled = false;
       currentEditId = null;
+      isSubmitting = false;
+      isUploading = false;
     }
 
     function previewImage(event) {
       const file = event.target.files[0];
       const preview = document.getElementById('imagePreview');
+      const uploadStatus = document.getElementById('uploadStatus');
+      const submitBtn = document.getElementById('submitBtn');
       
       if (file) {
+        // Show uploading status
+        isUploading = true;
+        uploadStatus.textContent = 'Processing image...';
+        uploadStatus.className = 'upload-status active uploading';
+        submitBtn.disabled = true;
+        
         const reader = new FileReader();
         reader.onload = function(e) {
           preview.src = e.target.result;
           preview.classList.add('show');
+          
+          // Image processed
+          isUploading = false;
+          uploadStatus.textContent = 'Image ready to upload';
+          uploadStatus.className = 'upload-status active success';
+          submitBtn.disabled = false;
+          
+          // Hide status after 2 seconds
+          setTimeout(() => {
+            uploadStatus.className = 'upload-status';
+          }, 2000);
         };
         reader.readAsDataURL(file);
       } else {
         preview.classList.remove('show');
+        uploadStatus.className = 'upload-status';
+        isUploading = false;
+        submitBtn.disabled = false;
       }
     }
 
     async function handleSubmit(event) {
       event.preventDefault();
       
+      // Prevent double submission
+      if (isSubmitting) {
+        console.log('Form already submitting...');
+        return;
+      }
+      
       const token = localStorage.getItem('token');
       const itemId = document.getElementById('itemId').value;
       const isEdit = !!itemId;
+      const submitBtn = document.getElementById('submitBtn');
+      const uploadStatus = document.getElementById('uploadStatus');
+      
+      // Disable button and show loading state
+      isSubmitting = true;
+      submitBtn.disabled = true;
+      const originalBtnText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<span class="loading-spinner"></span>Submitting...';
 
       const formData = new FormData();
       formData.append('category', document.getElementById('category').value);
@@ -1011,6 +1005,8 @@ async function loadColorCycleItems() {
       
       const pictureInput = document.getElementById('picture');
       if (pictureInput.files[0]) {
+        uploadStatus.textContent = 'Uploading image...';
+        uploadStatus.className = 'upload-status active uploading';
         formData.append('picture', pictureInput.files[0]);
       }
 
@@ -1039,6 +1035,12 @@ async function loadColorCycleItems() {
       } catch (error) {
         console.error('Submit error:', error);
         showMessage('Network error. Please try again.', 'error');
+      } finally {
+        // Re-enable button
+        isSubmitting = false;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+        uploadStatus.className = 'upload-status';
       }
     }
 
@@ -1073,27 +1075,24 @@ async function loadColorCycleItems() {
     }
 
     function openBulkUpdateModal() {
-  if (alertItems.length === 0) {
-    showMessage('No items need updates', 'error');
-    return;
-  }
+      if (alertItems.length === 0) {
+        showMessage('No items need updates', 'error');
+        return;
+      }
 
-  const tableHtml = `
-    <table>
-      <thead>
-        <tr>
-          <th>Item</th>
-          <th>Current</th>
-          <th>New Price</th>
-          <th>New Week</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${alertItems.map(item => {
-          // Week 5 (Color Cycle) items show "Confirm Moved" button
-          if (item.week === 5) {
-            return `
-              <tr style="background: #fff5f5;">
+      const tableHtml = `
+        <table>
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Current</th>
+              <th>New Price</th>
+              <th>New Week</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${alertItems.map(item => `
+              <tr>
                 <td>
                   ${item.picture_url ? `<img src="${item.picture_url}" alt="Item">` : '📦'}
                   <div style="margin-top: 5px; font-size: 12px; color: #718096;">
@@ -1103,58 +1102,34 @@ async function loadColorCycleItems() {
                 </td>
                 <td>
                   $${parseFloat(item.current_price).toFixed(2)}<br>
-                  <span style="font-size: 12px; color: #dc3545; font-weight: bold;">🔄 Color Cycle</span>
+                  <span style="font-size: 12px; color: #718096;">Week ${item.week}</span>
                 </td>
-                <td colspan="2" style="text-align: center;">
-                 <button class="btn btn-primary" onclick="handleColorCycleConfirm(${item.id}, '${escapeHtml(item.category)}')" style="width: 100%; padding: 12px;">
-                    ✅ Confirm Moved to Color Tag
-                  </button>
+                <td>
+                  <input type="number" 
+                         step="0.01" 
+                         min="0" 
+                         value="${item.current_price}" 
+                         data-item-id="${item.id}"
+                         data-field="price"
+                         style="width: 100px;">
+                </td>
+                <td>
+                  <select data-item-id="${item.id}" data-field="week">
+                    <option value="1" ${item.week >= 1 ? '' : 'selected'}>Week 1</option>
+                    <option value="2" ${item.week >= 2 ? 'selected' : ''}>Week 2</option>
+                    <option value="3" ${item.week >= 3 ? 'selected' : ''}>Week 3</option>
+                    <option value="4" ${item.week >= 4 ? 'selected' : ''}>Week 4</option>
+                  </select>
                 </td>
               </tr>
-            `;
-          }
-          
-          // Regular week 1-4 items show price/week inputs
-          return `
-            <tr>
-              <td>
-                ${item.picture_url ? `<img src="${item.picture_url}" alt="Item">` : '📦'}
-                <div style="margin-top: 5px; font-size: 12px; color: #718096;">
-                  ${escapeHtml(item.category)}<br>
-                  ${item.days_since_arrival} days old
-                </div>
-              </td>
-              <td>
-                $${parseFloat(item.current_price).toFixed(2)}<br>
-                <span style="font-size: 12px; color: #718096;">Week ${item.week}</span>
-              </td>
-              <td>
-                <input type="number" 
-                       step="0.01" 
-                       min="0" 
-                       value="${item.current_price}" 
-                       data-item-id="${item.id}"
-                       data-field="price"
-                       style="width: 100px;">
-              </td>
-              <td>
-                <select data-item-id="${item.id}" data-field="week">
-                  <option value="1" ${item.week >= 1 ? '' : 'selected'}>Week 1</option>
-                  <option value="2" ${item.week >= 2 ? 'selected' : ''}>Week 2</option>
-                  <option value="3" ${item.week >= 3 ? 'selected' : ''}>Week 3</option>
-                  <option value="4" ${item.week >= 4 ? 'selected' : ''}>Week 4</option>
-                </select>
-              </td>
-            </tr>
-          `;
-        }).join('')}
-      </tbody>
-    </table>
-  `;
+            `).join('')}
+          </tbody>
+        </table>
+      `;
 
-  document.getElementById('bulkTableContainer').innerHTML = tableHtml;
-  document.getElementById('bulkUpdateModal').classList.add('active');
-}
+      document.getElementById('bulkTableContainer').innerHTML = tableHtml;
+      document.getElementById('bulkUpdateModal').classList.add('active');
+    }
 
     function closeBulkModal() {
       document.getElementById('bulkUpdateModal').classList.remove('active');
@@ -1223,41 +1198,6 @@ async function loadColorCycleItems() {
       div.textContent = text;
       return div.innerHTML;
     }
-
-async function confirmMoveToColorCycle(itemId, category) {
-  if (!confirm(`Confirm that this ${category} item has been physically moved to the color tag section?\n\nThis will permanently remove it from the system.`)) {
-    return;
-  }
-
-  const token = localStorage.getItem('token');
-
-  try {
-    const response = await fetch(`/api/exclusive-items/${itemId}/move-to-color-cycle`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    const data = await response.json();
-
-    if (response.ok) {
-      showMessage(data.message, 'success');
-      await loadItems(); // Wait for items to refresh
-      await checkAlerts(); // Then refresh alerts
-    } else {
-      showMessage(data.error || 'Failed to move item', 'error');
-    }
-  } catch (error) {
-    console.error('Move to color cycle error:', error);
-    showMessage('Network error. Please try again.', 'error');
-  }
-}
-
-async function handleColorCycleConfirm(itemId, category) {
-  await confirmMoveToColorCycle(itemId, category);
-  closeBulkModal();
-}
   </script>
 </body>
 </html>

@@ -171,6 +171,22 @@
       transform: none !important;
     }
 
+    /* Loading Spinner for Buttons */
+    .btn-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin-btn 0.8s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin-btn {
+      to { transform: rotate(360deg); }
+    }
+
     .btn-primary {
       background: #667eea;
       color: white;
@@ -436,6 +452,8 @@
 
   <script>
     let pendingCounts = { total: 0, pickup: 0, delivery: 0, donation: 0 };
+    let isSending = false; // Prevent double submissions
+    let isTestSending = false; // Prevent double test email submissions
 
     // Check authentication
     window.onload = function() {
@@ -447,12 +465,12 @@
         return;
       }
 
-      // // Check if user is Admin
-      // if (user.role !== 'Admin') {
-      //   alert('Access denied. Admin only.');
-      //   window.location.href = '/dashboard.html';
-      //   return;
-      // }
+      // Check if user is Admin
+      if (user.role !== 'Admin') {
+        alert('Access denied. Admin only.');
+        window.location.href = '/dashboard.html';
+        return;
+      }
 
       loadPendingCounts();
     };
@@ -494,6 +512,12 @@
   }
 }
     async function sendEmails() {
+      // Prevent double submission
+      if (isSending) {
+        console.log('Already sending emails...');
+        return;
+      }
+      
       if (pendingCounts.total === 0) {
         showResults('No pending emails to send', 'error', 'results');
         return;
@@ -508,8 +532,15 @@
       const loading = document.getElementById('loading');
       const resultsDiv = document.getElementById('results');
 
-      // Show loading
+      // Set sending state
+      isSending = true;
+      
+      // Update button to show loading spinner
+      const originalBtnHTML = sendBtn.innerHTML;
+      sendBtn.innerHTML = '<span class="btn-spinner"></span><span>Sending...</span>';
       sendBtn.disabled = true;
+      
+      // Show loading state
       loading.classList.add('active');
       resultsDiv.classList.remove('show');
 
@@ -542,18 +573,35 @@
 
         } else {
           showResults(`❌ ${data.error || 'Failed to send emails'}`, 'error', 'results');
+          // Re-enable button on error
+          sendBtn.innerHTML = originalBtnHTML;
           sendBtn.disabled = false;
+          isSending = false;
         }
 
       } catch (error) {
         console.error('Send emails error:', error);
         loading.classList.remove('active');
         showResults('❌ Network error. Please try again.', 'error', 'results');
+        // Re-enable button on error
+        sendBtn.innerHTML = originalBtnHTML;
         sendBtn.disabled = false;
+        isSending = false;
+      } finally {
+        // Only reset if successful (button stays disabled after successful send)
+        if (!sendBtn.disabled) {
+          isSending = false;
+        }
       }
     }
 
     async function sendTestEmail() {
+      // Prevent double submission
+      if (isTestSending) {
+        console.log('Already sending test email...');
+        return;
+      }
+      
       const testEmail = document.getElementById('testEmail').value;
       
       if (!testEmail) {
@@ -565,6 +613,12 @@
       const testBtn = document.getElementById('testBtn');
       const resultsDiv = document.getElementById('testResults');
 
+      // Set sending state
+      isTestSending = true;
+      
+      // Update button to show loading spinner
+      const originalBtnHTML = testBtn.innerHTML;
+      testBtn.innerHTML = '<span class="btn-spinner"></span><span>Sending Test...</span>';
       testBtn.disabled = true;
       resultsDiv.classList.remove('show');
 
@@ -590,7 +644,10 @@
         console.error('Test email error:', error);
         showResults('❌ Network error. Please try again.', 'error', 'testResults');
       } finally {
+        // Re-enable button
+        testBtn.innerHTML = originalBtnHTML;
         testBtn.disabled = false;
+        isTestSending = false;
       }
     }
 
