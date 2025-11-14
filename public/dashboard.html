@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/css/urgent-alerts.css">
   <title>LBTS - Dashboard</title>
   <style>
     * {
@@ -210,6 +212,24 @@
   </style>
 </head>
 <body>
+
+  <div id="urgentNoteAlert" class="urgent-alert-overlay" style="display: none;">
+  <div class="urgent-alert-modal">
+    <div class="urgent-alert-header">
+      <h2>⚠️ URGENT NOTICE</h2>
+    </div>
+    <div class="urgent-alert-body">
+      <p id="urgentNoteContent"></p>
+      <p class="urgent-note-meta">
+        <strong>From:</strong> <span id="urgentNoteAuthor"></span><br>
+        <strong>Posted:</strong> <span id="urgentNoteTime"></span>
+      </p>
+    </div>
+    <button id="dismissUrgentNote" class="urgent-dismiss-btn">
+      I Understand - Dismiss
+    </button>
+  </div>
+</div>
   <!-- Header -->
   <div class="header">
     <div class="header-content">
@@ -398,6 +418,9 @@ setInterval(() => {
     updateUpdate();
   }
 }, 30000);
+
+
   </script>
+  <script src="/js/urgent-alerts.js"></script>
 </body>
 </html>

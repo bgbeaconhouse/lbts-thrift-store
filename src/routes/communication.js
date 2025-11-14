@@ -1,13 +1,112 @@
 // src/routes/communication.js
 // API routes for Communication Log (Manager+ only)
+// UPDATED: Added urgent notes functionality with SSE broadcasting
 
 const express = require('express');
-const { authenticateToken, requireManagerOrAbove } = require('../middleware/auth');
+const { authenticateToken, requireManagerOrAbove, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-// All routes require authentication and Manager+ role
+// Store SSE clients for broadcasting urgent notes
+let sseClients = [];
+
+// All routes require authentication
 router.use(authenticateToken);
+
+// SSE endpoint - streams urgent note broadcasts to all connected clients
+// No role restriction - all authenticated users should receive urgent alerts
+router.get('/urgent-stream', (req, res) => {
+  // Set headers for SSE
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
+  // Add this client to the list
+  const clientId = Date.now();
+  const newClient = {
+    id: clientId,
+    userId: req.user.id,
+    response: res
+  };
+  
+  sseClients.push(newClient);
+  console.log(`SSE Client connected: ${clientId}, User: ${req.user.username}`);
+
+  // Send initial connection confirmation
+  res.write(`data: ${JSON.stringify({ type: 'connected', clientId })}\n\n`);
+
+  // Remove client when connection closes
+  req.on('close', () => {
+    console.log(`SSE Client disconnected: ${clientId}`);
+    sseClients = sseClients.filter(client => client.id !== clientId);
+  });
+});
+
+// GET /api/communication/urgent/undismissed - Get all undismissed urgent notes for current user
+router.get('/urgent/undismissed', async (req, res) => {
+  try {
+    const db = req.app.locals.db;
+    
+    const result = await db.query(
+      `SELECT 
+        c.id, c.user_id, c.note, c.category, c.pinned, c.created_at, c.is_urgent,
+        u.username, u.role
+      FROM communication_log c
+      LEFT JOIN users u ON c.user_id = u.id
+      WHERE c.deleted_at IS NULL 
+        AND c.is_urgent = TRUE
+        AND NOT EXISTS (
+          SELECT 1 FROM urgent_note_dismissals d
+          WHERE d.note_id = c.id AND d.user_id = $1
+        )
+      ORDER BY c.created_at DESC`,
+      [req.user.id]
+    );
+
+    res.json({ urgentNotes: result.rows });
+  } catch (error) {
+    console.error('Get undismissed urgent notes error:', error);
+    res.status(500).json({ error: 'Failed to get urgent notes' });
+  }
+});
+
+// POST /api/communication/urgent/:id/dismiss - Dismiss an urgent note for current user
+router.post('/urgent/:id/dismiss', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const db = req.app.locals.db;
+
+    // Verify the note exists and is urgent
+    const noteCheck = await db.query(
+      'SELECT id, is_urgent FROM communication_log WHERE id = $1 AND deleted_at IS NULL',
+      [id]
+    );
+
+    if (noteCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+
+    if (!noteCheck.rows[0].is_urgent) {
+      return res.status(400).json({ error: 'Note is not marked as urgent' });
+    }
+
+    // Record dismissal (ON CONFLICT prevents duplicates)
+    await db.query(
+      `INSERT INTO urgent_note_dismissals (note_id, user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (note_id, user_id) DO NOTHING`,
+      [id, req.user.id]
+    );
+
+    res.json({ message: 'Urgent note dismissed successfully' });
+  } catch (error) {
+    console.error('Dismiss urgent note error:', error);
+    res.status(500).json({ error: 'Failed to dismiss urgent note' });
+  }
+});
+
+// Manager+ routes below
 router.use(requireManagerOrAbove);
 
 // GET /api/communication/unread-count - Get unread message count for current user
@@ -76,7 +175,7 @@ router.get('/', async (req, res) => {
     
     const result = await db.query(
       `SELECT 
-        c.id, c.user_id, c.note, c.category, c.pinned, c.created_at,
+        c.id, c.user_id, c.note, c.category, c.pinned, c.is_urgent, c.created_at,
         u.username, u.role
       FROM communication_log c
       LEFT JOIN users u ON c.user_id = u.id
@@ -100,7 +199,7 @@ router.get('/:id', async (req, res) => {
     
     const result = await db.query(
       `SELECT 
-        c.id, c.user_id, c.note, c.category, c.pinned, c.created_at,
+        c.id, c.user_id, c.note, c.category, c.pinned, c.is_urgent, c.created_at,
         u.username, u.role
       FROM communication_log c
       LEFT JOIN users u ON c.user_id = u.id
@@ -119,29 +218,34 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/communication - Create new entry
+// POST /api/communication - Create new entry (with urgent flag for admins only)
 router.post('/', async (req, res) => {
-  const { note, category, pinned } = req.body;
+  const { note, category, pinned, is_urgent } = req.body;
 
   // Validation
   if (!note) {
     return res.status(400).json({ error: 'Note is required' });
   }
 
+  // Only admins can create urgent notes
+  if (is_urgent && req.user.role !== 'Admin') {
+    return res.status(403).json({ error: 'Only admins can create urgent notes' });
+  }
+
   try {
     const db = req.app.locals.db;
 
     const result = await db.query(
-      `INSERT INTO communication_log (user_id, note, category, pinned)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, user_id, note, category, pinned, created_at`,
-      [req.user.id, note, category || 'General', pinned || false]
+      `INSERT INTO communication_log (user_id, note, category, pinned, is_urgent)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, user_id, note, category, pinned, is_urgent, created_at`,
+      [req.user.id, note, category || 'General', pinned || false, is_urgent || false]
     );
 
     // Get user info for response
     const entryWithUser = await db.query(
       `SELECT 
-        c.id, c.user_id, c.note, c.category, c.pinned, c.created_at,
+        c.id, c.user_id, c.note, c.category, c.pinned, c.is_urgent, c.created_at,
         u.username, u.role
       FROM communication_log c
       LEFT JOIN users u ON c.user_id = u.id
@@ -149,9 +253,36 @@ router.post('/', async (req, res) => {
       [result.rows[0].id]
     );
 
+    const newEntry = entryWithUser.rows[0];
+
+    // If urgent, broadcast to all connected SSE clients
+    if (is_urgent) {
+      const urgentMessage = {
+        type: 'urgent_note',
+        note: {
+          id: newEntry.id,
+          note: newEntry.note,
+          category: newEntry.category,
+          username: newEntry.username,
+          role: newEntry.role,
+          created_at: newEntry.created_at
+        }
+      };
+
+      console.log(`Broadcasting urgent note to ${sseClients.length} clients`);
+      
+      sseClients.forEach(client => {
+        try {
+          client.response.write(`data: ${JSON.stringify(urgentMessage)}\n\n`);
+        } catch (error) {
+          console.error('Error sending to SSE client:', error);
+        }
+      });
+    }
+
     res.status(201).json({ 
       message: 'Entry created successfully',
-      entry: entryWithUser.rows[0]
+      entry: newEntry
     });
   } catch (error) {
     console.error('Create communication entry error:', error);
@@ -162,22 +293,39 @@ router.post('/', async (req, res) => {
 // PUT /api/communication/:id - Update entry
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const { note, category, pinned } = req.body;
+  const { note, category, pinned, is_urgent } = req.body;
 
   // Validation
   if (!note) {
     return res.status(400).json({ error: 'Note is required' });
   }
 
+  // Only admins can modify urgent status
+  if (is_urgent !== undefined && req.user.role !== 'Admin') {
+    return res.status(403).json({ error: 'Only admins can modify urgent status' });
+  }
+
   try {
     const db = req.app.locals.db;
 
+    // Build update query dynamically based on what's provided
+    let updateFields = ['note = $1', 'category = $2', 'pinned = $3'];
+    let values = [note, category || 'General', pinned || false];
+    
+    if (is_urgent !== undefined && req.user.role === 'Admin') {
+      updateFields.push('is_urgent = $4');
+      values.push(is_urgent);
+      values.push(id);
+    } else {
+      values.push(id);
+    }
+
     const result = await db.query(
       `UPDATE communication_log 
-       SET note = $1, category = $2, pinned = $3
-       WHERE id = $4 AND deleted_at IS NULL
+       SET ${updateFields.join(', ')}
+       WHERE id = $${values.length} AND deleted_at IS NULL
        RETURNING id`,
-      [note, category || 'General', pinned || false, id]
+      values
     );
 
     if (result.rows.length === 0) {
@@ -187,7 +335,7 @@ router.put('/:id', async (req, res) => {
     // Get updated entry with user info
     const entryWithUser = await db.query(
       `SELECT 
-        c.id, c.user_id, c.note, c.category, c.pinned, c.created_at,
+        c.id, c.user_id, c.note, c.category, c.pinned, c.is_urgent, c.created_at,
         u.username, u.role
       FROM communication_log c
       LEFT JOIN users u ON c.user_id = u.id

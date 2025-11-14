@@ -1,0 +1,143 @@
+/* public/css/urgent-alerts.css */
+/* Urgent note alert modal styling */
+
+.urgent-alert-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: none; /* Hidden by default */
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.urgent-alert-modal {
+  background: white;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease-out;
+  overflow: hidden;
+}
+
+.urgent-alert-header {
+  background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+  color: white;
+  padding: 20px;
+  text-align: center;
+  border-bottom: 3px solid #990000;
+}
+
+.urgent-alert-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.urgent-alert-body {
+  padding: 30px;
+  background: #fff;
+}
+
+.urgent-alert-body p {
+  margin: 0 0 20px 0;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333;
+}
+
+#urgentNoteContent {
+  font-size: 18px;
+  font-weight: 500;
+  color: #000;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #fff3cd;
+  border-left: 4px solid #ff4444;
+  border-radius: 4px;
+}
+
+.urgent-note-meta {
+  font-size: 14px;
+  color: #666;
+  border-top: 1px solid #eee;
+  padding-top: 15px;
+  margin-top: 15px;
+}
+
+.urgent-note-meta strong {
+  color: #333;
+}
+
+.urgent-dismiss-btn {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 0 0 12px 12px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.urgent-dismiss-btn:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.urgent-dismiss-btn:active {
+  transform: translateY(0);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+  .urgent-alert-modal {
+    width: 95%;
+    margin: 10px;
+  }
+
+  .urgent-alert-header h2 {
+    font-size: 20px;
+  }
+
+  .urgent-alert-body {
+    padding: 20px;
+  }
+
+  #urgentNoteContent {
+    font-size: 16px;
+  }
+}
