@@ -612,15 +612,23 @@
       `).join('');
     }
 
-    function openCreateModal() {
-      currentEditId = null;
-      document.getElementById('modalTitle').textContent = 'Add Note';
-      document.getElementById('submitBtn').textContent = 'Add Note';
-      document.getElementById('entryForm').reset();
-      document.getElementById('entryId').value = '';
-      document.getElementById('category').value = 'General';
-      document.getElementById('entryModal').classList.add('active');
-    }
+   function openCreateModal() {
+  currentEditId = null;
+  document.getElementById('modalTitle').textContent = 'Add Note';
+  document.getElementById('submitBtn').textContent = 'Add Note';
+  document.getElementById('entryForm').reset();
+  document.getElementById('entryId').value = '';
+  
+  // Set category based on current filter (unless filter is 'all')
+  if (currentFilter !== 'all') {
+    document.getElementById('category').value = currentFilter;
+  } else {
+    document.getElementById('category').value = 'General';
+  }
+  
+  document.getElementById('isUrgent').checked = false;
+  document.getElementById('entryModal').classList.add('active');
+}
 
     async function openEditModal(entryId) {
       const entry = allEntries.find(e => e.id === entryId);
