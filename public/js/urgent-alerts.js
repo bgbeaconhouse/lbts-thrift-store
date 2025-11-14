@@ -124,6 +124,11 @@
         overlay.style.display = 'none';
         currentAlertNoteId = null;
 
+        // Refresh unread count badge if the function exists (on dashboard)
+        if (typeof updateUnreadCount === 'function') {
+          updateUnreadCount();
+        }
+
         // Check if there are more undismissed notes to show
         setTimeout(checkForUndismissedNotes, 500);
       } else {
