@@ -612,7 +612,7 @@
       `).join('');
     }
 
-   function openCreateModal() {
+function openCreateModal() {
   currentEditId = null;
   document.getElementById('modalTitle').textContent = 'Add Note';
   document.getElementById('submitBtn').textContent = 'Add Note';
@@ -626,7 +626,6 @@
     document.getElementById('category').value = 'General';
   }
   
-  document.getElementById('isUrgent').checked = false;
   document.getElementById('entryModal').classList.add('active');
 }
 
