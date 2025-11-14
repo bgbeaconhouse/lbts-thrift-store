@@ -430,10 +430,10 @@
 
     <!-- Top Bar -->
     <div class="top-bar">
-     <div class="filter-group">
+ <div class="filter-group">
   <button class="filter-btn active" data-category="all" onclick="filterByCategory('all')">All</button>
   <button class="filter-btn" data-category="General" onclick="filterByCategory('General')">General</button>
-  <button class="filter-btn" data-category="Urgent" onclick="filterByCategory('Urgent')">Urgent</button>
+  <button class="filter-btn" data-category="Urgent" onclick="filterByCategory('Urgent')" id="urgentFilterBtn">Urgent</button>
   <button class="filter-btn" data-category="Important" onclick="filterByCategory('Important')">Important</button>
 </div>
       <button class="btn btn-primary" onclick="openCreateModal()">+ Add Note</button>
@@ -511,13 +511,19 @@
 
   loadEntries();
   
-  // Only admins can use the "Urgent" category
-  if (user.role !== 'Admin') {
-    const urgentOption = document.getElementById('urgentCategoryOption');
-    if (urgentOption) {
-      urgentOption.remove();
-    }
+ // Only admins can see/use the "Urgent" category
+if (user.role !== 'Admin') {
+  const urgentOption = document.getElementById('urgentCategoryOption');
+  if (urgentOption) {
+    urgentOption.remove();
   }
+  
+  // Also hide the Urgent filter button
+  const urgentFilterBtn = document.getElementById('urgentFilterBtn');
+  if (urgentFilterBtn) {
+    urgentFilterBtn.style.display = 'none';
+  }
+}
 };
 
   async function loadEntries() {
