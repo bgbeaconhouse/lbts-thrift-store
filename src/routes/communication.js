@@ -99,6 +99,14 @@ router.post('/urgent/:id/dismiss', async (req, res) => {
       [id, req.user.id]
     );
 
+    // ALSO mark the message as read in communication_log_reads
+    await db.query(
+      `INSERT INTO communication_log_reads (message_id, user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (message_id, user_id) DO NOTHING`,
+      [id, req.user.id]
+    );
+
     res.json({ message: 'Urgent note dismissed successfully' });
   } catch (error) {
     console.error('Dismiss urgent note error:', error);
