@@ -115,7 +115,7 @@ router.post('/urgent/:id/dismiss', async (req, res) => {
 });
 
 // Manager+ routes below
-router.use(requireManagerOrAbove);
+
 
 // GET /api/communication/unread-count - Get unread message count for current user
 router.get('/unread-count', async (req, res) => {
