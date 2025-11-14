@@ -218,30 +218,31 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/communication - Create new entry (with urgent flag for admins only)
 router.post('/', async (req, res) => {
-  const { note, category, pinned, is_urgent } = req.body;
+  const { note, category, pinned } = req.body;
 
   // Validation
   if (!note) {
     return res.status(400).json({ error: 'Note is required' });
   }
 
-  // Only admins can create urgent notes
-  if (is_urgent && req.user.role !== 'Admin') {
+  // Only admins can create urgent category notes
+  if (category === 'Urgent' && req.user.role !== 'Admin') {
     return res.status(403).json({ error: 'Only admins can create urgent notes' });
   }
 
   try {
     const db = req.app.locals.db;
 
+    // Automatically set is_urgent to true if category is "Urgent"
+    const is_urgent = (category === 'Urgent');
+
     const result = await db.query(
       `INSERT INTO communication_log (user_id, note, category, pinned, is_urgent)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id, user_id, note, category, pinned, is_urgent, created_at`,
-      [req.user.id, note, category || 'General', pinned || false, is_urgent || false]
+      [req.user.id, note, category || 'General', pinned || false, is_urgent]
     );
-
     // Get user info for response
     const entryWithUser = await db.query(
       `SELECT 
@@ -290,42 +291,32 @@ router.post('/', async (req, res) => {
   }
 });
 
-// PUT /api/communication/:id - Update entry
 router.put('/:id', async (req, res) => {
   const { id } = req.params;
-  const { note, category, pinned, is_urgent } = req.body;
+  const { note, category, pinned } = req.body;
 
   // Validation
   if (!note) {
     return res.status(400).json({ error: 'Note is required' });
   }
 
-  // Only admins can modify urgent status
-  if (is_urgent !== undefined && req.user.role !== 'Admin') {
-    return res.status(403).json({ error: 'Only admins can modify urgent status' });
+  // Only admins can modify to urgent category
+  if (category === 'Urgent' && req.user.role !== 'Admin') {
+    return res.status(403).json({ error: 'Only admins can create urgent notes' });
   }
 
   try {
     const db = req.app.locals.db;
 
-    // Build update query dynamically based on what's provided
-    let updateFields = ['note = $1', 'category = $2', 'pinned = $3'];
-    let values = [note, category || 'General', pinned || false];
-    
-    if (is_urgent !== undefined && req.user.role === 'Admin') {
-      updateFields.push('is_urgent = $4');
-      values.push(is_urgent);
-      values.push(id);
-    } else {
-      values.push(id);
-    }
+    // Automatically set is_urgent based on category
+    const is_urgent = (category === 'Urgent');
 
     const result = await db.query(
       `UPDATE communication_log 
-       SET ${updateFields.join(', ')}
-       WHERE id = $${values.length} AND deleted_at IS NULL
+       SET note = $1, category = $2, pinned = $3, is_urgent = $4
+       WHERE id = $5 AND deleted_at IS NULL
        RETURNING id`,
-      values
+      [note, category || 'General', pinned || false, is_urgent, id]
     );
 
     if (result.rows.length === 0) {

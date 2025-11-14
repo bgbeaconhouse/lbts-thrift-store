@@ -459,16 +459,16 @@
       <form id="entryForm" onsubmit="handleSubmit(event)">
         <input type="hidden" id="entryId" value="">
 
-        <div class="form-group">
-          <label for="category">Category *</label>
-          <select id="category" required>
-            <option value="General">General</option>
-            <option value="Urgent">Urgent</option>
-            <option value="Reminder">Reminder</option>
-            <option value="Announcement">Announcement</option>
-            <option value="Maintenance">Maintenance</option>
-          </select>
-        </div>
+      <div class="form-group">
+  <label for="category">Category *</label>
+  <select id="category" required>
+    <option value="General">General</option>
+    <option value="Urgent" id="urgentCategoryOption">Urgent</option>
+    <option value="Reminder">Reminder</option>
+    <option value="Announcement">Announcement</option>
+    <option value="Maintenance">Maintenance</option>
+  </select>
+</div>
 
         <div class="form-group">
           <label for="note">Note *</label>
@@ -495,26 +495,33 @@
     let currentFilter = 'all';
     let currentEditId = null;
 
-    // Check authentication
-    window.onload = function() {
-      const token = localStorage.getItem('token');
-      const user = JSON.parse(localStorage.getItem('user') || 'null');
+  window.onload = function() {
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
 
-      if (!token || !user) {
-        window.location.href = '/';
-        return;
-      }
+  if (!token || !user) {
+    window.location.href = '/';
+    return;
+  }
 
-      // Check if user is Manager or above
-      const managerRoles = ['Admin', 'Manager', 'Clothing Manager', 'Bric-a-Brac Manager'];
-      if (!managerRoles.includes(user.role)) {
-        alert('Access denied. Manager or above required.');
-        window.location.href = '/dashboard.html';
-        return;
-      }
+  // Check if user is Manager or above
+  const managerRoles = ['Admin', 'Manager', 'Clothing Manager', 'Bric-a-Brac Manager'];
+  if (!managerRoles.includes(user.role)) {
+    alert('Access denied. Manager or above required.');
+    window.location.href = '/dashboard.html';
+    return;
+  }
 
-      loadEntries();
-    };
+  loadEntries();
+  
+  // Only admins can use the "Urgent" category
+  if (user.role !== 'Admin') {
+    const urgentOption = document.getElementById('urgentCategoryOption');
+    if (urgentOption) {
+      urgentOption.remove();
+    }
+  }
+};
 
   async function loadEntries() {
   const token = localStorage.getItem('token');
