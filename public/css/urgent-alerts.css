@@ -1,5 +1,5 @@
 /* public/css/urgent-alerts.css */
-/* Urgent note alert modal styling */
+/* Urgent note alert modal styling - UPDATED with scrollable content */
 
 .urgent-alert-overlay {
   position: fixed;
@@ -13,13 +13,17 @@
   align-items: center;
   z-index: 9999;
   animation: fadeIn 0.3s ease-in-out;
+  padding: 20px; /* Add padding to prevent edge touching */
 }
 
 .urgent-alert-modal {
   background: white;
   border-radius: 12px;
-  max-width: 500px;
+  max-width: 600px; /* Increased from 500px */
   width: 90%;
+  max-height: 90vh; /* Maximum 90% of viewport height */
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
   animation: slideIn 0.3s ease-out;
   overflow: hidden;
@@ -31,6 +35,7 @@
   padding: 20px;
   text-align: center;
   border-bottom: 3px solid #990000;
+  flex-shrink: 0; /* Header won't shrink */
 }
 
 .urgent-alert-header h2 {
@@ -46,6 +51,9 @@
 .urgent-alert-body {
   padding: 30px;
   background: #fff;
+  overflow-y: auto; /* Make body scrollable */
+  flex-grow: 1; /* Body takes available space */
+  max-height: calc(90vh - 200px); /* Adjust based on header/button heights */
 }
 
 .urgent-alert-body p {
@@ -64,6 +72,9 @@
   background: #fff3cd;
   border-left: 4px solid #ff4444;
   border-radius: 4px;
+  word-wrap: break-word; /* Break long words */
+  overflow-wrap: break-word; /* Modern browsers */
+  white-space: pre-wrap; /* Preserve line breaks */
 }
 
 .urgent-note-meta {
@@ -89,6 +100,7 @@
   font-weight: bold;
   cursor: pointer;
   transition: all 0.3s ease;
+  flex-shrink: 0; /* Button won't shrink */
 }
 
 .urgent-dismiss-btn:hover {
@@ -99,6 +111,25 @@
 
 .urgent-dismiss-btn:active {
   transform: translateY(0);
+}
+
+/* Custom scrollbar styling */
+.urgent-alert-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.urgent-alert-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.urgent-alert-body::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.urgent-alert-body::-webkit-scrollbar-thumb:hover {
+  background: #555;
 }
 
 /* Animations */
@@ -124,9 +155,17 @@
 
 /* Mobile responsive */
 @media (max-width: 600px) {
+  .urgent-alert-overlay {
+    padding: 10px;
+  }
+
   .urgent-alert-modal {
     width: 95%;
-    margin: 10px;
+    max-height: 95vh;
+  }
+
+  .urgent-alert-header {
+    padding: 15px;
   }
 
   .urgent-alert-header h2 {
@@ -135,9 +174,23 @@
 
   .urgent-alert-body {
     padding: 20px;
+    max-height: calc(95vh - 160px);
   }
 
   #urgentNoteContent {
     font-size: 16px;
+    padding: 12px;
+  }
+
+  .urgent-dismiss-btn {
+    padding: 12px;
+    font-size: 15px;
+  }
+}
+
+/* Tablet responsive */
+@media (min-width: 601px) and (max-width: 900px) {
+  .urgent-alert-modal {
+    max-width: 550px;
   }
 }
