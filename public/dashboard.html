@@ -324,16 +324,14 @@
         link: '/inventory-log.html'
       });
 
-// Manager and above get Communication Log
-if (currentUser.role !== 'Employee') {
-  navItems.push({
-    icon: '💬',
-    title: 'Communication Log',
-    description: 'Important notes and announcements',
-    link: '/communication.html',
-    id: 'communication-card' // Add ID for badge placement
-  });
-}
+// Communication Log - Available to all users
+navItems.push({
+  icon: '💬',
+  title: 'Communication Log',
+  description: 'Important notes and announcements for staff',
+  link: '/communication.html',
+  id: 'communication-card'
+});
 
    // Everyone can send emails
 navItems.push({
