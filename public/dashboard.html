@@ -303,26 +303,26 @@
         link: '/discount-items.html'
       });
 
-      navItems.push({
-        icon: '📋',
-        title: 'Customer Forms',
-        description: 'Create pick-up, delivery, waiver, and donation forms',
-        link: '/forms.html'
-      });
-
-      navItems.push({
-        icon: '🔍',
-        title: 'View Forms',
-        description: 'View all submitted customer forms with signatures',
-        link: '/view-forms.html'
+ navItems.push({
+  icon: '📋',
+  title: 'Customer Forms',
+  description: 'Create and manage all customer forms',
+  link: '/customer-forms-unified.html'
 });
 
-      navItems.push({
-        icon: '📦',
-        title: 'Pick Up & Delivery Log',
-        description: 'Track items awaiting pickup or delivery',
-        link: '/inventory-log.html'
-      });
+//       navItems.push({
+//         icon: '🔍',
+//         title: 'View Forms',
+//         description: 'View all submitted customer forms with signatures',
+//         link: '/view-forms.html'
+// });
+
+      // navItems.push({
+      //   icon: '📦',
+      //   title: 'Pick Up & Delivery Log',
+      //   description: 'Track items awaiting pickup or delivery',
+      //   link: '/inventory-log.html'
+      // });
 
 // Communication Log - Available to all users
 navItems.push({
@@ -333,13 +333,13 @@ navItems.push({
   id: 'communication-card'
 });
 
-   // Everyone can send emails
-navItems.push({
-  icon: '📧',
-  title: 'Send Emails',
-  description: 'Send queued customer form emails',
-  link: '/send-emails.html'
-});
+//    // Everyone can send emails
+// navItems.push({
+//   icon: '📧',
+//   title: 'Send Emails',
+//   description: 'Send queued customer form emails',
+//   link: '/send-emails.html'
+// });
 
 // Admin only features
 if (currentUser.role === 'Admin') {
