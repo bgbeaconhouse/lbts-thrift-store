@@ -150,132 +150,47 @@ function getPickupEmailTemplate(form) {
 }
 
 function getDeliveryEmailTemplate(form) {
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="text-align:center;padding:20px;background:#ffffff;color:#2d3748">
-        <!--[if !mso]><!-->
-        <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" 
-             alt="Beacon House Logo" 
-             width="200" 
-             style="display:block;width:200px;max-width:100%;height:auto;margin:0 auto 10px">
-        <!--<![endif]-->
-        <!--[if mso]>
-        <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
-        <h1 style="margin:0 0 5px 0;color:#2d3748;font-size:28px;font-family:Arial,sans-serif">Beacon House</h1>
-        <p style="margin:0;color:#2d3748;font-size:18px;font-family:Arial,sans-serif">Long Beach Thrift Store</p>
-        </td></tr></table>
-        <![endif]-->
-        <h2 style="margin:10px 0 0;font-weight:400;color:#2d3748">Delivery Receipt</h2>
-      </div>
-      
-      <div style="padding: 30px; background: white;">
-        <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
-          Dear ${form.customer_name},
-        </p>
-        
-        <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
-          Thank you for your purchase! This email confirms your delivery details.
-        </p>
-        
-        <div style="background: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="color: #2d3748; margin-top: 0;">Delivery Details:</h3>
-          <p style="color: #4a5568; line-height: 1.8; margin: 5px 0;">
-            <strong>Name:</strong> ${form.customer_name}<br>
-            <strong>Phone:</strong> ${form.phone}<br>
-            <strong>Delivery Address:</strong> ${form.delivery_address || 'N/A'}<br>
-            <strong>Delivery Cost:</strong> $${form.delivery_cost ? parseFloat(form.delivery_cost).toFixed(2) : '0.00'}<br>
-            <strong>Scheduled Date:</strong> ${form.date_scheduled ? new Date(form.date_scheduled).toLocaleDateString() : form.delivery_date ? new Date(form.delivery_date).toLocaleDateString() : 'N/A'}
-          </p>
-          ${form.items_description ? `
-            <p style="color: #4a5568; line-height: 1.8; margin-top: 15px;">
-              <strong>Items:</strong><br>
-              ${form.items_description}
-            </p>
-          ` : ''}
-        </div>
-        
-        <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
-          <h3 style="color: #856404; margin-top: 0;">⚠️ Important Delivery Information</h3>
-          <p style="color: #856404; line-height: 1.8; margin-bottom: 15px;">
-            Please ensure someone is available at the delivery address on the scheduled date. Our delivery team will contact you prior to arrival.
-          </p>
-          <p style="color: #856404; line-height: 1.8; margin: 0;">
-            The delivery cost covers transportation and standard placement. Additional services may incur extra charges.
-          </p>
-        </div>
-        
-        <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-top: 30px;">
-          If you have any questions or need to reschedule, please contact us at <strong>(562) 343-7804</strong>.
-        </p>
-        
-        <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 30px;">
-          Thank you,<br>
-          <strong>Beacon House Long Beach Thrift Store</strong>
-        </p>
-      </div>
-      
-      <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
-        <p style="margin: 0;">Beacon House Long Beach Thrift Store</p>
-        <p style="margin: 5px 0;">Phone: (562) 343-7804</p>
-      </div>
-    </div>
-  `;
+  return `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto"><div style="text-align:center;padding:20px;background:#667eea;color:white"><img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" alt="Beacon House Logo" style="max-width:120px;height:auto;margin-bottom:10px"><h2 style="margin:10px 0 0;font-weight:400">Pick-Up Receipt</h2></div><div style="padding:30px;background:white"><p style="color:#2d3748;font-size:16px;line-height:1.6">Dear ${form.customer_name},</p><p style="color:#2d3748;font-size:16px;line-height:1.6">Thank you for your purchase! <strong>You have 48 hours from when you purchased the item to pick it up.</strong></p><div style="background:#f7fafc;padding:20px;border-radius:8px;margin:20px 0"><h3 style="color:#2d3748;margin-top:0">Purchase Details:</h3><p style="color:#4a5568;line-height:1.8;margin:5px 0"><strong>Name:</strong> ${form.customer_name}<br><strong>Phone:</strong> ${form.phone}<br><strong>Date:</strong> ${new Date(form.date).toLocaleDateString()}</p>${form.items_description ? `<p style="color:#4a5568;line-height:1.8;margin-top:15px"><strong>Items:</strong><br>${form.items_description}</p>` : ''}</div><div style="background:#fff3cd;border:2px solid #ffc107;border-radius:8px;padding:20px;margin:20px 0"><h3 style="color:#856404;margin-top:0">⚠️ Important Terms & Conditions</h3><p style="color:#856404;line-height:1.8;margin-bottom:15px">You have <strong>48 hours upon purchase</strong> to pick your item up. After 48 hours the item will be placed back on the sales floor and <strong>no refunds will be issued</strong>.</p><p style="color:#856404;line-height:1.8;margin-bottom:15px">We will gladly assist you in loading your items. Please be aware that it is the customer's responsibility to ensure items are properly loaded and secured. We are not responsible for any damage caused by loading or failure to secure items.</p><p style="color:#856404;line-height:1.8;margin:0">Your signature acknowledges that you have read and understand the terms and conditions covered above.</p></div><p style="color:#4a5568;font-size:14px;line-height:1.6;margin-top:30px">If you have any questions, please contact us at <strong>(562) 343-7804</strong>.</p><p style="color:#2d3748;font-size:16px;line-height:1.6;margin-top:30px">Thank you,<br><strong>LBTS Thrift Store</strong></p></div><div style="padding:20px;background:#f7fafc;text-align:center;color:#718096;font-size:12px"><p style="margin:0">LBTS Thrift Store</p><p style="margin:5px 0">Phone: (562) 343-7804</p></div></div>`;
 }
 
 function getDonationEmailTemplate(form) {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="text-align:center;padding:20px;background:#ffffff;color:#2d3748">
-        <!--[if !mso]><!-->
-        <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" 
-             alt="Beacon House Logo" 
-             width="200" 
-             style="display:block;width:200px;max-width:100%;height:auto;margin:0 auto 10px">
-        <!--<![endif]-->
-        <h2 style="margin:10px 0 0;font-weight:400;color:#2d3748">Donation Receipt</h2>
-      </div>
-      
+     <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
+  <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" alt="Beacon House Logo" style="max-width: 120px; height: auto; margin-bottom: 10px;">
+  <h2 style="margin: 10px 0 0 0; font-weight: normal;">Donation Receipt</h2>
+</div>
       <div style="padding: 30px; background: white;">
-        <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
-          Dear ${form.customer_name},
+        <h2 style="color: #2d3748; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
+          Donation Receipt
+        </h2>
+        
+        <p style="color: #4a5568; line-height: 1.6; margin-top: 20px;">
+          <strong>Donor Name:</strong> ${form.customer_name}<br>
+          <strong>Date:</strong> ${new Date(form.date).toLocaleDateString()}
         </p>
         
-        <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
-          Thank you for your generous donation to The Beacon House Association of San Pedro!
-        </p>
-        
-        <div style="background: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-          <h3 style="color: #2d3748; margin-top: 0;">Donation Details:</h3>
-          <p style="color: #4a5568; line-height: 1.8; margin: 5px 0;">
-            <strong>Donor Name:</strong> ${form.customer_name}<br>
-            <strong>Phone:</strong> ${form.phone}<br>
-            <strong>Date:</strong> ${new Date(form.date).toLocaleDateString()}
+        ${form.donation_description ? `
+          <p style="color: #4a5568; line-height: 1.6; margin-top: 15px;">
+            <strong>Donated Items:</strong><br>
+            ${form.donation_description}
           </p>
-          ${form.donation_description ? `
-            <p style="color: #4a5568; line-height: 1.8; margin-top: 15px;">
-              <strong>Donation Description:</strong><br>
-              ${form.donation_description}
-            </p>
-          ` : ''}
-        </div>
+        ` : ''}
         
-        <div style="background: #e6f7ff; border: 2px solid #1890ff; border-radius: 8px; padding: 20px; margin: 20px 0;">
-          <h3 style="color: #0050b3; margin-top: 0;">Tax Information</h3>
-          <p style="color: #0050b3; line-height: 1.8;">
-            The Beacon House Association of San Pedro is a 501(c)(3) non-profit organization. Your donation may be tax-deductible. Please consult with your tax advisor.
+        <div style="margin-top: 30px; padding: 20px; background: #f7fafc; border-left: 4px solid #667eea; line-height: 1.8; color: #2d3748;">
+          <p style="margin: 0 0 15px 0;">
+            Thank you for your generous donation. No one has ever been turned away from the Beacon House Association of San Pedro due to their inability to pay, and because of friends like you, this policy will continue in the future.
           </p>
-          <p style="color: #0050b3; line-height: 1.8; margin-top: 10px;">
-            <strong>Tax ID:</strong> #23-7376148
+          <p style="margin: 0 0 15px 0;">
+            No goods or services will be transferred to you in connection with this donation.
+          </p>
+          <p style="margin: 0; font-weight: bold;">
+            For your records our tax ID is #23-7376148
           </p>
         </div>
         
-        <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-top: 30px;">
-          Your donations help us continue our mission of serving the community. If you have any questions, please contact us.
-        </p>
-        
-        <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 30px;">
-          With gratitude,<br>
-          <strong>The Beacon House Association of San Pedro</strong>
+        <p style="margin-top: 30px; color: #718096; font-size: 14px; text-align: center;">
+          Please keep this receipt for your tax records.
         </p>
       </div>
       
