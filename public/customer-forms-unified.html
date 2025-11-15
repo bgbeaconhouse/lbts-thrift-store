@@ -748,7 +748,7 @@
     <div class="top-controls">
       <div class="form-type-selector">
         <label for="formTypeSelect">Form Type:</label>
-        <select id="formTypeSelect">
+        <select id="formTypeSelect" onchange="handleDropdownChange()">
           <option value="pickup">Pick-Up</option>
           <option value="delivery">Delivery</option>
           <option value="donation">Donation</option>
@@ -1012,6 +1012,12 @@
       document.getElementById('formTypeSelect').value = filter;
       
       filterForms();
+    }
+
+    // Handle dropdown change - sync tabs with dropdown selection
+    function handleDropdownChange() {
+      const selectedType = document.getElementById('formTypeSelect').value;
+      setFilter(selectedType);
     }
 
     // Filter and display forms
