@@ -760,8 +760,7 @@
 
     <!-- Filter Tabs -->
     <div class="filter-tabs">
-      <button class="filter-tab active" data-filter="all" onclick="setFilter('all')">All Forms</button>
-      <button class="filter-tab" data-filter="pickup" onclick="setFilter('pickup')">Pick-Up</button>
+      <button class="filter-tab active" data-filter="pickup" onclick="setFilter('pickup')">Pick-Up</button>
       <button class="filter-tab" data-filter="delivery" onclick="setFilter('delivery')">Delivery</button>
       <button class="filter-tab" data-filter="donation" onclick="setFilter('donation')">Donation</button>
       <button class="filter-tab" data-filter="waiver" onclick="setFilter('waiver')">Waiver</button>
@@ -937,7 +936,7 @@
   <script>
     // Global state
     let allForms = [];
-    let currentFilter = 'all';
+    let currentFilter = 'pickup';
     let selectedFiles = [];
     let isSubmitting = false;
     
@@ -1009,6 +1008,9 @@
         }
       });
       
+      // Update dropdown to match the filter
+      document.getElementById('formTypeSelect').value = filter;
+      
       filterForms();
     }
 
@@ -1018,10 +1020,8 @@
       
       let filtered = allForms;
       
-      // Filter by type
-      if (currentFilter !== 'all') {
-        filtered = filtered.filter(form => form.form_type === currentFilter);
-      }
+      // Filter by type (always filter since we removed 'all')
+      filtered = filtered.filter(form => form.form_type === currentFilter);
       
       // Filter by search term
       if (searchTerm) {
