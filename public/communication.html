@@ -568,6 +568,7 @@
 
     function displayEntries(entries) {
       const list = document.getElementById('entriesList');
+      const currentUser = JSON.parse(localStorage.getItem('user'));
       
       if (entries.length === 0) {
         list.innerHTML = `
@@ -580,7 +581,11 @@
         return;
       }
 
-      list.innerHTML = entries.map(entry => `
+      list.innerHTML = entries.map(entry => {
+        // Only show edit/delete buttons if current user created this note
+        const canEdit = currentUser && entry.user_id === currentUser.id;
+        
+        return `
         <div class="entry-card ${entry.pinned ? 'pinned' : ''}">
           <div class="entry-header">
             <div class="entry-meta">
@@ -597,14 +602,17 @@
                       title="${entry.pinned ? 'Unpin' : 'Pin to top'}">
                 📌
               </button>
+              ${canEdit ? `
               <button class="btn btn-secondary" onclick="openEditModal(${entry.id})">Edit</button>
               <button class="btn btn-danger" onclick="deleteEntry(${entry.id})">Delete</button>
+              ` : ''}
             </div>
           </div>
           <div class="category-badge category-${entry.category.toLowerCase()}">${escapeHtml(entry.category)}</div>
           <div class="entry-note">${escapeHtml(entry.note)}</div>
         </div>
-      `).join('');
+        `;
+      }).join('');
     }
 
 function openCreateModal() {
