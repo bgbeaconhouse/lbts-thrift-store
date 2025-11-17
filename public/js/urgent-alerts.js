@@ -82,6 +82,13 @@
 
   // Show urgent alert modal
   function showUrgentAlert(note) {
+    // Don't show urgent alerts to Admin users (they created them)
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (user.role === 'Admin') {
+      console.log('Skipping urgent alert display for Admin user');
+      return;
+    }
+
     const overlay = document.getElementById('urgentNoteAlert');
     if (!overlay) {
       console.error('Urgent alert overlay not found in DOM');
