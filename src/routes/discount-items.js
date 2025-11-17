@@ -55,7 +55,7 @@ router.get('/', async (req, res) => {
     
     const result = await db.query(
       `SELECT 
-        di.id, di.picture_url, di.price, di.notes, di.date_added,
+        di.id, di.picture_urls, di.price, di.notes, di.date_added,
         di.created_by, di.created_at,
         di.approval_status, di.approval_note, di.approved_by, di.approved_at,
         CURRENT_DATE - di.date_added as days_in_discount,
@@ -86,7 +86,7 @@ router.get('/:id', async (req, res) => {
     
     const result = await db.query(
       `SELECT 
-        di.id, di.picture_url, di.price, di.notes, di.date_added,
+        di.id, di.picture_urls, di.price, di.notes, di.date_added,
         di.created_by, di.created_at,
         di.approval_status, di.approval_note, di.approved_by, di.approved_at,
         CURRENT_DATE - di.date_added as days_in_discount,
@@ -111,7 +111,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/discount-items - Create new discount item (starts as pending)
-router.post('/', upload.single('picture'), async (req, res) => {
+router.post('/', upload.array('pictures', 10), async (req, res) => {
   const { price, notes } = req.body;
 
   // Validation
@@ -122,14 +122,16 @@ router.post('/', upload.single('picture'), async (req, res) => {
   try {
     const db = req.app.locals.db;
     
-    // Get picture URL if uploaded
-    const pictureUrl = req.file ? `/uploads/discount/${req.file.filename}` : null;
+    // Get picture URLs if uploaded (multiple files)
+    const pictureUrls = req.files && req.files.length > 0
+      ? req.files.map(file => `/uploads/discount/${file.filename}`)
+      : [];
 
     const result = await db.query(
-      `INSERT INTO discount_items (picture_url, price, notes, date_added, created_by, approval_status)
+      `INSERT INTO discount_items (picture_urls, price, notes, date_added, created_by, approval_status)
        VALUES ($1, $2, $3, CURRENT_DATE, $4, 'pending')
-       RETURNING id, picture_url, price, notes, date_added, created_by, created_at, approval_status`,
-      [pictureUrl, price, notes || null, req.user.id]
+       RETURNING id, picture_urls, price, notes, date_added, created_by, created_at, approval_status`,
+      [pictureUrls, price, notes || null, req.user.id]
     );
 
     res.status(201).json({ 
@@ -139,10 +141,12 @@ router.post('/', upload.single('picture'), async (req, res) => {
   } catch (error) {
     console.error('Create discount item error:', error);
     
-    // Delete uploaded file if database insert failed
-    if (req.file) {
-      fs.unlink(req.file.path, (err) => {
-        if (err) console.error('Error deleting file:', err);
+    // Delete uploaded files if database insert failed
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error('Error deleting file:', err);
+        });
       });
     }
     
@@ -151,7 +155,7 @@ router.post('/', upload.single('picture'), async (req, res) => {
 });
 
 // PUT /api/discount-items/:id - Update discount item (only if pending)
-router.put('/:id', upload.single('picture'), async (req, res) => {
+router.put('/:id', upload.array('pictures', 10), async (req, res) => {
   const { id } = req.params;
   const { price, notes } = req.body;
 
@@ -163,9 +167,9 @@ router.put('/:id', upload.single('picture'), async (req, res) => {
   try {
     const db = req.app.locals.db;
 
-    // Get existing item to check status and picture
+    // Get existing item to check status and pictures
     const existingResult = await db.query(
-      'SELECT picture_url, approval_status FROM discount_items WHERE id = $1 AND deleted_at IS NULL',
+      'SELECT picture_urls, approval_status FROM discount_items WHERE id = $1 AND deleted_at IS NULL',
       [id]
     );
 
@@ -180,31 +184,31 @@ router.put('/:id', upload.single('picture'), async (req, res) => {
       return res.status(403).json({ error: 'Cannot edit approved items' });
     }
 
-    const oldPictureUrl = existingItem.picture_url;
+    const oldPictureUrls = existingItem.picture_urls || [];
 
-    // Determine picture URL
-    let pictureUrl = oldPictureUrl;
+    // Determine picture URLs
+    let pictureUrls = oldPictureUrls;
     
-    if (req.file) {
-      // New picture uploaded
-      pictureUrl = `/uploads/discount/${req.file.filename}`;
+    if (req.files && req.files.length > 0) {
+      // New pictures uploaded - replace all old ones
+      pictureUrls = req.files.map(file => `/uploads/discount/${file.filename}`);
       
-      // Delete old picture if it exists
-      if (oldPictureUrl) {
-        const oldPicturePath = path.join(__dirname, '../..', oldPictureUrl);
+      // Delete old pictures
+      oldPictureUrls.forEach(url => {
+        const oldPicturePath = path.join(__dirname, '../..', url);
         fs.unlink(oldPicturePath, (err) => {
           if (err) console.error('Error deleting old picture:', err);
         });
-      }
+      });
     }
 
     // Update item
     const result = await db.query(
       `UPDATE discount_items 
-       SET picture_url = $1, price = $2, notes = $3
+       SET picture_urls = $1, price = $2, notes = $3
        WHERE id = $4 AND deleted_at IS NULL
-       RETURNING id, picture_url, price, notes, date_added, created_by, created_at, approval_status`,
-      [pictureUrl, price, notes || null, id]
+       RETURNING id, picture_urls, price, notes, date_added, created_by, created_at, approval_status`,
+      [pictureUrls, price, notes || null, id]
     );
 
     res.json({ 
@@ -214,10 +218,12 @@ router.put('/:id', upload.single('picture'), async (req, res) => {
   } catch (error) {
     console.error('Update discount item error:', error);
     
-    // Delete uploaded file if database update failed
-    if (req.file) {
-      fs.unlink(req.file.path, (err) => {
-        if (err) console.error('Error deleting file:', err);
+    // Delete uploaded files if database update failed
+    if (req.files && req.files.length > 0) {
+      req.files.forEach(file => {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error('Error deleting file:', err);
+        });
       });
     }
     
@@ -286,7 +292,7 @@ router.post('/:id/approve', async (req, res) => {
            approved_by = $2,
            approved_at = NOW()
        WHERE id = $3 AND deleted_at IS NULL
-       RETURNING id, picture_url, price, notes, date_added, created_by, created_at,
+       RETURNING id, picture_urls, price, notes, date_added, created_by, created_at,
                  approval_status, approval_note, approved_by, approved_at`,
       [approval_note || null, req.user.id, id]
     );

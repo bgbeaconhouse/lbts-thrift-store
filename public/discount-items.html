@@ -236,12 +236,47 @@
       justify-content: center;
       color: #a0aec0;
       font-size: 48px;
+      position: relative;
+      overflow: hidden;
     }
 
     .item-image img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      cursor: pointer;
+    }
+
+    .item-images-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 2px;
+      width: 100%;
+      height: 100%;
+    }
+
+    .item-images-grid img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      cursor: pointer;
+    }
+
+    .item-images-grid.single img {
+      grid-column: 1 / -1;
+      grid-row: 1 / -1;
+    }
+
+    .image-count-badge {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
     }
 
     .item-content {
@@ -416,18 +451,49 @@
       resize: vertical;
     }
 
-    .image-preview {
-      width: 100%;
-      max-height: 200px;
-      object-fit: contain;
+    .image-previews {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 10px;
       margin-top: 10px;
-      border-radius: 5px;
-      border: 2px solid #e2e8f0;
-      display: none;
     }
 
-    .image-preview.show {
-      display: block;
+    .image-preview-item {
+      position: relative;
+      border-radius: 8px;
+      overflow: hidden;
+      aspect-ratio: 1;
+      background: #f7fafc;
+      border: 2px solid #e2e8f0;
+    }
+
+    .image-preview-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .remove-image {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: rgba(239, 68, 68, 0.9);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .remove-image:hover {
+      background: rgb(220, 38, 38);
     }
 
     .modal-actions {
@@ -545,10 +611,10 @@
         <input type="hidden" id="itemId" value="">
 
         <div class="form-group">
-          <label for="picture">Picture</label>
-          <input type="file" id="picture" accept="image/*" onchange="previewImage(event)">
+          <label for="pictures">Item Photos (up to 10)</label>
+          <input type="file" id="pictures" accept="image/*" multiple onchange="previewImages(event)">
           <div class="upload-status" id="uploadStatus"></div>
-          <img id="imagePreview" class="image-preview" alt="Preview">
+          <div class="image-previews" id="imagePreviews"></div>
         </div>
 
         <div class="form-group">
@@ -577,6 +643,7 @@
     let allItems = []; // Store all items for filtering
     let currentFilter = 'all'; // Track current filter
     let currentUser = null; // Store current user info
+    let selectedFiles = []; // Track selected files for upload
 
     // Check authentication
     window.onload = function() {
@@ -596,6 +663,89 @@
       
       loadItems();
     };
+
+    function previewImages(event) {
+      const files = Array.from(event.target.files);
+      const previewContainer = document.getElementById('imagePreviews');
+      const uploadStatus = document.getElementById('uploadStatus');
+      const submitBtn = document.getElementById('submitBtn');
+      
+      if (files.length === 0) {
+        selectedFiles = [];
+        previewContainer.innerHTML = '';
+        uploadStatus.className = 'upload-status';
+        return;
+      }
+      
+      if (files.length > 10) {
+        alert('Maximum 10 images allowed');
+        event.target.value = '';
+        return;
+      }
+      
+      // Show uploading status
+      isUploading = true;
+      uploadStatus.textContent = `Processing ${files.length} image${files.length > 1 ? 's' : ''}...`;
+      uploadStatus.className = 'upload-status active uploading';
+      submitBtn.disabled = true;
+      
+      selectedFiles = files;
+      previewContainer.innerHTML = '';
+      
+      let loadedCount = 0;
+      
+      files.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const previewItem = document.createElement('div');
+          previewItem.className = 'image-preview-item';
+          previewItem.innerHTML = `
+            <img src="${e.target.result}" alt="Preview ${index + 1}">
+            <button type="button" class="remove-image" onclick="removePreviewImage(${index})" title="Remove">×</button>
+          `;
+          previewContainer.appendChild(previewItem);
+          
+          loadedCount++;
+          if (loadedCount === files.length) {
+            // All images processed
+            isUploading = false;
+            uploadStatus.textContent = `${files.length} image${files.length > 1 ? 's' : ''} ready to upload`;
+            uploadStatus.className = 'upload-status active success';
+            submitBtn.disabled = false;
+            
+            // Hide status after 2 seconds
+            setTimeout(() => {
+              uploadStatus.className = 'upload-status';
+            }, 2000);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function removePreviewImage(index) {
+      const fileInput = document.getElementById('pictures');
+      const dt = new DataTransfer();
+      
+      // Rebuild file list without the removed item
+      selectedFiles.forEach((file, i) => {
+        if (i !== index) {
+          dt.items.add(file);
+        }
+      });
+      
+      fileInput.files = dt.files;
+      selectedFiles = Array.from(dt.files);
+      
+      // Re-render previews
+      const event = { target: { files: dt.files } };
+      if (selectedFiles.length === 0) {
+        document.getElementById('imagePreviews').innerHTML = '';
+        document.getElementById('uploadStatus').className = 'upload-status';
+      } else {
+        previewImages(event);
+      }
+    }
 
     async function loadItems() {
       const token = localStorage.getItem('token');
@@ -636,6 +786,41 @@
       }
       
       displayItems(filtered);
+    }
+
+    function renderItemImages(pictureUrls) {
+      if (!pictureUrls || pictureUrls.length === 0) {
+        return '<span>📦</span>';
+      }
+      
+      if (pictureUrls.length === 1) {
+        return `<img src="${pictureUrls[0]}" alt="Item" onclick="viewItemImages(${JSON.stringify(pictureUrls).replace(/"/g, '&quot;')}, 0)">`;
+      }
+      
+      // Show up to 4 images in grid, with count badge if more
+      const displayImages = pictureUrls.slice(0, 4);
+      const gridClass = displayImages.length === 1 ? 'single' : '';
+      
+      let imagesHtml = displayImages.map((url, index) => 
+        `<img src="${url}" alt="Item ${index + 1}" onclick="viewItemImages(${JSON.stringify(pictureUrls).replace(/"/g, '&quot;')}, ${index})">`
+      ).join('');
+      
+      const countBadge = pictureUrls.length > 1 
+        ? `<div class="image-count-badge">📷 ${pictureUrls.length}</div>` 
+        : '';
+      
+      return `
+        <div class="item-images-grid ${gridClass}">
+          ${imagesHtml}
+        </div>
+        ${countBadge}
+      `;
+    }
+
+    function viewItemImages(urls, startIndex) {
+      // Simple alert for now - you can implement a full image viewer modal later
+      alert(`Viewing image ${startIndex + 1} of ${urls.length}`);
+      // TODO: Implement image viewer modal similar to inventory log
     }
 
     function displayItems(items) {
@@ -699,9 +884,7 @@
         return `
           <div class="item-card" data-status="${item.approval_status}">
             <div class="item-image">
-              ${item.picture_url 
-                ? `<img src="${item.picture_url}" alt="Item">` 
-                : '<span>📦</span>'}
+              ${renderItemImages(item.picture_urls)}
             </div>
             <div class="item-content">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
@@ -761,11 +944,13 @@
     function openCreateModal() {
       currentEditId = null;
       currentEditItem = null;
+      selectedFiles = [];
       document.getElementById('modalTitle').textContent = 'Submit Furniture Item';
       document.getElementById('submitBtn').textContent = 'Submit Item';
       document.getElementById('itemForm').reset();
       document.getElementById('itemId').value = '';
-      document.getElementById('imagePreview').classList.remove('show');
+      document.getElementById('imagePreviews').innerHTML = '';
+      document.getElementById('uploadStatus').className = 'upload-status';
       document.getElementById('itemModal').classList.add('active');
     }
 
@@ -799,13 +984,19 @@
         document.getElementById('price').value = item.price;
         document.getElementById('notes').value = item.notes || '';
         
-        // Show existing image
-        const preview = document.getElementById('imagePreview');
-        if (item.picture_url) {
-          preview.src = item.picture_url;
-          preview.classList.add('show');
-        } else {
-          preview.classList.remove('show');
+        // Show existing images
+        const previewContainer = document.getElementById('imagePreviews');
+        previewContainer.innerHTML = '';
+        
+        if (item.picture_urls && item.picture_urls.length > 0) {
+          item.picture_urls.forEach((url, index) => {
+            const previewItem = document.createElement('div');
+            previewItem.className = 'image-preview-item';
+            previewItem.innerHTML = `
+              <img src="${url}" alt="Existing image ${index + 1}">
+            `;
+            previewContainer.appendChild(previewItem);
+          });
         }
         
         document.getElementById('itemModal').classList.add('active');
@@ -818,51 +1009,14 @@
     function closeModal() {
       document.getElementById('itemModal').classList.remove('active');
       document.getElementById('itemForm').reset();
-      document.getElementById('imagePreview').classList.remove('show');
+      document.getElementById('imagePreviews').innerHTML = '';
       document.getElementById('uploadStatus').className = 'upload-status';
       document.getElementById('submitBtn').disabled = false;
       currentEditId = null;
       currentEditItem = null;
+      selectedFiles = [];
       isSubmitting = false;
       isUploading = false;
-    }
-
-    function previewImage(event) {
-      const file = event.target.files[0];
-      const preview = document.getElementById('imagePreview');
-      const uploadStatus = document.getElementById('uploadStatus');
-      const submitBtn = document.getElementById('submitBtn');
-      
-      if (file) {
-        // Show uploading status
-        isUploading = true;
-        uploadStatus.textContent = 'Processing image...';
-        uploadStatus.className = 'upload-status active uploading';
-        submitBtn.disabled = true;
-        
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          preview.src = e.target.result;
-          preview.classList.add('show');
-          
-          // Image processed
-          isUploading = false;
-          uploadStatus.textContent = 'Image ready to upload';
-          uploadStatus.className = 'upload-status active success';
-          submitBtn.disabled = false;
-          
-          // Hide status after 2 seconds
-          setTimeout(() => {
-            uploadStatus.className = 'upload-status';
-          }, 2000);
-        };
-        reader.readAsDataURL(file);
-      } else {
-        preview.classList.remove('show');
-        uploadStatus.className = 'upload-status';
-        isUploading = false;
-        submitBtn.disabled = false;
-      }
     }
 
     async function handleSubmit(event) {
@@ -890,11 +1044,15 @@
       formData.append('price', document.getElementById('price').value);
       formData.append('notes', document.getElementById('notes').value);
       
-      const pictureInput = document.getElementById('picture');
-      if (pictureInput.files[0]) {
-        uploadStatus.textContent = 'Uploading image...';
+      const picturesInput = document.getElementById('pictures');
+      if (picturesInput.files.length > 0) {
+        uploadStatus.textContent = `Uploading ${picturesInput.files.length} image${picturesInput.files.length > 1 ? 's' : ''}...`;
         uploadStatus.className = 'upload-status active uploading';
-        formData.append('picture', pictureInput.files[0]);
+        
+        // Append all files with the same field name 'pictures'
+        Array.from(picturesInput.files).forEach(file => {
+          formData.append('pictures', file);
+        });
       }
 
       try {
