@@ -48,6 +48,7 @@
 }
 
     .header h1 {
+      color: #003B5C;
       font-size: 24px;
     }
 
@@ -716,38 +717,6 @@
       .entry-images {
         grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
       }
-
-      /* Mobile Responsive Header */
-@media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    gap: 10px;
-    align-items: flex-start;
-  }
-
-  .header-logo {
-    height: 40px; /* Smaller logo on mobile */
-  }
-
-  .header-left {
-    flex-wrap: wrap;
-  }
-
-  .header h1 {
-    font-size: 18px; /* Smaller text on mobile */
-    line-height: 1.2;
-  }
-
-  .header-right {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .back-link {
-    align-self: flex-start;
-  }
-}
-
     }
   </style>
 </head>
@@ -770,18 +739,15 @@
       </button>
     </div>
   </div>
-
- <div class="header">
+<div class="header">
   <div class="header-content">
     <div class="header-left">
       <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" 
            alt="Beacon House Logo" 
            class="header-logo">
-      <h1>Dashboard</h1>
+      <h1>Communication Log</h1>
     </div>
-    <div class="header-right">
-      <!-- keep existing user info here -->
-    </div>
+    <a href="/dashboard.html" class="back-link">← Back to Dashboard</a>
   </div>
 </div>
 
