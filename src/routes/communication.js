@@ -1,11 +1,54 @@
 // src/routes/communication.js
 // API routes for Communication Log (Manager+ only)
 // UPDATED: Added urgent notes functionality with SSE broadcasting
+// UPDATED: Added image upload functionality
 
 const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { authenticateToken, requireManagerOrAbove, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
+
+// Configure multer for communication log image uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const baseUploadDir = process.env.UPLOAD_DIR || 'uploads';
+    const uploadDir = path.isAbsolute(baseUploadDir) 
+      ? path.join(baseUploadDir, 'communication')
+      : path.join(__dirname, '../..', baseUploadDir, 'communication');
+    
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'comm-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 // Store SSE clients for broadcasting urgent notes
 let sseClients = [];
@@ -183,7 +226,7 @@ router.get('/', async (req, res) => {
     
     const result = await db.query(
       `SELECT 
-        c.id, c.user_id, c.note, c.category, c.pinned, c.is_urgent, c.created_at,
+        c.id, c.user_id, c.note, c.category, c.pinned, c.is_urgent, c.picture_urls, c.created_at,
         u.username, u.role
       FROM communication_log c
       LEFT JOIN users u ON c.user_id = u.id
@@ -207,7 +250,7 @@ router.get('/:id', async (req, res) => {
     
     const result = await db.query(
       `SELECT 
-        c.id, c.user_id, c.note, c.category, c.pinned, c.is_urgent, c.created_at,
+        c.id, c.user_id, c.note, c.category, c.pinned, c.is_urgent, c.picture_urls, c.created_at,
         u.username, u.role
       FROM communication_log c
       LEFT JOIN users u ON c.user_id = u.id
@@ -226,16 +269,33 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+// POST /api/communication - Create new entry with optional images
+router.post('/', upload.array('pictures', 10), async (req, res) => {
   const { note, category, pinned } = req.body;
 
   // Validation
   if (!note) {
+    // Clean up uploaded files if validation fails
+    if (req.files) {
+      req.files.forEach(file => {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error('Error deleting file:', err);
+        });
+      });
+    }
     return res.status(400).json({ error: 'Note is required' });
   }
 
   // Only admins can create urgent category notes
   if (category === 'Urgent' && req.user.role !== 'Admin') {
+    // Clean up uploaded files
+    if (req.files) {
+      req.files.forEach(file => {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error('Error deleting file:', err);
+        });
+      });
+    }
     return res.status(403).json({ error: 'Only admins can create urgent notes' });
   }
 
@@ -245,16 +305,21 @@ router.post('/', async (req, res) => {
     // Automatically set is_urgent to true if category is "Urgent"
     const is_urgent = (category === 'Urgent');
 
+    // Get picture URLs
+    const pictureUrls = req.files ? 
+      req.files.map(file => `/uploads/communication/${file.filename}`) : [];
+
     const result = await db.query(
-      `INSERT INTO communication_log (user_id, note, category, pinned, is_urgent)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, user_id, note, category, pinned, is_urgent, created_at`,
-      [req.user.id, note, category || 'General', pinned || false, is_urgent]
+      `INSERT INTO communication_log (user_id, note, category, pinned, is_urgent, picture_urls)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, user_id, note, category, pinned, is_urgent, picture_urls, created_at`,
+      [req.user.id, note, category || 'General', pinned || false, is_urgent, pictureUrls]
     );
+    
     // Get user info for response
     const entryWithUser = await db.query(
       `SELECT 
-        c.id, c.user_id, c.note, c.category, c.pinned, c.is_urgent, c.created_at,
+        c.id, c.user_id, c.note, c.category, c.pinned, c.is_urgent, c.picture_urls, c.created_at,
         u.username, u.role
       FROM communication_log c
       LEFT JOIN users u ON c.user_id = u.id
@@ -295,36 +360,117 @@ router.post('/', async (req, res) => {
     });
   } catch (error) {
     console.error('Create communication entry error:', error);
+    
+    // Clean up uploaded files on error
+    if (req.files) {
+      req.files.forEach(file => {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error('Error deleting file:', err);
+        });
+      });
+    }
+    
     res.status(500).json({ error: 'Failed to create entry' });
   }
 });
 
-router.put('/:id', async (req, res) => {
+// PUT /api/communication/:id - Update entry with optional image handling
+router.put('/:id', upload.array('pictures', 10), async (req, res) => {
   const { id } = req.params;
-  const { note, category, pinned } = req.body;
+  const { note, category, pinned, keep_existing_photos, existing_photos } = req.body;
 
   // Validation
   if (!note) {
+    // Clean up uploaded files if validation fails
+    if (req.files) {
+      req.files.forEach(file => {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error('Error deleting file:', err);
+        });
+      });
+    }
     return res.status(400).json({ error: 'Note is required' });
   }
 
   // Only admins can modify to urgent category
   if (category === 'Urgent' && req.user.role !== 'Admin') {
+    // Clean up uploaded files
+    if (req.files) {
+      req.files.forEach(file => {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error('Error deleting file:', err);
+        });
+      });
+    }
     return res.status(403).json({ error: 'Only admins can create urgent notes' });
   }
 
   try {
     const db = req.app.locals.db;
 
+    // Get existing entry to check for old photos
+    const existingEntry = await db.query(
+      'SELECT picture_urls FROM communication_log WHERE id = $1 AND deleted_at IS NULL',
+      [id]
+    );
+
+    if (existingEntry.rows.length === 0) {
+      // Clean up uploaded files
+      if (req.files) {
+        req.files.forEach(file => {
+          fs.unlink(file.path, (err) => {
+            if (err) console.error('Error deleting file:', err);
+          });
+        });
+      }
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    // Determine final picture URLs
+    let finalPictureUrls = [];
+    
+    // Add kept existing photos
+    if (keep_existing_photos === 'true' && existing_photos) {
+      try {
+        const keptPhotos = JSON.parse(existing_photos);
+        finalPictureUrls = [...keptPhotos];
+      } catch (e) {
+        console.error('Error parsing existing photos:', e);
+      }
+    }
+    
+    // Add new photos
+    if (req.files && req.files.length > 0) {
+      const newPictureUrls = req.files.map(file => `/uploads/communication/${file.filename}`);
+      finalPictureUrls = [...finalPictureUrls, ...newPictureUrls];
+    }
+
+    // Delete old photos that are not being kept
+    const oldPictureUrls = existingEntry.rows[0].picture_urls || [];
+    const photosToDelete = oldPictureUrls.filter(url => !finalPictureUrls.includes(url));
+    
+    const baseUploadDir = process.env.UPLOAD_DIR || 'uploads';
+    const uploadPath = path.isAbsolute(baseUploadDir) 
+      ? baseUploadDir
+      : path.join(__dirname, '../..', baseUploadDir);
+    
+    photosToDelete.forEach(url => {
+      const filename = url.split('/').pop();
+      const filepath = path.join(uploadPath, 'communication', filename);
+      fs.unlink(filepath, (err) => {
+        if (err) console.error('Error deleting old photo:', err);
+      });
+    });
+
     // Automatically set is_urgent based on category
     const is_urgent = (category === 'Urgent');
 
     const result = await db.query(
       `UPDATE communication_log 
-       SET note = $1, category = $2, pinned = $3, is_urgent = $4
-       WHERE id = $5 AND deleted_at IS NULL
+       SET note = $1, category = $2, pinned = $3, is_urgent = $4, picture_urls = $5
+       WHERE id = $6 AND deleted_at IS NULL
        RETURNING id`,
-      [note, category || 'General', pinned || false, is_urgent, id]
+      [note, category || 'General', pinned || false, is_urgent, finalPictureUrls, id]
     );
 
     if (result.rows.length === 0) {
@@ -334,7 +480,7 @@ router.put('/:id', async (req, res) => {
     // Get updated entry with user info
     const entryWithUser = await db.query(
       `SELECT 
-        c.id, c.user_id, c.note, c.category, c.pinned, c.is_urgent, c.created_at,
+        c.id, c.user_id, c.note, c.category, c.pinned, c.is_urgent, c.picture_urls, c.created_at,
         u.username, u.role
       FROM communication_log c
       LEFT JOIN users u ON c.user_id = u.id
@@ -348,6 +494,16 @@ router.put('/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('Update communication entry error:', error);
+    
+    // Clean up uploaded files on error
+    if (req.files) {
+      req.files.forEach(file => {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error('Error deleting file:', err);
+        });
+      });
+    }
+    
     res.status(500).json({ error: 'Failed to update entry' });
   }
 });
@@ -372,8 +528,7 @@ router.patch('/:id/pin', async (req, res) => {
     }
 
     res.json({ 
-      message: result.rows[0].pinned ? 'Entry pinned' : 'Entry unpinned',
-      pinned: result.rows[0].pinned
+      message: result.rows[0].pinned ? 'Entry pinned' : 'Entry unpinned'
     });
   } catch (error) {
     console.error('Toggle pin error:', error);
@@ -388,11 +543,35 @@ router.delete('/:id', async (req, res) => {
   try {
     const db = req.app.locals.db;
 
+    // Get the entry to delete its photos
+    const entry = await db.query(
+      'SELECT picture_urls FROM communication_log WHERE id = $1 AND deleted_at IS NULL',
+      [id]
+    );
+
+    if (entry.rows.length === 0) {
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    // Delete photos from filesystem
+    const pictureUrls = entry.rows[0].picture_urls || [];
+    
+    const baseUploadDir = process.env.UPLOAD_DIR || 'uploads';
+    const uploadPath = path.isAbsolute(baseUploadDir) 
+      ? baseUploadDir
+      : path.join(__dirname, '../..', baseUploadDir);
+    
+    pictureUrls.forEach(url => {
+      const filename = url.split('/').pop();
+      const filepath = path.join(uploadPath, 'communication', filename);
+      fs.unlink(filepath, (err) => {
+        if (err) console.error('Error deleting photo:', err);
+      });
+    });
+
+    // Soft delete the entry
     const result = await db.query(
-      `UPDATE communication_log 
-       SET deleted_at = NOW() 
-       WHERE id = $1 AND deleted_at IS NULL
-       RETURNING id`,
+      'UPDATE communication_log SET deleted_at = NOW() WHERE id = $1 RETURNING id',
       [id]
     );
 

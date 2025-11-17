@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LBTS - Communication Log</title>
+  <!-- Image Compression Library -->
+  <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.0/dist/browser-image-compression.js"></script>
   <style>
     * {
       margin: 0;
@@ -111,6 +113,12 @@
     .btn-primary:hover {
       background: #5568d3;
       transform: translateY(-2px);
+    }
+
+    .btn-primary:disabled {
+      background: #a0aec0;
+      cursor: not-allowed;
+      transform: none;
     }
 
     .btn-danger {
@@ -239,12 +247,42 @@
       line-height: 1.6;
       white-space: pre-wrap;
       word-wrap: break-word;
+      margin-bottom: 15px;
     }
 
     .pin-indicator {
       display: inline-block;
       margin-left: 8px;
       color: #f59e0b;
+    }
+
+    /* Image Gallery in Entry */
+    .entry-images {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .entry-image-item {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid #e2e8f0;
+      transition: all 0.2s;
+    }
+
+    .entry-image-item:hover {
+      border-color: #667eea;
+      transform: scale(1.05);
+    }
+
+    .entry-image-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     /* Modal */
@@ -273,6 +311,8 @@
       width: 90%;
       max-width: 600px;
       margin: 20px;
+      max-height: 90vh;
+      overflow-y: auto;
     }
 
     .modal-header {
@@ -316,8 +356,9 @@
       padding: 10px;
       border: 2px solid #e2e8f0;
       border-radius: 5px;
-      font-size: 14px;
       font-family: inherit;
+      font-size: 14px;
+      transition: border-color 0.2s;
     }
 
     .form-group select:focus,
@@ -331,15 +372,112 @@
       resize: vertical;
     }
 
+    /* Image Upload Section */
+    .image-upload-section {
+      margin-bottom: 20px;
+    }
+
+    .image-upload-section label {
+      display: block;
+      margin-bottom: 8px;
+      color: #2d3748;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .image-upload-section input[type="file"] {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      border: 2px dashed #cbd5e0;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #f7fafc;
+      transition: all 0.2s;
+    }
+
+    .image-upload-section input[type="file"]:hover {
+      border-color: #667eea;
+      background: #edf2f7;
+    }
+
+    .upload-status {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 5px;
+      font-size: 13px;
+      display: none;
+    }
+
+    .upload-status.active {
+      display: block;
+    }
+
+    .upload-status.uploading {
+      background: #bee3f8;
+      color: #2c5282;
+    }
+
+    .upload-status.success {
+      background: #c6f6d5;
+      color: #22543d;
+    }
+
+    .image-previews {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 10px;
+      margin-top: 15px;
+    }
+
+    .image-preview-item {
+      position: relative;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid #e2e8f0;
+    }
+
+    .image-preview-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .remove-image {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      background: rgba(255, 255, 255, 0.9);
+      border: none;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      color: #e53e3e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .remove-image:hover {
+      background: #fed7d7;
+    }
+
     .checkbox-label {
       display: flex;
       align-items: center;
       gap: 8px;
       cursor: pointer;
+      user-select: none;
     }
 
     .checkbox-label input[type="checkbox"] {
-      width: auto;
+      width: 18px;
+      height: 18px;
       cursor: pointer;
     }
 
@@ -347,35 +485,183 @@
       display: flex;
       gap: 10px;
       justify-content: flex-end;
-      margin-top: 20px;
+      margin-top: 25px;
     }
 
-    .message {
-      padding: 12px;
-      border-radius: 5px;
-      margin-bottom: 20px;
+    .loading-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-right: 8px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Image Viewer Modal */
+    .image-viewer-modal {
       display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .image-viewer-modal.active {
+      display: flex;
+    }
+
+    .image-viewer-content {
+      position: relative;
+      max-width: 90vw;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .viewer-main-image {
+      max-width: 100%;
+      max-height: 85vh;
+      object-fit: contain;
+      border-radius: 4px;
+      user-select: none;
+    }
+
+    .viewer-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      font-size: 28px;
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2001;
+      transition: all 0.2s;
+    }
+
+    .viewer-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: white;
+    }
+
+    .viewer-counter {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      z-index: 2001;
+    }
+
+    .viewer-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      font-size: 32px;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2001;
+      transition: all 0.2s;
+    }
+
+    .viewer-nav:hover {
+      background: rgba(255, 255, 255, 0.2);
+      border-color: white;
+    }
+
+    .viewer-nav-prev {
+      left: 20px;
+    }
+
+    .viewer-nav-next {
+      right: 20px;
+    }
+
+    .viewer-thumbnails {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      overflow-x: auto;
+      padding: 10px;
+      max-width: 90vw;
+    }
+
+    .viewer-thumbnail {
+      width: 80px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .viewer-thumbnail:hover {
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .viewer-thumbnail.active {
+      border-color: white;
+    }
+
+    /* Message */
+    .message {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 25px;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      z-index: 10000;
+      display: none;
+      max-width: 400px;
     }
 
     .message.success {
-      background: #c6f6d5;
-      color: #22543d;
-      border: 1px solid #9ae6b4;
-      display: block;
+      background: #48bb78;
+      color: white;
     }
 
     .message.error {
-      background: #fed7d7;
-      color: #742a2a;
-      border: 1px solid #fc8181;
-      display: block;
+      background: #f56565;
+      color: white;
     }
 
     .empty-state {
       text-align: center;
       padding: 60px 20px;
-      background: white;
-      border-radius: 10px;
+      color: #718096;
     }
 
     .empty-state-icon {
@@ -384,25 +670,23 @@
     }
 
     .empty-state h3 {
+      font-size: 20px;
       color: #2d3748;
       margin-bottom: 10px;
     }
 
-    .empty-state p {
-      color: #718096;
-      margin-bottom: 20px;
-    }
-
-    /* Responsive */
     @media (max-width: 768px) {
-      .header-content {
-        flex-direction: column;
-        gap: 10px;
+      .header h1 {
+        font-size: 20px;
       }
 
       .top-bar {
         flex-direction: column;
         align-items: stretch;
+      }
+
+      .filter-group {
+        justify-content: center;
       }
 
       .entry-header {
@@ -411,12 +695,21 @@
 
       .entry-actions {
         justify-content: flex-start;
+        width: 100%;
+      }
+
+      .modal-content {
+        width: 95%;
+        padding: 20px;
+      }
+
+      .entry-images {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
       }
     }
   </style>
 </head>
 <body>
-  <!-- Header -->
   <div class="header">
     <div class="header-content">
       <h1>💬 Communication Log</h1>
@@ -424,52 +717,57 @@
     </div>
   </div>
 
-  <!-- Main Container -->
   <div class="container">
-    <div id="message" class="message"></div>
-
-    <!-- Top Bar -->
     <div class="top-bar">
- <div class="filter-group">
-  <button class="filter-btn active" data-category="all" onclick="filterByCategory('all')">All</button>
-  <button class="filter-btn" data-category="General" onclick="filterByCategory('General')">General</button>
-  <button class="filter-btn" data-category="Urgent" onclick="filterByCategory('Urgent')" id="urgentFilterBtn">Urgent</button>
-  <button class="filter-btn" data-category="Important" onclick="filterByCategory('Important')">Important</button>
-</div>
+      <div class="filter-group">
+        <button class="filter-btn active" data-category="all" onclick="filterByCategory('all')">All</button>
+        <button class="filter-btn" data-category="General" onclick="filterByCategory('General')">General</button>
+        <button class="filter-btn" data-category="Reminder" onclick="filterByCategory('Reminder')">Reminder</button>
+        <button class="filter-btn" data-category="Announcement" onclick="filterByCategory('Announcement')">Announcement</button>
+        <button class="filter-btn" data-category="Maintenance" onclick="filterByCategory('Maintenance')">Maintenance</button>
+        <button class="filter-btn" id="urgentFilterBtn" data-category="Urgent" onclick="filterByCategory('Urgent')">Urgent</button>
+      </div>
       <button class="btn btn-primary" onclick="openCreateModal()">+ Add Note</button>
     </div>
 
-    <!-- Entries List -->
-    <div class="entries-list" id="entriesList">
-      <div style="text-align: center; padding: 40px; background: white; border-radius: 10px;">
-        Loading entries...
-      </div>
+    <div id="entriesList" class="entries-list">
+      <!-- Entries will be loaded here -->
     </div>
   </div>
 
-  <!-- Add/Edit Modal -->
+  <div id="message" class="message"></div>
+
+  <!-- Entry Modal -->
   <div id="entryModal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
         <h2 id="modalTitle">Add Note</h2>
         <button class="close-btn" onclick="closeModal()">&times;</button>
       </div>
-
       <form id="entryForm" onsubmit="handleSubmit(event)">
-        <input type="hidden" id="entryId" value="">
+        <input type="hidden" id="entryId">
 
-<div class="form-group">
-  <label for="category">Category *</label>
-  <select id="category" required>
-    <option value="General">General</option>
-    <option value="Urgent" id="urgentCategoryOption">Urgent</option>
-    <option value="Important">Important</option>
-  </select>
-</div>
+        <div class="form-group">
+          <label for="category">Category</label>
+          <select id="category" required>
+            <option value="General">General</option>
+            <option value="Reminder">Reminder</option>
+            <option value="Announcement">Announcement</option>
+            <option value="Maintenance">Maintenance</option>
+            <option value="Urgent" id="urgentCategoryOption">Urgent (Admin Only)</option>
+          </select>
+        </div>
 
         <div class="form-group">
           <label for="note">Note *</label>
-          <textarea id="note" required placeholder="Enter your note or announcement..."></textarea>
+          <textarea id="note" required placeholder="Enter your message..."></textarea>
+        </div>
+
+        <div class="image-upload-section">
+          <label>Attach Photos (up to 10)</label>
+          <input type="file" id="pictures" accept="image/*" multiple onchange="previewImages(event)">
+          <div class="upload-status" id="uploadStatus"></div>
+          <div class="image-previews" id="imagePreviews"></div>
         </div>
 
         <div class="form-group">
@@ -487,66 +785,82 @@
     </div>
   </div>
 
+  <!-- Image Viewer Modal -->
+  <div id="imageViewerModal" class="image-viewer-modal" onclick="closeImageViewer(event)">
+    <button class="viewer-close" onclick="closeImageViewer()">&times;</button>
+    <div class="viewer-counter" id="viewerCounter"></div>
+    <button class="viewer-nav viewer-nav-prev" onclick="viewerPrevImage(event)">‹</button>
+    <button class="viewer-nav viewer-nav-next" onclick="viewerNextImage(event)">›</button>
+    <div class="image-viewer-content" onclick="event.stopPropagation()">
+      <img id="viewerMainImage" class="viewer-main-image" src="" alt="Full size">
+      <div class="viewer-thumbnails" id="viewerThumbnails"></div>
+    </div>
+  </div>
+
   <script>
     let allEntries = [];
     let currentFilter = 'all';
     let currentEditId = null;
+    let selectedFiles = [];
+    let existingPhotos = [];
+    let isSubmitting = false;
 
- window.onload = function() {
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+    window.onload = function() {
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user') || 'null');
 
-  if (!token || !user) {
-    window.location.href = '/';
-    return;
-  }
-
-  loadEntries();
-  
-  // Only admins can see/use the "Urgent" category
-  if (user.role !== 'Admin') {
-    const urgentOption = document.getElementById('urgentCategoryOption');
-    if (urgentOption) {
-      urgentOption.remove();
-    }
-    
-    // Also hide the Urgent filter button
-    const urgentFilterBtn = document.getElementById('urgentFilterBtn');
-    if (urgentFilterBtn) {
-      urgentFilterBtn.style.display = 'none';
-    }
-  }
-};
-
-  async function loadEntries() {
-  const token = localStorage.getItem('token');
-
-  try {
-    // First, mark all messages as read
-    await fetch('/api/communication/mark-all-read', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`
+      if (!token || !user) {
+        window.location.href = '/';
+        return;
       }
-    });
 
-    // Then load the entries
-    const response = await fetch('/api/communication', {
-      headers: {
-        'Authorization': `Bearer ${token}`
+      loadEntries();
+      
+      // Only admins can see/use the "Urgent" category
+      if (user.role !== 'Admin') {
+        const urgentOption = document.getElementById('urgentCategoryOption');
+        if (urgentOption) {
+          urgentOption.remove();
+        }
+        
+        // Also hide the Urgent filter button
+        const urgentFilterBtn = document.getElementById('urgentFilterBtn');
+        if (urgentFilterBtn) {
+          urgentFilterBtn.style.display = 'none';
+        }
       }
-    });
+    };
 
-    if (!response.ok) throw new Error('Failed to load entries');
+    async function loadEntries() {
+      const token = localStorage.getItem('token');
 
-    const data = await response.json();
-    allEntries = data.entries;
-    displayEntries(allEntries);
-  } catch (error) {
-    console.error('Load entries error:', error);
-    showMessage('Failed to load entries', 'error');
-  }
-}
+      try {
+        // First, mark all messages as read
+        await fetch('/api/communication/mark-all-read', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        // Then load the entries
+        const response = await fetch('/api/communication', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to load entries');
+
+        const data = await response.json();
+        allEntries = data.entries;
+        displayEntries(allEntries);
+      } catch (error) {
+        console.error('Load entries error:', error);
+        showMessage('Failed to load entries', 'error');
+      }
+    }
+
     function filterByCategory(category) {
       currentFilter = category;
       
@@ -568,7 +882,6 @@
 
     function displayEntries(entries) {
       const list = document.getElementById('entriesList');
-      const currentUser = JSON.parse(localStorage.getItem('user'));
       
       if (entries.length === 0) {
         list.innerHTML = `
@@ -582,55 +895,65 @@
       }
 
       list.innerHTML = entries.map(entry => {
-        // Only show edit/delete buttons if current user created this note
-        const canEdit = currentUser && entry.user_id === currentUser.id;
-        
+        const imagesHtml = entry.picture_urls && entry.picture_urls.length > 0 
+          ? `<div class="entry-images">
+              ${entry.picture_urls.map(url => `
+                <div class="entry-image-item" onclick='openImageViewer(${JSON.stringify(entry.picture_urls)})'>
+                  <img src="${url}" alt="Attached image">
+                </div>
+              `).join('')}
+            </div>`
+          : '';
+
         return `
-        <div class="entry-card ${entry.pinned ? 'pinned' : ''}">
-          <div class="entry-header">
-            <div class="entry-meta">
-              <div>
-                <span class="entry-author">${escapeHtml(entry.username || 'Unknown')}</span>
-                <span class="entry-role">${escapeHtml(entry.role || 'N/A')}</span>
-                ${entry.pinned ? '<span class="pin-indicator">📌 Pinned</span>' : ''}
+          <div class="entry-card ${entry.pinned ? 'pinned' : ''}">
+            <div class="entry-header">
+              <div class="entry-meta">
+                <div>
+                  <span class="entry-author">${escapeHtml(entry.username || 'Unknown')}</span>
+                  <span class="entry-role">${escapeHtml(entry.role || 'N/A')}</span>
+                  ${entry.pinned ? '<span class="pin-indicator">📌 Pinned</span>' : ''}
+                </div>
+                <div class="entry-date">${formatDate(entry.created_at)}</div>
               </div>
-              <div class="entry-date">${formatDate(entry.created_at)}</div>
+              <div class="entry-actions">
+                <button class="btn-icon ${entry.pinned ? 'pinned' : ''}" 
+                        onclick="togglePin(${entry.id}, ${entry.pinned})"
+                        title="${entry.pinned ? 'Unpin' : 'Pin to top'}">
+                  📌
+                </button>
+                <button class="btn btn-secondary" onclick="openEditModal(${entry.id})">Edit</button>
+                <button class="btn btn-danger" onclick="deleteEntry(${entry.id})">Delete</button>
+              </div>
             </div>
-            <div class="entry-actions">
-              <button class="btn-icon ${entry.pinned ? 'pinned' : ''}" 
-                      onclick="togglePin(${entry.id}, ${entry.pinned})"
-                      title="${entry.pinned ? 'Unpin' : 'Pin to top'}">
-                📌
-              </button>
-              ${canEdit ? `
-              <button class="btn btn-secondary" onclick="openEditModal(${entry.id})">Edit</button>
-              <button class="btn btn-danger" onclick="deleteEntry(${entry.id})">Delete</button>
-              ` : ''}
-            </div>
+            <div class="category-badge category-${entry.category.toLowerCase()}">${escapeHtml(entry.category)}</div>
+            <div class="entry-note">${escapeHtml(entry.note)}</div>
+            ${imagesHtml}
           </div>
-          <div class="category-badge category-${entry.category.toLowerCase()}">${escapeHtml(entry.category)}</div>
-          <div class="entry-note">${escapeHtml(entry.note)}</div>
-        </div>
         `;
       }).join('');
     }
 
-function openCreateModal() {
-  currentEditId = null;
-  document.getElementById('modalTitle').textContent = 'Add Note';
-  document.getElementById('submitBtn').textContent = 'Add Note';
-  document.getElementById('entryForm').reset();
-  document.getElementById('entryId').value = '';
-  
-  // Set category based on current filter (unless filter is 'all')
-  if (currentFilter !== 'all') {
-    document.getElementById('category').value = currentFilter;
-  } else {
-    document.getElementById('category').value = 'General';
-  }
-  
-  document.getElementById('entryModal').classList.add('active');
-}
+    function openCreateModal() {
+      currentEditId = null;
+      selectedFiles = [];
+      existingPhotos = [];
+      document.getElementById('modalTitle').textContent = 'Add Note';
+      document.getElementById('submitBtn').textContent = 'Add Note';
+      document.getElementById('entryForm').reset();
+      document.getElementById('entryId').value = '';
+      document.getElementById('imagePreviews').innerHTML = '';
+      document.getElementById('uploadStatus').className = 'upload-status';
+      
+      // Set category based on current filter (unless filter is 'all')
+      if (currentFilter !== 'all') {
+        document.getElementById('category').value = currentFilter;
+      } else {
+        document.getElementById('category').value = 'General';
+      }
+      
+      document.getElementById('entryModal').classList.add('active');
+    }
 
     async function openEditModal(entryId) {
       const entry = allEntries.find(e => e.id === entryId);
@@ -641,6 +964,9 @@ function openCreateModal() {
       }
 
       currentEditId = entryId;
+      selectedFiles = [];
+      existingPhotos = entry.picture_urls || [];
+      
       document.getElementById('modalTitle').textContent = 'Edit Note';
       document.getElementById('submitBtn').textContent = 'Update Note';
       document.getElementById('entryId').value = entry.id;
@@ -648,27 +974,240 @@ function openCreateModal() {
       document.getElementById('note').value = entry.note;
       document.getElementById('pinned').checked = entry.pinned;
       
+      // Display existing photos
+      document.getElementById('imagePreviews').innerHTML = '';
+      displayExistingPhotos();
+      
       document.getElementById('entryModal').classList.add('active');
     }
 
     function closeModal() {
       document.getElementById('entryModal').classList.remove('active');
       document.getElementById('entryForm').reset();
+      document.getElementById('imagePreviews').innerHTML = '';
+      document.getElementById('uploadStatus').className = 'upload-status';
+      selectedFiles = [];
+      existingPhotos = [];
       currentEditId = null;
+    }
+
+    async function previewImages(event) {
+      const files = Array.from(event.target.files);
+      const uploadStatus = document.getElementById('uploadStatus');
+      const submitBtn = document.getElementById('submitBtn');
+      
+      if (files.length === 0) return;
+
+      // Check total image count (existing + new)
+      const totalImages = existingPhotos.length + selectedFiles.length + files.length;
+      if (totalImages > 10) {
+        showMessage(`You can only attach up to 10 images total. Currently: ${existingPhotos.length} existing + ${selectedFiles.length + files.length} new = ${totalImages}`, 'error');
+        event.target.value = '';
+        return;
+      }
+
+      // Show compression status
+      if (files.length > 0) {
+        uploadStatus.textContent = `Compressing ${files.length} image${files.length > 1 ? 's' : ''}...`;
+        uploadStatus.className = 'upload-status active uploading';
+        submitBtn.disabled = true;
+      }
+
+      // Show existing photos first (if editing)
+      const previewContainer = document.getElementById('imagePreviews');
+      previewContainer.innerHTML = '';
+      displayExistingPhotos();
+
+      // Compress and process new photos
+      const compressedFiles = [];
+      let processedCount = 0;
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        try {
+          // Compression options
+          const options = {
+            maxSizeMB: 0.8,
+            maxWidthOrHeight: 1920,
+            useWebWorker: true,
+            fileType: file.type,
+            initialQuality: 0.8
+          };
+          
+          // Compress the image
+          const compressedFile = await imageCompression(file, options);
+          compressedFiles.push(compressedFile);
+          
+          // Calculate compression ratio
+          const originalSizeMB = (file.size / 1024 / 1024).toFixed(2);
+          const compressedSizeMB = (compressedFile.size / 1024 / 1024).toFixed(2);
+          
+          console.log(`Image ${i + 1}: ${originalSizeMB}MB → ${compressedSizeMB}MB`);
+          
+          processedCount++;
+          
+          // Update status
+          uploadStatus.textContent = `Compressed ${processedCount} of ${files.length} image${files.length > 1 ? 's' : ''}...`;
+          
+          // Show preview
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const div = document.createElement('div');
+            div.className = 'image-preview-item';
+            div.innerHTML = `
+              <img src="${e.target.result}" alt="Preview">
+              <button type="button" class="remove-image" onclick="removeNewImage(${selectedFiles.length + i})">&times;</button>
+            `;
+            previewContainer.appendChild(div);
+          };
+          reader.readAsDataURL(compressedFile);
+          
+        } catch (error) {
+          console.error('Compression error:', error);
+          showMessage(`Failed to compress image ${i + 1}. Please try a different image.`, 'error');
+        }
+      }
+
+      // Add compressed files to selectedFiles array
+      selectedFiles.push(...compressedFiles);
+      
+      // Clear the file input
+      event.target.value = '';
+      
+      // Update final status
+      if (selectedFiles.length > 0) {
+        uploadStatus.textContent = `${selectedFiles.length} image${selectedFiles.length > 1 ? 's' : ''} compressed and ready to upload`;
+        uploadStatus.className = 'upload-status active success';
+        submitBtn.disabled = false;
+        
+        // Hide status after 3 seconds
+        setTimeout(() => {
+          uploadStatus.className = 'upload-status';
+        }, 3000);
+      }
+    }
+
+    function displayExistingPhotos() {
+      const previewContainer = document.getElementById('imagePreviews');
+      
+      existingPhotos.forEach((url, index) => {
+        const div = document.createElement('div');
+        div.className = 'image-preview-item';
+        div.innerHTML = `
+          <img src="${url}" alt="Existing">
+          <button type="button" class="remove-image" onclick="removeExistingImage(${index})">&times;</button>
+        `;
+        previewContainer.appendChild(div);
+      });
+    }
+
+    function removeNewImage(index) {
+      const adjustedIndex = index - existingPhotos.length;
+      selectedFiles.splice(adjustedIndex, 1);
+      
+      // Refresh preview display
+      const previewContainer = document.getElementById('imagePreviews');
+      previewContainer.innerHTML = '';
+      
+      // Show existing photos first
+      displayExistingPhotos();
+      
+      // Show remaining new images
+      selectedFiles.forEach((file, idx) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const div = document.createElement('div');
+          div.className = 'image-preview-item';
+          div.innerHTML = `
+            <img src="${e.target.result}" alt="Preview">
+            <button type="button" class="remove-image" onclick="removeNewImage(${existingPhotos.length + idx})">&times;</button>
+          `;
+          previewContainer.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+      });
+      
+      // Update upload status
+      const uploadStatus = document.getElementById('uploadStatus');
+      if (selectedFiles.length > 0) {
+        uploadStatus.textContent = `${selectedFiles.length} image${selectedFiles.length > 1 ? 's' : ''} ready to upload`;
+        uploadStatus.className = 'upload-status active success';
+        setTimeout(() => {
+          uploadStatus.className = 'upload-status';
+        }, 2000);
+      } else {
+        uploadStatus.className = 'upload-status';
+      }
+    }
+
+    function removeExistingImage(index) {
+      existingPhotos.splice(index, 1);
+      
+      // Refresh preview
+      const previewContainer = document.getElementById('imagePreviews');
+      previewContainer.innerHTML = '';
+      displayExistingPhotos();
+      
+      // Show new images
+      if (selectedFiles.length > 0) {
+        selectedFiles.forEach((file, idx) => {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            const div = document.createElement('div');
+            div.className = 'image-preview-item';
+            div.innerHTML = `
+              <img src="${e.target.result}" alt="Preview">
+              <button type="button" class="remove-image" onclick="removeNewImage(${existingPhotos.length + idx})">&times;</button>
+            `;
+            previewContainer.appendChild(div);
+          };
+          reader.readAsDataURL(file);
+        });
+      }
     }
 
     async function handleSubmit(event) {
       event.preventDefault();
       
+      // Prevent double submission
+      if (isSubmitting) {
+        console.log('Form already submitting...');
+        return;
+      }
+      
       const token = localStorage.getItem('token');
       const entryId = document.getElementById('entryId').value;
       const isEdit = !!entryId;
+      const submitBtn = document.getElementById('submitBtn');
+      const uploadStatus = document.getElementById('uploadStatus');
+      
+      // Disable button and show loading state
+      isSubmitting = true;
+      submitBtn.disabled = true;
+      const originalBtnText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<span class="loading-spinner"></span>Submitting...';
 
-      const entryData = {
-        note: document.getElementById('note').value,
-        category: document.getElementById('category').value,
-        pinned: document.getElementById('pinned').checked
-      };
+      const formData = new FormData();
+      formData.append('note', document.getElementById('note').value);
+      formData.append('category', document.getElementById('category').value);
+      formData.append('pinned', document.getElementById('pinned').checked);
+
+      // Add new pictures (use compressed files from selectedFiles array)
+      if (selectedFiles.length > 0) {
+        uploadStatus.textContent = 'Uploading compressed images...';
+        uploadStatus.className = 'upload-status active uploading';
+        
+        selectedFiles.forEach(file => {
+          formData.append('pictures', file);
+        });
+      }
+
+      // If editing, indicate if we should keep existing photos
+      if (isEdit && existingPhotos.length > 0) {
+        formData.append('keep_existing_photos', 'true');
+        formData.append('existing_photos', JSON.stringify(existingPhotos));
+      }
 
       try {
         const url = isEdit ? `/api/communication/${entryId}` : '/api/communication';
@@ -677,10 +1216,9 @@ function openCreateModal() {
         const response = await fetch(url, {
           method: method,
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify(entryData)
+          body: formData
         });
 
         const data = await response.json();
@@ -690,11 +1228,28 @@ function openCreateModal() {
           closeModal();
           loadEntries();
         } else {
-          showMessage(data.error || 'Operation failed', 'error');
+          // Check if it's a file size error
+          if (data.error && (data.error.includes('too large') || data.error.includes('LIMIT_FILE_SIZE'))) {
+            showMessage('⚠️ One or more images are too large even after compression. Try selecting fewer images or taking new photos at lower quality.', 'error');
+          } else {
+            showMessage(data.error || 'Operation failed', 'error');
+          }
         }
       } catch (error) {
         console.error('Submit error:', error);
-        showMessage('Network error. Please try again.', 'error');
+        
+        // Check if it's a file size error
+        if (error.message && error.message.includes('too large')) {
+          showMessage('⚠️ Images are too large. Please try selecting fewer images or different photos.', 'error');
+        } else {
+          showMessage('Network error. Please try again.', 'error');
+        }
+      } finally {
+        // Re-enable button
+        isSubmitting = false;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+        uploadStatus.className = 'upload-status';
       }
     }
 
@@ -749,6 +1304,104 @@ function openCreateModal() {
       } catch (error) {
         console.error('Delete error:', error);
         showMessage('Network error. Please try again.', 'error');
+      }
+    }
+
+    // Image Viewer Functions
+    let viewerImages = [];
+    let currentViewerIndex = 0;
+    let touchStartX = 0;
+    let touchEndX = 0;
+
+    function openImageViewer(images) {
+      viewerImages = images;
+      currentViewerIndex = 0;
+      showViewerImage(0);
+      document.getElementById('imageViewerModal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+      
+      // Add touch event listeners for swipe
+      const mainImage = document.getElementById('viewerMainImage');
+      mainImage.addEventListener('touchstart', handleTouchStart, { passive: true });
+      mainImage.addEventListener('touchend', handleTouchEnd, { passive: true });
+    }
+
+    function closeImageViewer(event) {
+      if (event && event.target !== event.currentTarget && !event.target.classList.contains('viewer-close')) {
+        return;
+      }
+      
+      document.getElementById('imageViewerModal').classList.remove('active');
+      document.body.style.overflow = '';
+      
+      // Remove touch listeners
+      const mainImage = document.getElementById('viewerMainImage');
+      mainImage.removeEventListener('touchstart', handleTouchStart);
+      mainImage.removeEventListener('touchend', handleTouchEnd);
+    }
+
+    function showViewerImage(index) {
+      currentViewerIndex = index;
+      const mainImage = document.getElementById('viewerMainImage');
+      mainImage.src = viewerImages[index];
+      
+      // Update counter
+      document.getElementById('viewerCounter').textContent = `${index + 1} / ${viewerImages.length}`;
+      
+      // Update thumbnails
+      const thumbnailsContainer = document.getElementById('viewerThumbnails');
+      thumbnailsContainer.innerHTML = viewerImages.map((url, i) => `
+        <img src="${url}" 
+             class="viewer-thumbnail ${i === index ? 'active' : ''}" 
+             onclick="showViewerImage(${i})" 
+             alt="Thumbnail ${i + 1}">
+      `).join('');
+      
+      // Hide nav buttons if only one image
+      const prevBtn = document.querySelector('.viewer-nav-prev');
+      const nextBtn = document.querySelector('.viewer-nav-next');
+      if (viewerImages.length <= 1) {
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+      } else {
+        prevBtn.style.display = 'flex';
+        nextBtn.style.display = 'flex';
+      }
+    }
+
+    function viewerPrevImage(event) {
+      event.stopPropagation();
+      const newIndex = currentViewerIndex > 0 ? currentViewerIndex - 1 : viewerImages.length - 1;
+      showViewerImage(newIndex);
+    }
+
+    function viewerNextImage(event) {
+      event.stopPropagation();
+      const newIndex = currentViewerIndex < viewerImages.length - 1 ? currentViewerIndex + 1 : 0;
+      showViewerImage(newIndex);
+    }
+
+    function handleTouchStart(e) {
+      touchStartX = e.changedTouches[0].screenX;
+    }
+
+    function handleTouchEnd(e) {
+      touchEndX = e.changedTouches[0].screenX;
+      handleSwipe();
+    }
+
+    function handleSwipe() {
+      const swipeThreshold = 50;
+      const diff = touchStartX - touchEndX;
+      
+      if (Math.abs(diff) > swipeThreshold) {
+        if (diff > 0) {
+          // Swiped left - next image
+          viewerNextImage(new Event('click'));
+        } else {
+          // Swiped right - previous image
+          viewerPrevImage(new Event('click'));
+        }
       }
     }
 
