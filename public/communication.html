@@ -882,6 +882,7 @@
 
     function displayEntries(entries) {
       const list = document.getElementById('entriesList');
+      const currentUser = JSON.parse(localStorage.getItem('user'));
       
       if (entries.length === 0) {
         list.innerHTML = `
@@ -895,6 +896,9 @@
       }
 
       list.innerHTML = entries.map(entry => {
+        // Only show edit/delete/pin buttons if current user created this note
+        const canEdit = currentUser && entry.user_id === currentUser.id;
+        
         const imagesHtml = entry.picture_urls && entry.picture_urls.length > 0 
           ? `<div class="entry-images">
               ${entry.picture_urls.map(url => `
@@ -917,6 +921,7 @@
                 <div class="entry-date">${formatDate(entry.created_at)}</div>
               </div>
               <div class="entry-actions">
+                ${canEdit ? `
                 <button class="btn-icon ${entry.pinned ? 'pinned' : ''}" 
                         onclick="togglePin(${entry.id}, ${entry.pinned})"
                         title="${entry.pinned ? 'Unpin' : 'Pin to top'}">
@@ -924,6 +929,7 @@
                 </button>
                 <button class="btn btn-secondary" onclick="openEditModal(${entry.id})">Edit</button>
                 <button class="btn btn-danger" onclick="deleteEntry(${entry.id})">Delete</button>
+                ` : ''}
               </div>
             </div>
             <div class="category-badge category-${entry.category.toLowerCase()}">${escapeHtml(entry.category)}</div>
