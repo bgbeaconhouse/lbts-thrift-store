@@ -20,48 +20,38 @@
       background: #f5f7fa;
       min-height: 100vh;
     }
-
-    /* Header */
-   .header {
-  background: white;
-  color: #003B5C;
+/* Header */
+.header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
   padding: 20px;
   box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  border-bottom: 3px solid #00a0e0;
-
-}
-    .header-content {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .header-logo {
-  height: 50px;
-  width: auto;
-  margin-right: 15px;
 }
 
-.header-left {
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
   display: flex;
+  justify-content: space-between;
   align-items: center;
 }
 
-    .header h1 {
-      color: #003B5C;
-      font-size: 24px;
-    }
+.header h1 {
+  font-size: 24px;
+}
 
-    .back-link {
-     color: #00a0e0;
-      text-decoration: none;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
+.back-link {
+  color: white;
+  text-decoration: none;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
 
     .back-link:hover {
       text-decoration: underline;
@@ -690,30 +680,6 @@
 
     @media (max-width: 768px) {
       
-        .header {
-    padding: 15px;
-  }
-
-  .header-content {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .header-left {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .header-logo {
-    height: 40px;
-    margin-right: 10px;
-  }
-
-  .back-link {
-    align-self: flex-start;
-    font-size: 13px;
-  }
       
       .header h1 {
         font-size: 20px;
@@ -769,12 +735,7 @@
   </div>
 <div class="header">
   <div class="header-content">
-    <div class="header-left">
-      <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" 
-           alt="Beacon House Logo" 
-           class="header-logo">
-      <h1>Communication Log</h1>
-    </div>
+    <h1>💬 Communication Log</h1>
     <a href="/dashboard.html" class="back-link">← Back to Dashboard</a>
   </div>
 </div>
