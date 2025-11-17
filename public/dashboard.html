@@ -20,13 +20,12 @@
     }
 
     /* Header */
-    .header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-      padding: 20px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-
+ .header {
+  background: linear-gradient(135deg, #00a0e0 0%, #1a2f5c 100%);
+  color: white;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
     .header-content {
       max-width: 1200px;
       margin: 0 auto;
@@ -35,9 +34,18 @@
       align-items: center;
     }
 
-    .header h1 {
-      font-size: 24px;
-    }
+ .header h1 {
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-logo {
+  width: 60px;
+  height: 60px;
+  object-fit: contain;
+}
 
     .header-right {
       display: flex;
@@ -125,7 +133,7 @@
       font-weight: 600;
     }
 
-    .role-admin { background: #667eea; color: white; }
+    .role-admin { background: #00a0e0; color: white; }
     .role-manager { background: #48bb78; color: white; }
     .role-employee { background: #ed8936; color: white; }
 
@@ -233,7 +241,7 @@
   <!-- Header -->
   <div class="header">
     <div class="header-content">
-      <h1>🏪 Thrift Shift</h1>
+    <h1><img src="/images/BeaconLogoNoText.png" alt="Beacon House Logo" class="header-logo"> Thrift Shift</h1>
       <div class="header-right">
         <div class="user-badge" id="userDisplay">
           <span id="userName"></span>
