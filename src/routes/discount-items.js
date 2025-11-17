@@ -48,19 +48,26 @@ const upload = multer({
 // All routes require authentication
 router.use(authenticateToken);
 
-// GET /api/discount-items - Get all discount items
+// GET /api/discount-items - Get all discount items with approval info and submitter names
 router.get('/', async (req, res) => {
   try {
     const db = req.app.locals.db;
     
     const result = await db.query(
       `SELECT 
-        id, picture_url, price, notes, date_added,
-        created_by, created_at,
-        CURRENT_DATE - date_added as days_in_discount
-      FROM discount_items 
-      WHERE deleted_at IS NULL 
-      ORDER BY date_added DESC`
+        di.id, di.picture_url, di.price, di.notes, di.date_added,
+        di.created_by, di.created_at,
+        di.approval_status, di.approval_note, di.approved_by, di.approved_at,
+        CURRENT_DATE - di.date_added as days_in_discount,
+        u_created.username as created_by_username,
+        u_approved.username as approved_by_username
+      FROM discount_items di
+      LEFT JOIN users u_created ON di.created_by = u_created.id
+      LEFT JOIN users u_approved ON di.approved_by = u_approved.id
+      WHERE di.deleted_at IS NULL 
+      ORDER BY 
+        CASE WHEN di.approval_status = 'pending' THEN 0 ELSE 1 END,
+        di.date_added DESC`
     );
 
     res.json({ items: result.rows });
@@ -79,11 +86,16 @@ router.get('/:id', async (req, res) => {
     
     const result = await db.query(
       `SELECT 
-        id, picture_url, price, notes, date_added,
-        created_by, created_at,
-        CURRENT_DATE - date_added as days_in_discount
-      FROM discount_items 
-      WHERE id = $1 AND deleted_at IS NULL`,
+        di.id, di.picture_url, di.price, di.notes, di.date_added,
+        di.created_by, di.created_at,
+        di.approval_status, di.approval_note, di.approved_by, di.approved_at,
+        CURRENT_DATE - di.date_added as days_in_discount,
+        u_created.username as created_by_username,
+        u_approved.username as approved_by_username
+      FROM discount_items di
+      LEFT JOIN users u_created ON di.created_by = u_created.id
+      LEFT JOIN users u_approved ON di.approved_by = u_approved.id
+      WHERE di.id = $1 AND di.deleted_at IS NULL`,
       [id]
     );
 
@@ -98,7 +110,7 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// POST /api/discount-items - Create new discount item
+// POST /api/discount-items - Create new discount item (starts as pending)
 router.post('/', upload.single('picture'), async (req, res) => {
   const { price, notes } = req.body;
 
@@ -114,14 +126,14 @@ router.post('/', upload.single('picture'), async (req, res) => {
     const pictureUrl = req.file ? `/uploads/discount/${req.file.filename}` : null;
 
     const result = await db.query(
-      `INSERT INTO discount_items (picture_url, price, notes, date_added, created_by)
-       VALUES ($1, $2, $3, CURRENT_DATE, $4)
-       RETURNING id, picture_url, price, notes, date_added, created_by, created_at`,
+      `INSERT INTO discount_items (picture_url, price, notes, date_added, created_by, approval_status)
+       VALUES ($1, $2, $3, CURRENT_DATE, $4, 'pending')
+       RETURNING id, picture_url, price, notes, date_added, created_by, created_at, approval_status`,
       [pictureUrl, price, notes || null, req.user.id]
     );
 
     res.status(201).json({ 
-      message: 'Discount item created successfully',
+      message: 'Furniture approval request created successfully',
       item: result.rows[0] 
     });
   } catch (error) {
@@ -134,11 +146,11 @@ router.post('/', upload.single('picture'), async (req, res) => {
       });
     }
     
-    res.status(500).json({ error: 'Failed to create discount item' });
+    res.status(500).json({ error: 'Failed to create furniture approval request' });
   }
 });
 
-// PUT /api/discount-items/:id - Update discount item
+// PUT /api/discount-items/:id - Update discount item (only if pending)
 router.put('/:id', upload.single('picture'), async (req, res) => {
   const { id } = req.params;
   const { price, notes } = req.body;
@@ -151,9 +163,9 @@ router.put('/:id', upload.single('picture'), async (req, res) => {
   try {
     const db = req.app.locals.db;
 
-    // Get existing item to check if picture needs to be deleted
+    // Get existing item to check status and picture
     const existingResult = await db.query(
-      'SELECT picture_url FROM discount_items WHERE id = $1 AND deleted_at IS NULL',
+      'SELECT picture_url, approval_status FROM discount_items WHERE id = $1 AND deleted_at IS NULL',
       [id]
     );
 
@@ -161,7 +173,14 @@ router.put('/:id', upload.single('picture'), async (req, res) => {
       return res.status(404).json({ error: 'Item not found' });
     }
 
-    const oldPictureUrl = existingResult.rows[0].picture_url;
+    const existingItem = existingResult.rows[0];
+
+    // Check if item is approved (locked from editing)
+    if (existingItem.approval_status === 'approved') {
+      return res.status(403).json({ error: 'Cannot edit approved items' });
+    }
+
+    const oldPictureUrl = existingItem.picture_url;
 
     // Determine picture URL
     let pictureUrl = oldPictureUrl;
@@ -184,12 +203,12 @@ router.put('/:id', upload.single('picture'), async (req, res) => {
       `UPDATE discount_items 
        SET picture_url = $1, price = $2, notes = $3
        WHERE id = $4 AND deleted_at IS NULL
-       RETURNING id, picture_url, price, notes, date_added, created_by, created_at`,
+       RETURNING id, picture_url, price, notes, date_added, created_by, created_at, approval_status`,
       [pictureUrl, price, notes || null, id]
     );
 
     res.json({ 
-      message: 'Discount item updated successfully',
+      message: 'Item updated successfully',
       item: result.rows[0] 
     });
   } catch (error) {
@@ -202,7 +221,7 @@ router.put('/:id', upload.single('picture'), async (req, res) => {
       });
     }
     
-    res.status(500).json({ error: 'Failed to update discount item' });
+    res.status(500).json({ error: 'Failed to update item' });
   }
 });
 
@@ -225,10 +244,60 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Item not found' });
     }
 
-    res.json({ message: 'Discount item deleted successfully' });
+    res.json({ message: 'Item deleted successfully' });
   } catch (error) {
     console.error('Delete discount item error:', error);
-    res.status(500).json({ error: 'Failed to delete discount item' });
+    res.status(500).json({ error: 'Failed to delete item' });
+  }
+});
+
+// POST /api/discount-items/:id/approve - Approve a furniture item (Admin only)
+router.post('/:id/approve', async (req, res) => {
+  const { id } = req.params;
+  const { approval_note } = req.body;
+
+  // Check if user is admin
+  if (req.user.role !== 'Admin') {
+    return res.status(403).json({ error: 'Only admins can approve items' });
+  }
+
+  try {
+    const db = req.app.locals.db;
+
+    // Check if item exists and is pending
+    const checkResult = await db.query(
+      'SELECT id, approval_status FROM discount_items WHERE id = $1 AND deleted_at IS NULL',
+      [id]
+    );
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    if (checkResult.rows[0].approval_status === 'approved') {
+      return res.status(400).json({ error: 'Item is already approved' });
+    }
+
+    // Approve the item
+    const result = await db.query(
+      `UPDATE discount_items 
+       SET approval_status = 'approved',
+           approval_note = $1,
+           approved_by = $2,
+           approved_at = NOW()
+       WHERE id = $3 AND deleted_at IS NULL
+       RETURNING id, picture_url, price, notes, date_added, created_by, created_at,
+                 approval_status, approval_note, approved_by, approved_at`,
+      [approval_note || null, req.user.id, id]
+    );
+
+    res.json({ 
+      message: 'Item approved successfully',
+      item: result.rows[0] 
+    });
+  } catch (error) {
+    console.error('Approve item error:', error);
+    res.status(500).json({ error: 'Failed to approve item' });
   }
 });
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LBTS - 75% Off Section</title>
+  <title>LBTS - Furniture Approvals</title>
   <style>
     * {
       margin: 0;
@@ -19,7 +19,7 @@
 
     /* Header */
     .header {
-      background: linear-gradient(135deg, #00a0e0 0%, #1a2f5c 100%);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       padding: 20px;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -35,6 +35,58 @@
 
     .header h1 {
       font-size: 24px;
+    }
+
+    /* Status Badge Styles */
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-approved {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    /* Filter Tabs */
+    .filter-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 0;
+    }
+
+    .filter-tab {
+      padding: 12px 20px;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      color: #718096;
+      transition: all 0.2s;
+      margin-bottom: -2px;
+    }
+
+    .filter-tab:hover {
+      color: #4a5568;
+    }
+
+    .filter-tab.active {
+      color: #667eea;
+      border-bottom-color: #667eea;
     }
 
     .back-link {
@@ -76,12 +128,12 @@
     }
 
     .btn-primary {
-      background: #00a0e0;
+      background: #667eea;
       color: white;
     }
 
     .btn-primary:hover {
-      background: #00a0e0;
+      background: #5568d3;
       transform: translateY(-2px);
     }
 
@@ -216,6 +268,65 @@
       line-height: 1.5;
     }
 
+    .approval-section {
+      background: #f7fafc;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      border-left: 4px solid #667eea;
+    }
+
+    .approval-section h4 {
+      color: #2d3748;
+      font-size: 13px;
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+
+    .approval-note {
+      color: #4a5568;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+
+    .approval-meta {
+      color: #718096;
+      font-size: 12px;
+    }
+
+    .approval-form {
+      margin-bottom: 15px;
+    }
+
+    .approval-form textarea {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #e2e8f0;
+      border-radius: 5px;
+      font-size: 13px;
+      font-family: inherit;
+      resize: vertical;
+      min-height: 60px;
+      margin-bottom: 10px;
+    }
+
+    .approval-form textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .btn-approve {
+      background: #48bb78;
+      color: white;
+      padding: 10px 20px;
+      font-size: 13px;
+    }
+
+    .btn-approve:hover {
+      background: #38a169;
+    }
+
     .item-actions {
       display: flex;
       gap: 8px;
@@ -297,7 +408,7 @@
     .form-group input:focus,
     .form-group textarea:focus {
       outline: none;
-      border-color: #00a0e0;
+      border-color: #667eea;
     }
 
     .form-group textarea {
@@ -392,7 +503,7 @@
   <!-- Header -->
   <div class="header">
     <div class="header-content">
-      <h1>💰 75% Off Section</h1>
+      <h1>🪑 Furniture Approvals</h1>
       <a href="/dashboard.html" class="back-link">← Back to Dashboard</a>
     </div>
   </div>
@@ -403,8 +514,15 @@
 
     <!-- Top Bar -->
     <div class="top-bar">
-      <h2 style="color: #2d3748;">Discount Inventory</h2>
-      <button class="btn btn-primary" onclick="openCreateModal()">+ Add Item</button>
+      <h2 style="color: #2d3748;">Furniture Items</h2>
+      <button class="btn btn-primary" onclick="openCreateModal()">+ Submit Item</button>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="filter-tabs">
+      <button class="filter-tab active" onclick="filterItems('all')">All Items</button>
+      <button class="filter-tab" onclick="filterItems('pending')">Pending</button>
+      <button class="filter-tab" onclick="filterItems('approved')">Approved</button>
     </div>
 
     <!-- Items Grid -->
@@ -456,6 +574,9 @@
     let currentEditItem = null;
     let isSubmitting = false; // Prevent double submissions
     let isUploading = false; // Track image upload status
+    let allItems = []; // Store all items for filtering
+    let currentFilter = 'all'; // Track current filter
+    let currentUser = null; // Store current user info
 
     // Check authentication
     window.onload = function() {
@@ -464,6 +585,15 @@
         window.location.href = '/';
         return;
       }
+      
+      // Decode JWT to get user info
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        currentUser = payload;
+      } catch (e) {
+        console.error('Failed to decode token:', e);
+      }
+      
       loadItems();
     };
 
@@ -480,55 +610,159 @@
         if (!response.ok) throw new Error('Failed to load items');
 
         const data = await response.json();
-        displayItems(data.items);
+        allItems = data.items;
+        displayItems(allItems);
       } catch (error) {
         console.error('Load items error:', error);
         showMessage('Failed to load items', 'error');
       }
     }
 
+    function filterItems(filter) {
+      currentFilter = filter;
+      
+      // Update active tab
+      document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      // Filter items
+      let filtered = allItems;
+      if (filter === 'pending') {
+        filtered = allItems.filter(item => item.approval_status === 'pending');
+      } else if (filter === 'approved') {
+        filtered = allItems.filter(item => item.approval_status === 'approved');
+      }
+      
+      displayItems(filtered);
+    }
+
     function displayItems(items) {
       const grid = document.getElementById('itemsGrid');
+      const isAdmin = currentUser && currentUser.role === 'Admin';
       
       if (items.length === 0) {
         grid.innerHTML = `
           <div class="empty-state" style="grid-column: 1/-1;">
-            <div class="empty-state-icon">💰</div>
+            <div class="empty-state-icon">🪑</div>
             <h3>No Items Yet</h3>
-            <p>Click "Add Item" to create your first 75% off item</p>
+            <p>Click "Submit Item" to create your first furniture approval request</p>
           </div>
         `;
         return;
       }
 
-      grid.innerHTML = items.map(item => `
-        <div class="item-card">
-          <div class="item-image">
-            ${item.picture_url 
-              ? `<img src="${item.picture_url}" alt="Item">` 
-              : '<span>📦</span>'}
-          </div>
-          <div class="item-content">
-            <div class="item-price">$${parseFloat(item.price).toFixed(2)}</div>
-            <div class="item-meta">
-              Added: ${new Date(item.date_added).toLocaleDateString()}
-              ${item.days_in_discount !== null ? ` • ${item.days_in_discount} day${item.days_in_discount !== 1 ? 's' : ''} in section` : ''}
+      grid.innerHTML = items.map(item => {
+        const isApproved = item.approval_status === 'approved';
+        const isPending = item.approval_status === 'pending';
+        
+        // Build approval section HTML
+        let approvalHtml = '';
+        
+        if (isApproved && item.approval_note) {
+          approvalHtml = `
+            <div class="approval-section">
+              <h4>✓ Approval Note</h4>
+              <div class="approval-note">${escapeHtml(item.approval_note)}</div>
+              <div class="approval-meta">
+                Approved by ${escapeHtml(item.approved_by_username || 'Admin')} on ${new Date(item.approved_at).toLocaleDateString()}
+              </div>
             </div>
-            ${item.notes ? `<div class="item-notes">${escapeHtml(item.notes)}</div>` : ''}
+          `;
+        } else if (isPending && isAdmin) {
+          approvalHtml = `
+            <div class="approval-form">
+              <h4 style="color: #2d3748; font-size: 13px; margin-bottom: 8px;">Admin Approval</h4>
+              <textarea 
+                id="approval-note-${item.id}" 
+                placeholder="Optional approval note (e.g., pricing, placement instructions)"
+              ></textarea>
+              <button class="btn btn-approve" onclick="approveItem(${item.id})">
+                ✓ Approve Item
+              </button>
+            </div>
+          `;
+        }
+        
+        // Build actions HTML - only show edit/delete for pending items
+        let actionsHtml = '';
+        if (isPending) {
+          actionsHtml = `
             <div class="item-actions">
               <button class="btn btn-secondary" onclick="openEditModal(${item.id})">Edit</button>
               <button class="btn btn-danger" onclick="deleteItem(${item.id})">Delete</button>
             </div>
+          `;
+        }
+        
+        return `
+          <div class="item-card" data-status="${item.approval_status}">
+            <div class="item-image">
+              ${item.picture_url 
+                ? `<img src="${item.picture_url}" alt="Item">` 
+                : '<span>📦</span>'}
+            </div>
+            <div class="item-content">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div class="item-price">$${parseFloat(item.price).toFixed(2)}</div>
+                <span class="status-badge status-${item.approval_status}">
+                  ${item.approval_status === 'pending' ? '⏳ Pending' : '✓ Approved'}
+                </span>
+              </div>
+              <div class="item-meta">
+                Submitted by: ${escapeHtml(item.created_by_username || 'Unknown')}
+                <br>
+                Added: ${new Date(item.date_added).toLocaleDateString()}
+                ${item.days_in_discount !== null ? ` • ${item.days_in_discount} day${item.days_in_discount !== 1 ? 's' : ''} ago` : ''}
+              </div>
+              ${item.notes ? `<div class="item-notes">${escapeHtml(item.notes)}</div>` : ''}
+              ${approvalHtml}
+              ${actionsHtml}
+            </div>
           </div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
+    }
+
+    async function approveItem(itemId) {
+      if (!confirm('Are you sure you want to approve this item?')) {
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      const noteField = document.getElementById(`approval-note-${itemId}`);
+      const approvalNote = noteField ? noteField.value.trim() : '';
+
+      try {
+        const response = await fetch(`/api/discount-items/${itemId}/approve`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ approval_note: approvalNote || null })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showMessage(data.message, 'success');
+          loadItems();
+        } else {
+          showMessage(data.error || 'Approval failed', 'error');
+        }
+      } catch (error) {
+        console.error('Approve item error:', error);
+        showMessage('Network error. Please try again.', 'error');
+      }
     }
 
     function openCreateModal() {
       currentEditId = null;
       currentEditItem = null;
-      document.getElementById('modalTitle').textContent = 'Add Item';
-      document.getElementById('submitBtn').textContent = 'Add Item';
+      document.getElementById('modalTitle').textContent = 'Submit Furniture Item';
+      document.getElementById('submitBtn').textContent = 'Submit Item';
       document.getElementById('itemForm').reset();
       document.getElementById('itemId').value = '';
       document.getElementById('imagePreview').classList.remove('show');
@@ -549,10 +783,17 @@
 
         const data = await response.json();
         const item = data.item;
+        
+        // Check if item is approved (can't edit approved items)
+        if (item.approval_status === 'approved') {
+          showMessage('Cannot edit approved items', 'error');
+          return;
+        }
+        
         currentEditItem = item;
 
         currentEditId = itemId;
-        document.getElementById('modalTitle').textContent = 'Edit Item';
+        document.getElementById('modalTitle').textContent = 'Edit Furniture Item';
         document.getElementById('submitBtn').textContent = 'Update Item';
         document.getElementById('itemId').value = item.id;
         document.getElementById('price').value = item.price;
