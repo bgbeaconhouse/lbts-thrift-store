@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LBTS - Communication Log</title>
+  <!-- Urgent Alerts CSS -->
+  <link rel="stylesheet" href="/css/urgent-alerts.css">
   <!-- Image Compression Library -->
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.0/dist/browser-image-compression.js"></script>
   <style>
@@ -238,9 +240,7 @@
 
     .category-general { background: #e2e8f0; color: #2d3748; }
     .category-urgent { background: #fed7d7; color: #742a2a; }
-    .category-reminder { background: #feebc8; color: #7c2d12; }
-    .category-announcement { background: #c6f6d5; color: #22543d; }
-    .category-maintenance { background: #e0e7ff; color: #3730a3; }
+    .category-important { background: #feebc8; color: #7c2d12; }
 
     .entry-note {
       color: #2d3748;
@@ -710,6 +710,25 @@
   </style>
 </head>
 <body>
+  <!-- Urgent Note Alert Modal -->
+  <div id="urgentNoteAlert" class="urgent-alert-overlay" style="display: none;">
+    <div class="urgent-alert-modal">
+      <div class="urgent-alert-header">
+        <h2>⚠️ URGENT NOTICE</h2>
+      </div>
+      <div class="urgent-alert-body">
+        <p id="urgentNoteContent"></p>
+        <p class="urgent-note-meta">
+          <strong>From:</strong> <span id="urgentNoteAuthor"></span><br>
+          <strong>Posted:</strong> <span id="urgentNoteTime"></span>
+        </p>
+      </div>
+      <button id="dismissUrgentNote" class="urgent-dismiss-btn">
+        I Understand - Dismiss
+      </button>
+    </div>
+  </div>
+
   <div class="header">
     <div class="header-content">
       <h1>💬 Communication Log</h1>
@@ -722,10 +741,8 @@
       <div class="filter-group">
         <button class="filter-btn active" data-category="all" onclick="filterByCategory('all')">All</button>
         <button class="filter-btn" data-category="General" onclick="filterByCategory('General')">General</button>
-        <button class="filter-btn" data-category="Reminder" onclick="filterByCategory('Reminder')">Reminder</button>
-        <button class="filter-btn" data-category="Announcement" onclick="filterByCategory('Announcement')">Announcement</button>
-        <button class="filter-btn" data-category="Maintenance" onclick="filterByCategory('Maintenance')">Maintenance</button>
         <button class="filter-btn" id="urgentFilterBtn" data-category="Urgent" onclick="filterByCategory('Urgent')">Urgent</button>
+        <button class="filter-btn" data-category="Important" onclick="filterByCategory('Important')">Important</button>
       </div>
       <button class="btn btn-primary" onclick="openCreateModal()">+ Add Note</button>
     </div>
@@ -751,10 +768,8 @@
           <label for="category">Category</label>
           <select id="category" required>
             <option value="General">General</option>
-            <option value="Reminder">Reminder</option>
-            <option value="Announcement">Announcement</option>
-            <option value="Maintenance">Maintenance</option>
             <option value="Urgent" id="urgentCategoryOption">Urgent (Admin Only)</option>
+            <option value="Important">Important</option>
           </select>
         </div>
 
@@ -1451,5 +1466,8 @@
       return div.innerHTML;
     }
   </script>
+
+  <!-- Urgent Alerts System -->
+  <script src="/js/urgent-alerts.js"></script>
 </body>
 </html>
