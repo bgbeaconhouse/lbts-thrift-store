@@ -885,9 +885,34 @@
               <label for="donation_description">Donation Description</label>
               <textarea id="donation_description"></textarea>
             </div>
+
+            <!-- Donation Terms -->
+            <div class="terms-box">
+              <h4>📋 Donation Acknowledgment</h4>
+              <p>Thank you for your generous donation. No one has ever been turned away from the Beacon House Association of San Pedro due to their inability to pay, and because of friends like you, this policy will continue in the future.</p>
+              <p style="margin-top: 10px;">No goods or services will be transferred to you in connection with this donation.</p>
+              <p style="margin-top: 10px;"><strong>For your records our tax ID is #23-7376148</strong></p>
+            </div>
           </div>
 
-          <!-- Waiver doesn't need extra fields beyond customer info -->
+          <!-- Waiver-specific fields -->
+          <div id="waiverFields" style="display: none;">
+            <!-- Waiver Terms -->
+            <div class="terms-box">
+              <h4>⚠️ Release of Liability Form for Loading Purchased Furniture</h4>
+              <p style="margin-bottom: 15px;">By signing this form, you acknowledge and agree to the following:</p>
+              <ul style="margin-left: 20px; line-height: 1.8;">
+                <li><strong>Voluntary Participation:</strong> The loading of furniture into your vehicle is a voluntary service.</li>
+                <li><strong>Release of Liability:</strong> You release The Beacon House Association of San Pedro from any claims related to loss, damage, or injury during the loading process.</li>
+                <li><strong>Assumption of Risks:</strong> You voluntarily assume all risks associated with loading furniture.</li>
+                <li><strong>Care and Supervision:</strong> You are responsible for ensuring your vehicle is suitable for loading furniture.</li>
+                <li><strong>Indemnification:</strong> You agree to hold harmless The Beacon House Association from any claims arising from the loading service.</li>
+                <li><strong>Vehicle Inspection:</strong> Your vehicle was inspected before loading to ensure it is safe and suitable.</li>
+                <li><strong>Personal Property:</strong> You are responsible for any personal belongings left in your vehicle.</li>
+                <li><strong>Compliance:</strong> You agree to follow all instructions provided by staff during the loading process.</li>
+              </ul>
+            </div>
+          </div>
 
           <!-- Customer Signature (all forms) -->
           <div id="signatureSection" class="form-group">
@@ -1139,6 +1164,7 @@
       document.getElementById('pickupFields').style.display = formType === 'pickup' ? 'block' : 'none';
       document.getElementById('deliveryFields').style.display = formType === 'delivery' ? 'block' : 'none';
       document.getElementById('donationFields').style.display = formType === 'donation' ? 'block' : 'none';
+      document.getElementById('waiverFields').style.display = formType === 'waiver' ? 'block' : 'none';
       document.getElementById('managerSignatureSection').style.display = formType === 'waiver' ? 'block' : 'none';
       
       // Clear image previews

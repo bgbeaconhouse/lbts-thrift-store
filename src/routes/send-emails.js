@@ -204,73 +204,7 @@ router.post('/send', async (req, res) => {
           from: process.env.SMTP_FROM || 'Beacon House Long Beach Thrift Store <noreply@lbts.local>',
           to: form.email,
           subject: 'Beacon House - Delivery Receipt',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-<div style="text-align:center;padding:20px;background:#ffffff;color:#2d3748">
-  <!--[if !mso]><!-->
-  <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" 
-       alt="Beacon House Logo" 
-       width="200" 
-       style="display:block;width:200px;max-width:100%;height:auto;margin:0 auto 10px">
-  <!--<![endif]-->
-  <!--[if mso]>
-  <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
-  <h1 style="margin:0 0 5px 0;color:#2d3748;font-size:28px;font-family:Arial,sans-serif">Beacon House</h1>
-  <p style="margin:0;color:#2d3748;font-size:18px;font-family:Arial,sans-serif">Long Beach Thrift Store</p>
-  </td></tr></table>
-  <![endif]-->
-  <h2 style="margin:10px 0 0;font-weight:400;color:#2d3748">Delivery Receipt</h2>
-</div>
-              
-              <div style="padding: 30px; background: white;">
-                <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
-                  Dear ${form.customer_name},
-                </p>
-                
-                <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
-                  Thank you for your purchase! This email confirms your delivery order.
-                </p>
-                
-                <div style="background: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                  <h3 style="color: #2d3748; margin-top: 0;">Delivery Details:</h3>
-                  <p style="color: #4a5568; line-height: 1.8; margin: 5px 0;">
-                    <strong>Name:</strong> ${form.customer_name}<br>
-                    <strong>Phone:</strong> ${form.phone}<br>
-                    <strong>Date:</strong> ${new Date(form.date).toLocaleDateString()}<br>
-                    <strong>Delivery Cost:</strong> $${parseFloat(form.delivery_cost).toFixed(2)}
-                    ${form.delivery_date ? `<br><strong>Scheduled Delivery:</strong> ${form.delivery_date}` : ''}
-                  </p>
-                  ${form.items_description ? `
-                    <p style="color: #4a5568; line-height: 1.8; margin-top: 15px;">
-                      <strong>Items:</strong><br>
-                      ${form.items_description}
-                    </p>
-                  ` : ''}
-                </div>
-                
-                <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
-                  <h3 style="color: #856404; margin-top: 0;">⚠️ Important Delivery Terms</h3>
-                  <p style="color: #856404; line-height: 1.8; margin: 0;">
-                    By signing below I hereby acknowledge that cost of delivery is solely for the delivery of the item(s) to the residence indicated at the time of purchase. The Beacon House Thrift Shop is not responsible for moving said item(s) into said residence due to issues with liability. The item(s) will be placed in the driveway or the front yard.
-                  </p>
-                </div>
-                
-                <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-top: 30px;">
-                  If you have any questions, please contact us at <strong>(562) 343-7804</strong>.
-                </p>
-                
-                <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 30px;">
-                  Thank you,<br>
-                  <strong>Beacon House Long Beach Thrift Store</strong>
-                </p>
-              </div>
-              
-              <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
-                <p style="margin: 0;">Beacon House Long Beach Thrift Store</p>
-                <p style="margin: 5px 0;">Phone: (562) 343-7804</p>
-              </div>
-            </div>
-          `
+          html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto"><div style="text-align:center;padding:20px;background:#667eea;color:white"><img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" alt="Beacon House Logo" style="max-width:120px;height:auto;margin-bottom:10px"><h2 style="margin:10px 0 0;font-weight:400">Pick-Up Receipt</h2></div><div style="padding:30px;background:white"><p style="color:#2d3748;font-size:16px;line-height:1.6">Dear ${form.customer_name},</p><p style="color:#2d3748;font-size:16px;line-height:1.6">Thank you for your purchase! <strong>You have 48 hours from when you purchased the item to pick it up.</strong></p><div style="background:#f7fafc;padding:20px;border-radius:8px;margin:20px 0"><h3 style="color:#2d3748;margin-top:0">Purchase Details:</h3><p style="color:#4a5568;line-height:1.8;margin:5px 0"><strong>Name:</strong> ${form.customer_name}<br><strong>Phone:</strong> ${form.phone}<br><strong>Date:</strong> ${new Date(form.date).toLocaleDateString()}</p>${form.items_description ? `<p style="color:#4a5568;line-height:1.8;margin-top:15px"><strong>Items:</strong><br>${form.items_description}</p>` : ''}</div><div style="background:#fff3cd;border:2px solid #ffc107;border-radius:8px;padding:20px;margin:20px 0"><h3 style="color:#856404;margin-top:0">⚠️ Important Terms & Conditions</h3><p style="color:#856404;line-height:1.8;margin-bottom:15px">You have <strong>48 hours upon purchase</strong> to pick your item up. After 48 hours the item will be placed back on the sales floor and <strong>no refunds will be issued</strong>.</p><p style="color:#856404;line-height:1.8;margin-bottom:15px">We will gladly assist you in loading your items. Please be aware that it is the customer's responsibility to ensure items are properly loaded and secured. We are not responsible for any damage caused by loading or failure to secure items.</p><p style="color:#856404;line-height:1.8;margin:0">Your signature acknowledges that you have read and understand the terms and conditions covered above.</p></div><p style="color:#4a5568;font-size:14px;line-height:1.6;margin-top:30px">If you have any questions, please contact us at <strong>(562) 343-7804</strong>.</p><p style="color:#2d3748;font-size:16px;line-height:1.6;margin-top:30px">Thank you,<br><strong>LBTS Thrift Store</strong></p></div><div style="padding:20px;background:#f7fafc;text-align:center;color:#718096;font-size:12px"><p style="margin:0">LBTS Thrift Store</p><p style="margin:5px 0">Phone: (562) 343-7804</p></div></div>`
         });
 
         // Mark as emailed
@@ -303,20 +237,9 @@ router.post('/send', async (req, res) => {
           subject: 'Donation Receipt - The Beacon House Association',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-<div style="text-align:center;padding:20px;background:#ffffff;color:#2d3748">
-  <!--[if !mso]><!-->
-  <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" 
-       alt="Beacon House Logo" 
-       width="200" 
-       style="display:block;width:200px;max-width:100%;height:auto;margin:0 auto 10px">
-  <!--<![endif]-->
-  <!--[if mso]>
-  <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
-  <h1 style="margin:0 0 5px 0;color:#2d3748;font-size:28px;font-family:Arial,sans-serif">Beacon House</h1>
-  <p style="margin:0;color:#2d3748;font-size:18px;font-family:Arial,sans-serif">Long Beach Thrift Store</p>
-  </td></tr></table>
-  <![endif]-->
-  <h2 style="margin:10px 0 0;font-weight:400;color:#2d3748">Donation Receipt</h2>
+             <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
+  <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" alt="Beacon House Logo" style="max-width: 120px; height: auto; margin-bottom: 10px;">
+  <h2 style="margin: 10px 0 0 0; font-weight: normal;">Donation Receipt</h2>
 </div>
               <div style="padding: 30px; background: white;">
                 <h2 style="color: #2d3748; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
@@ -391,20 +314,9 @@ router.post('/send', async (req, res) => {
           subject: 'Beacon House - Release of Liability Form',
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-<div style="text-align:center;padding:20px;background:#ffffff;color:#2d3748">
-  <!--[if !mso]><!-->
-  <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" 
-       alt="Beacon House Logo" 
-       width="200" 
-       style="display:block;width:200px;max-width:100%;height:auto;margin:0 auto 10px">
-  <!--<![endif]-->
-  <!--[if mso]>
-  <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
-  <h1 style="margin:0 0 5px 0;color:#2d3748;font-size:28px;font-family:Arial,sans-serif">Beacon House</h1>
-  <p style="margin:0;color:#2d3748;font-size:18px;font-family:Arial,sans-serif">Long Beach Thrift Store</p>
-  </td></tr></table>
-  <![endif]-->
-  <h2 style="margin:10px 0 0;font-weight:400;color:#2d3748">Waiver Receipt</h2>
+             <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
+  <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" alt="Beacon House Logo" style="max-width: 120px; height: auto; margin-bottom: 10px;">
+  <h2 style="margin: 10px 0 0 0; font-weight: normal;">Waiver Receipt</h2>
 </div>
               <div style="padding: 30px; background: white;">
                 <h2 style="color: #2d3748; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
