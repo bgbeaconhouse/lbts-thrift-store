@@ -396,6 +396,7 @@
                 <div class="summary-details">
                     <span><strong>Cash Count:</strong> $<span id="summaryCash">0.00</span></span>
                     <span><strong>Donation Amount:</strong> $<span id="summaryDonation">0.00</span></span>
+                    <span><strong>Total:</strong> $<span id="summaryTotal">0.00</span></span>
                     <span><strong>Images:</strong> <span id="summaryImageCount">0</span></span>
                 </div>
                 <!-- Image Thumbnails in Summary -->
@@ -416,6 +417,10 @@
                     <div class="form-group">
                         <label for="donationAmount">Donation Amount ($):</label>
                         <input type="number" id="donationAmount" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label for="total">Total ($):</label>
+                        <input type="number" id="total" step="0.01" min="0" placeholder="0.00">
                     </div>
                     <button type="submit" class="btn" id="saveReportBtn">Save Report</button>
                 </form>
@@ -524,7 +529,7 @@
             const summary = document.getElementById('reportSummary');
             const form = document.getElementById('reportForm');
 
-            if (report && (report.cash_count || report.donation_amount)) {
+            if (report && (report.cash_count || report.donation_amount || report.total)) {
                 // Report exists and has data - show summary
                 summary.classList.remove('hidden');
                 form.classList.add('hidden');
@@ -533,6 +538,7 @@
                 document.getElementById('summaryDate').textContent = ` - ${new Date(currentDate).toLocaleDateString()}`;
                 document.getElementById('summaryCash').textContent = report.cash_count ? parseFloat(report.cash_count).toFixed(2) : '0.00';
                 document.getElementById('summaryDonation').textContent = report.donation_amount ? parseFloat(report.donation_amount).toFixed(2) : '0.00';
+                document.getElementById('summaryTotal').textContent = report.total ? parseFloat(report.total).toFixed(2) : '0.00';
                 document.getElementById('summaryImageCount').textContent = report.images ? report.images.length : 0;
 
                 // Display image thumbnails in summary (clickable, not deletable)
@@ -541,6 +547,7 @@
                 // Also populate form fields (hidden) for when user clicks edit
                 document.getElementById('cashCount').value = report.cash_count || '';
                 document.getElementById('donationAmount').value = report.donation_amount || '';
+                document.getElementById('total').value = report.total || '';
                 displayImages(report.images || []);
             } else {
                 // No report or empty - show form
@@ -549,6 +556,7 @@
 
                 document.getElementById('cashCount').value = '';
                 document.getElementById('donationAmount').value = '';
+                document.getElementById('total').value = '';
                 displayImages([]);
             }
         }
@@ -642,6 +650,7 @@
             const token = localStorage.getItem('token');
             const cashCount = document.getElementById('cashCount').value;
             const donationAmount = document.getElementById('donationAmount').value;
+            const total = document.getElementById('total').value;
 
             try {
                 const response = await fetch(`${API_BASE}/report`, {
@@ -653,7 +662,8 @@
                     body: JSON.stringify({
                         reportDate: currentDate,
                         cashCount: cashCount || null,
-                        donationAmount: donationAmount || null
+                        donationAmount: donationAmount || null,
+                        total: total || null
                     })
                 });
 

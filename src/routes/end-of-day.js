@@ -169,7 +169,7 @@ router.post('/checklist/toggle', authenticateToken, async (req, res) => {
 
 // Save or update daily report (manager/admin only)
 router.post('/report', authenticateToken, requireManagerOrAdmin, async (req, res) => {
-    const { reportDate, cashCount, donationAmount } = req.body;
+    const { reportDate, cashCount, donationAmount, total } = req.body;
     const userId = req.user.id;
     const db = req.app.locals.db;
 
@@ -188,19 +188,20 @@ router.post('/report', authenticateToken, requireManagerOrAdmin, async (req, res
                 `UPDATE daily_reports
                  SET cash_count = $1,
                      donation_amount = $2,
-                     updated_by = $3,
+                     total = $3,
+                     updated_by = $4,
                      updated_at = CURRENT_TIMESTAMP
-                 WHERE report_date = $4
+                 WHERE report_date = $5
                  RETURNING *`,
-                [cashCount, donationAmount, userId, reportDate]
+                [cashCount, donationAmount, total, userId, reportDate]
             );
         } else {
             // Create new report
             result = await db.query(
-                `INSERT INTO daily_reports (report_date, cash_count, donation_amount, created_by, updated_by)
-                 VALUES ($1, $2, $3, $4, $4)
+                `INSERT INTO daily_reports (report_date, cash_count, donation_amount, total, created_by, updated_by)
+                 VALUES ($1, $2, $3, $4, $5, $5)
                  RETURNING *`,
-                [reportDate, cashCount, donationAmount, userId]
+                [reportDate, cashCount, donationAmount, total, userId]
             );
         }
 
