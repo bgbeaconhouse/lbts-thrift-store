@@ -1,0 +1,251 @@
+const express = require('express');
+const router = express.Router();
+const pool = require('../../db');
+const { authenticateToken } = require('../middleware/auth');
+
+// Middleware to check if user is manager or admin
+const requireManagerOrAdmin = (req, res, next) => {
+    if (req.user.role === 'Manager' || req.user.role === 'Admin') {
+        next();
+    } else {
+        res.status(403).json({ error: 'Access denied. Manager or Admin role required.' });
+    }
+};
+
+// Get end of day data for a specific date (checklist + report)
+router.get('/:date', authenticateToken, async (req, res) => {
+    const { date } = req.params;
+    const userRole = req.user.role;
+
+    try {
+        // Get all checklist template items
+        const templateResult = await pool.query(
+            'SELECT * FROM checklist_templates WHERE is_active = true ORDER BY display_order'
+        );
+
+        // Get or create checklist items for this date
+        let checklistItems = await pool.query(
+            `SELECT dci.*, ct.item_text, ct.display_order, u.username as completed_by_name
+             FROM daily_checklist_items dci
+             JOIN checklist_templates ct ON dci.template_id = ct.id
+             LEFT JOIN users u ON dci.completed_by = u.id
+             WHERE dci.checklist_date = $1
+             ORDER BY ct.display_order`,
+            [date]
+        );
+
+        // If no checklist items exist for this date, create them
+        if (checklistItems.rows.length === 0) {
+            const insertPromises = templateResult.rows.map(template => 
+                pool.query(
+                    `INSERT INTO daily_checklist_items (checklist_date, template_id, is_completed)
+                     VALUES ($1, $2, false)
+                     RETURNING *`,
+                    [date, template.id]
+                )
+            );
+            await Promise.all(insertPromises);
+
+            // Fetch the newly created items
+            checklistItems = await pool.query(
+                `SELECT dci.*, ct.item_text, ct.display_order, u.username as completed_by_name
+                 FROM daily_checklist_items dci
+                 JOIN checklist_templates ct ON dci.template_id = ct.id
+                 LEFT JOIN users u ON dci.completed_by = u.id
+                 WHERE dci.checklist_date = $1
+                 ORDER BY ct.display_order`,
+                [date]
+            );
+        }
+
+        let reportData = null;
+
+        // Only fetch report data if user is manager or admin
+        if (userRole === 'Manager' || userRole === 'Admin') {
+            const reportResult = await pool.query(
+                `SELECT dr.*, 
+                        u1.username as created_by_name,
+                        u2.username as updated_by_name
+                 FROM daily_reports dr
+                 LEFT JOIN users u1 ON dr.created_by = u1.id
+                 LEFT JOIN users u2 ON dr.updated_by = u2.id
+                 WHERE dr.report_date = $1`,
+                [date]
+            );
+
+            if (reportResult.rows.length > 0) {
+                reportData = reportResult.rows[0];
+
+                // Get images for this report
+                const imagesResult = await pool.query(
+                    `SELECT dri.*, u.username as uploaded_by_name
+                     FROM daily_report_images dri
+                     LEFT JOIN users u ON dri.uploaded_by = u.id
+                     WHERE dri.report_id = $1
+                     ORDER BY dri.uploaded_at`,
+                    [reportData.id]
+                );
+
+                reportData.images = imagesResult.rows;
+            }
+        }
+
+        res.json({
+            checklist: checklistItems.rows,
+            report: reportData,
+            canAccessReport: userRole === 'Manager' || userRole === 'Admin'
+        });
+
+    } catch (error) {
+        console.error('Error fetching end of day data:', error);
+        res.status(500).json({ error: 'Failed to fetch end of day data' });
+    }
+});
+
+// Toggle checklist item completion (all staff can do this)
+router.post('/checklist/toggle', authenticateToken, async (req, res) => {
+    const { itemId, isCompleted } = req.body;
+    const userId = req.user.id;
+
+    try {
+        const result = await pool.query(
+            `UPDATE daily_checklist_items
+             SET is_completed = $1,
+                 completed_by = $2,
+                 completed_at = $3
+             WHERE id = $4
+             RETURNING *`,
+            [isCompleted, isCompleted ? userId : null, isCompleted ? new Date() : null, itemId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Checklist item not found' });
+        }
+
+        res.json({ success: true, item: result.rows[0] });
+
+    } catch (error) {
+        console.error('Error toggling checklist item:', error);
+        res.status(500).json({ error: 'Failed to toggle checklist item' });
+    }
+});
+
+// Save or update daily report (manager/admin only)
+router.post('/report', authenticateToken, requireManagerOrAdmin, async (req, res) => {
+    const { reportDate, cashCount, donationAmount } = req.body;
+    const userId = req.user.id;
+
+    try {
+        // Check if report exists for this date
+        const existingReport = await pool.query(
+            'SELECT * FROM daily_reports WHERE report_date = $1',
+            [reportDate]
+        );
+
+        let result;
+
+        if (existingReport.rows.length > 0) {
+            // Update existing report
+            result = await pool.query(
+                `UPDATE daily_reports
+                 SET cash_count = $1,
+                     donation_amount = $2,
+                     updated_by = $3,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE report_date = $4
+                 RETURNING *`,
+                [cashCount, donationAmount, userId, reportDate]
+            );
+        } else {
+            // Create new report
+            result = await pool.query(
+                `INSERT INTO daily_reports (report_date, cash_count, donation_amount, created_by, updated_by)
+                 VALUES ($1, $2, $3, $4, $4)
+                 RETURNING *`,
+                [reportDate, cashCount, donationAmount, userId]
+            );
+        }
+
+        res.json({ success: true, report: result.rows[0] });
+
+    } catch (error) {
+        console.error('Error saving daily report:', error);
+        res.status(500).json({ error: 'Failed to save daily report' });
+    }
+});
+
+// Upload image to daily report (manager/admin only)
+router.post('/report/upload-image', authenticateToken, requireManagerOrAdmin, async (req, res) => {
+    const { reportDate, imageData } = req.body;
+    const userId = req.user.id;
+
+    try {
+        // Get or create report for this date
+        let reportResult = await pool.query(
+            'SELECT * FROM daily_reports WHERE report_date = $1',
+            [reportDate]
+        );
+
+        let reportId;
+
+        if (reportResult.rows.length === 0) {
+            // Create report if it doesn't exist
+            const newReport = await pool.query(
+                `INSERT INTO daily_reports (report_date, created_by, updated_by)
+                 VALUES ($1, $2, $2)
+                 RETURNING id`,
+                [reportDate, userId]
+            );
+            reportId = newReport.rows[0].id;
+        } else {
+            reportId = reportResult.rows[0].id;
+        }
+
+        // Insert image
+        const imageResult = await pool.query(
+            `INSERT INTO daily_report_images (report_id, image_data, uploaded_by)
+             VALUES ($1, $2, $3)
+             RETURNING *`,
+            [reportId, imageData, userId]
+        );
+
+        // Get username for response
+        const userResult = await pool.query(
+            'SELECT username FROM users WHERE id = $1',
+            [userId]
+        );
+
+        const image = imageResult.rows[0];
+        image.uploaded_by_name = userResult.rows[0].username;
+
+        res.json({ success: true, image });
+
+    } catch (error) {
+        console.error('Error uploading report image:', error);
+        res.status(500).json({ error: 'Failed to upload image' });
+    }
+});
+
+// Delete report image (manager/admin only)
+router.delete('/report/delete-image/:imageId', authenticateToken, requireManagerOrAdmin, async (req, res) => {
+    const { imageId } = req.params;
+
+    try {
+        const result = await pool.query(
+            'DELETE FROM daily_report_images WHERE id = $1 RETURNING *',
+            [imageId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Image not found' });
+        }
+
+        res.json({ success: true });
+
+    } catch (error) {
+        console.error('Error deleting report image:', error);
+        res.status(500).json({ error: 'Failed to delete image' });
+    }
+});
+
+module.exports = router;

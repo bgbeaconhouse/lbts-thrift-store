@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>End of Day - LBTS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .date-picker {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .date-picker label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .date-picker input[type="date"] {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+
+        .form-group input[type="number"],
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            padding: 6px 12px;
+            font-size: 14px;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .image-upload {
+            margin-top: 15px;
+        }
+
+        .image-upload input[type="file"] {
+            display: none;
+        }
+
+        .upload-btn-wrapper {
+            display: inline-block;
+        }
+
+        .images-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .image-item {
+            position: relative;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .image-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            cursor: pointer;
+        }
+
+        .image-item .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            font-size: 18px;
+            line-height: 1;
+        }
+
+        .checklist {
+            list-style: none;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            transition: background 0.2s;
+        }
+
+        .checklist-item:hover {
+            background: #e9ecef;
+        }
+
+        .checklist-item.completed {
+            background: #d4edda;
+        }
+
+        .checklist-item input[type="checkbox"] {
+            width: 24px;
+            height: 24px;
+            margin-right: 12px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .checklist-item label {
+            cursor: pointer;
+            flex: 1;
+            line-height: 1.5;
+        }
+
+        .checklist-item.completed label {
+            text-decoration: line-through;
+            color: #6c757d;
+        }
+
+        .completion-info {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .back-btn {
+            display: inline-block;
+            background: white;
+            color: #667eea;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-bottom: 20px;
+            transition: background 0.3s;
+        }
+
+        .back-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Image modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+        }
+
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-modal:hover {
+            color: #bbb;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 15px;
+            }
+
+            .section {
+                padding: 15px;
+            }
+
+            .date-picker {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .images-preview {
+                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="dashboard.html" class="back-btn">← Back to Dashboard</a>
+
+        <div class="header">
+            <h1>End of Day</h1>
+            <div class="date-picker">
+                <label for="selectedDate">Select Date:</label>
+                <input type="date" id="selectedDate" value="">
+            </div>
+        </div>
+
+        <!-- Daily Report Section (Manager/Admin Only) -->
+        <div id="reportSection" class="section hidden">
+            <h2>Daily Report</h2>
+            <form id="reportForm">
+                <div class="form-group">
+                    <label>Date:</label>
+                    <input type="text" id="reportDate" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="cashCount">Cash Count ($):</label>
+                    <input type="number" id="cashCount" step="0.01" min="0" placeholder="0.00">
+                </div>
+                <div class="form-group">
+                    <label for="donationAmount">Donation Amount ($):</label>
+                    <input type="number" id="donationAmount" step="0.01" min="0" placeholder="0.00">
+                </div>
+                <button type="submit" class="btn" id="saveReportBtn">Save Report</button>
+            </form>
+
+            <!-- Image Upload -->
+            <div class="image-upload">
+                <h3>Upload Images</h3>
+                <div class="upload-btn-wrapper">
+                    <button class="btn btn-secondary" onclick="document.getElementById('imageInput').click()">
+                        Choose Images
+                    </button>
+                    <input type="file" id="imageInput" accept="image/*" multiple>
+                </div>
+                <div id="imagesPreview" class="images-preview"></div>
+            </div>
+        </div>
+
+        <!-- Checklist Section (All Staff) -->
+        <div id="checklistSection" class="section">
+            <h2>Closing Duties Checklist</h2>
+            <ul id="checklistItems" class="checklist">
+                <li class="loading">Loading checklist...</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="modal">
+        <span class="close-modal" onclick="closeImageModal()">&times;</span>
+        <img class="modal-content" id="modalImage">
+    </div>
+
+    <script>
+        const API_BASE = '/api/end-of-day';
+        let currentDate = new Date().toISOString().split('T')[0];
+        let currentUser = null;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check authentication
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Get current user info
+            try {
+                const response = await fetch('/api/auth/me', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                if (response.ok) {
+                    currentUser = await response.json();
+                } else {
+                    throw new Error('Authentication failed');
+                }
+            } catch (error) {
+                console.error('Auth error:', error);
+                localStorage.removeItem('token');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Set today's date as default
+            document.getElementById('selectedDate').value = currentDate;
+            document.getElementById('reportDate').value = currentDate;
+
+            // Load data for today
+            await loadEndOfDayData(currentDate);
+
+            // Date picker change handler
+            document.getElementById('selectedDate').addEventListener('change', async (e) => {
+                currentDate = e.target.value;
+                document.getElementById('reportDate').value = currentDate;
+                await loadEndOfDayData(currentDate);
+            });
+
+            // Report form submit
+            document.getElementById('reportForm').addEventListener('submit', handleReportSubmit);
+
+            // Image input change
+            document.getElementById('imageInput').addEventListener('change', handleImageUpload);
+        });
+
+        // Load end of day data
+        async function loadEndOfDayData(date) {
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`${API_BASE}/${date}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to load data');
+
+                const data = await response.json();
+
+                // Show/hide report section based on permissions
+                if (data.canAccessReport) {
+                    document.getElementById('reportSection').classList.remove('hidden');
+                    displayReport(data.report);
+                } else {
+                    document.getElementById('reportSection').classList.add('hidden');
+                }
+
+                // Display checklist
+                displayChecklist(data.checklist);
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('Failed to load end of day data');
+            }
+        }
+
+        // Display report data
+        function displayReport(report) {
+            if (report) {
+                document.getElementById('cashCount').value = report.cash_count || '';
+                document.getElementById('donationAmount').value = report.donation_amount || '';
+                displayImages(report.images || []);
+            } else {
+                document.getElementById('cashCount').value = '';
+                document.getElementById('donationAmount').value = '';
+                displayImages([]);
+            }
+        }
+
+        // Display checklist items
+        function displayChecklist(items) {
+            const container = document.getElementById('checklistItems');
+            
+            if (items.length === 0) {
+                container.innerHTML = '<li class="loading">No checklist items found</li>';
+                return;
+            }
+
+            container.innerHTML = items.map(item => `
+                <li class="checklist-item ${item.is_completed ? 'completed' : ''}" data-id="${item.id}">
+                    <input type="checkbox" 
+                           id="check-${item.id}" 
+                           ${item.is_completed ? 'checked' : ''}
+                           onchange="toggleChecklistItem(${item.id}, this.checked)">
+                    <div>
+                        <label for="check-${item.id}">${item.item_text}</label>
+                        ${item.is_completed ? `
+                            <div class="completion-info">
+                                Completed by ${item.completed_by_name} at ${new Date(item.completed_at).toLocaleString()}
+                            </div>
+                        ` : ''}
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        // Toggle checklist item
+        async function toggleChecklistItem(itemId, isCompleted) {
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`${API_BASE}/checklist/toggle`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ itemId, isCompleted })
+                });
+
+                if (!response.ok) throw new Error('Failed to toggle item');
+
+                // Reload data to show updated completion info
+                await loadEndOfDayData(currentDate);
+
+            } catch (error) {
+                console.error('Error toggling item:', error);
+                alert('Failed to update checklist item');
+                // Reload to revert checkbox
+                await loadEndOfDayData(currentDate);
+            }
+        }
+
+        // Handle report form submit
+        async function handleReportSubmit(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('saveReportBtn');
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+
+            const token = localStorage.getItem('token');
+            const cashCount = document.getElementById('cashCount').value;
+            const donationAmount = document.getElementById('donationAmount').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/report`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        reportDate: currentDate,
+                        cashCount: cashCount || null,
+                        donationAmount: donationAmount || null
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to save report');
+
+                alert('Report saved successfully!');
+
+            } catch (error) {
+                console.error('Error saving report:', error);
+                alert('Failed to save report');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save Report';
+            }
+        }
+
+        // Handle image upload
+        async function handleImageUpload(e) {
+            const files = Array.from(e.target.files);
+            if (files.length === 0) return;
+
+            const token = localStorage.getItem('token');
+
+            for (const file of files) {
+                try {
+                    // Convert to base64
+                    const base64 = await fileToBase64(file);
+
+                    // Upload to server
+                    const response = await fetch(`${API_BASE}/report/upload-image`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            reportDate: currentDate,
+                            imageData: base64
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('Failed to upload image');
+
+                } catch (error) {
+                    console.error('Error uploading image:', error);
+                    alert('Failed to upload image: ' + file.name);
+                }
+            }
+
+            // Clear file input
+            e.target.value = '';
+
+            // Reload data to show new images
+            await loadEndOfDayData(currentDate);
+        }
+
+        // Convert file to base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Display images
+        function displayImages(images) {
+            const container = document.getElementById('imagesPreview');
+            
+            if (images.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = images.map(img => `
+                <div class="image-item">
+                    <img src="${img.image_data}" 
+                         alt="Report image" 
+                         onclick="openImageModal('${img.image_data}')">
+                    <button class="delete-btn" onclick="deleteImage(${img.id})">×</button>
+                </div>
+            `).join('');
+        }
+
+        // Delete image
+        async function deleteImage(imageId) {
+            if (!confirm('Delete this image?')) return;
+
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`${API_BASE}/report/delete-image/${imageId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to delete image');
+
+                await loadEndOfDayData(currentDate);
+
+            } catch (error) {
+                console.error('Error deleting image:', error);
+                alert('Failed to delete image');
+            }
+        }
+
+        // Open image modal
+        function openImageModal(imageSrc) {
+            document.getElementById('modalImage').src = imageSrc;
+            document.getElementById('imageModal').style.display = 'block';
+        }
+
+        // Close image modal
+        function closeImageModal() {
+            document.getElementById('imageModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('imageModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
