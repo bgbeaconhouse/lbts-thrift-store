@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const pool = require('../../db');
 const { authenticateToken } = require('../middleware/auth');
 
 // Middleware to check if user is manager or admin
@@ -16,15 +15,16 @@ const requireManagerOrAdmin = (req, res, next) => {
 router.get('/:date', authenticateToken, async (req, res) => {
     const { date } = req.params;
     const userRole = req.user.role;
+    const db = req.app.locals.db;
 
     try {
         // Get all checklist template items
-        const templateResult = await pool.query(
+        const templateResult = await db.query(
             'SELECT * FROM checklist_templates WHERE is_active = true ORDER BY display_order'
         );
 
         // Get or create checklist items for this date
-        let checklistItems = await pool.query(
+        let checklistItems = await db.query(
             `SELECT dci.*, ct.item_text, ct.display_order, u.username as completed_by_name
              FROM daily_checklist_items dci
              JOIN checklist_templates ct ON dci.template_id = ct.id
@@ -37,7 +37,7 @@ router.get('/:date', authenticateToken, async (req, res) => {
         // If no checklist items exist for this date, create them
         if (checklistItems.rows.length === 0) {
             const insertPromises = templateResult.rows.map(template => 
-                pool.query(
+                db.query(
                     `INSERT INTO daily_checklist_items (checklist_date, template_id, is_completed)
                      VALUES ($1, $2, false)
                      RETURNING *`,
@@ -47,7 +47,7 @@ router.get('/:date', authenticateToken, async (req, res) => {
             await Promise.all(insertPromises);
 
             // Fetch the newly created items
-            checklistItems = await pool.query(
+            checklistItems = await db.query(
                 `SELECT dci.*, ct.item_text, ct.display_order, u.username as completed_by_name
                  FROM daily_checklist_items dci
                  JOIN checklist_templates ct ON dci.template_id = ct.id
@@ -62,7 +62,7 @@ router.get('/:date', authenticateToken, async (req, res) => {
 
         // Only fetch report data if user is manager or admin
         if (userRole === 'Manager' || userRole === 'Admin') {
-            const reportResult = await pool.query(
+            const reportResult = await db.query(
                 `SELECT dr.*, 
                         u1.username as created_by_name,
                         u2.username as updated_by_name
@@ -77,7 +77,7 @@ router.get('/:date', authenticateToken, async (req, res) => {
                 reportData = reportResult.rows[0];
 
                 // Get images for this report
-                const imagesResult = await pool.query(
+                const imagesResult = await db.query(
                     `SELECT dri.*, u.username as uploaded_by_name
                      FROM daily_report_images dri
                      LEFT JOIN users u ON dri.uploaded_by = u.id
@@ -106,9 +106,10 @@ router.get('/:date', authenticateToken, async (req, res) => {
 router.post('/checklist/toggle', authenticateToken, async (req, res) => {
     const { itemId, isCompleted } = req.body;
     const userId = req.user.id;
+    const db = req.app.locals.db;
 
     try {
-        const result = await pool.query(
+        const result = await db.query(
             `UPDATE daily_checklist_items
              SET is_completed = $1,
                  completed_by = $2,
@@ -134,10 +135,11 @@ router.post('/checklist/toggle', authenticateToken, async (req, res) => {
 router.post('/report', authenticateToken, requireManagerOrAdmin, async (req, res) => {
     const { reportDate, cashCount, donationAmount } = req.body;
     const userId = req.user.id;
+    const db = req.app.locals.db;
 
     try {
         // Check if report exists for this date
-        const existingReport = await pool.query(
+        const existingReport = await db.query(
             'SELECT * FROM daily_reports WHERE report_date = $1',
             [reportDate]
         );
@@ -146,7 +148,7 @@ router.post('/report', authenticateToken, requireManagerOrAdmin, async (req, res
 
         if (existingReport.rows.length > 0) {
             // Update existing report
-            result = await pool.query(
+            result = await db.query(
                 `UPDATE daily_reports
                  SET cash_count = $1,
                      donation_amount = $2,
@@ -158,7 +160,7 @@ router.post('/report', authenticateToken, requireManagerOrAdmin, async (req, res
             );
         } else {
             // Create new report
-            result = await pool.query(
+            result = await db.query(
                 `INSERT INTO daily_reports (report_date, cash_count, donation_amount, created_by, updated_by)
                  VALUES ($1, $2, $3, $4, $4)
                  RETURNING *`,
@@ -178,10 +180,11 @@ router.post('/report', authenticateToken, requireManagerOrAdmin, async (req, res
 router.post('/report/upload-image', authenticateToken, requireManagerOrAdmin, async (req, res) => {
     const { reportDate, imageData } = req.body;
     const userId = req.user.id;
+    const db = req.app.locals.db;
 
     try {
         // Get or create report for this date
-        let reportResult = await pool.query(
+        let reportResult = await db.query(
             'SELECT * FROM daily_reports WHERE report_date = $1',
             [reportDate]
         );
@@ -190,7 +193,7 @@ router.post('/report/upload-image', authenticateToken, requireManagerOrAdmin, as
 
         if (reportResult.rows.length === 0) {
             // Create report if it doesn't exist
-            const newReport = await pool.query(
+            const newReport = await db.query(
                 `INSERT INTO daily_reports (report_date, created_by, updated_by)
                  VALUES ($1, $2, $2)
                  RETURNING id`,
@@ -202,7 +205,7 @@ router.post('/report/upload-image', authenticateToken, requireManagerOrAdmin, as
         }
 
         // Insert image
-        const imageResult = await pool.query(
+        const imageResult = await db.query(
             `INSERT INTO daily_report_images (report_id, image_data, uploaded_by)
              VALUES ($1, $2, $3)
              RETURNING *`,
@@ -210,7 +213,7 @@ router.post('/report/upload-image', authenticateToken, requireManagerOrAdmin, as
         );
 
         // Get username for response
-        const userResult = await pool.query(
+        const userResult = await db.query(
             'SELECT username FROM users WHERE id = $1',
             [userId]
         );
@@ -229,9 +232,10 @@ router.post('/report/upload-image', authenticateToken, requireManagerOrAdmin, as
 // Delete report image (manager/admin only)
 router.delete('/report/delete-image/:imageId', authenticateToken, requireManagerOrAdmin, async (req, res) => {
     const { imageId } = req.params;
+    const db = req.app.locals.db;
 
     try {
-        const result = await pool.query(
+        const result = await db.query(
             'DELETE FROM daily_report_images WHERE id = $1 RETURNING *',
             [imageId]
         );
