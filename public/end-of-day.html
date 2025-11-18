@@ -555,6 +555,15 @@
             if (files.length === 0) return;
 
             const token = localStorage.getItem('token');
+            
+            // Show loading indicator
+            const uploadBtn = document.querySelector('.upload-btn-wrapper button');
+            const originalText = uploadBtn.textContent;
+            uploadBtn.disabled = true;
+            uploadBtn.textContent = 'Uploading...';
+
+            let successCount = 0;
+            let failCount = 0;
 
             for (const file of files) {
                 try {
@@ -573,25 +582,59 @@
                     });
 
                     if (!response.ok) throw new Error('Failed to upload image');
+                    successCount++;
 
                 } catch (error) {
                     console.error('Error uploading image:', error);
-                    alert('Failed to upload image: ' + file.name);
+                    failCount++;
                 }
             }
 
             // Clear file input
             e.target.value = '';
 
-            // Reload data to show new images
-            await loadEndOfDayData(currentDate);
+            // Re-enable button
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = originalText;
+
+            // Show results
+            if (failCount > 0) {
+                alert(`Uploaded ${successCount} image(s). Failed: ${failCount}`);
+            }
+
+            // Reload ONLY the images, not the entire form
+            await loadImagesOnly(currentDate);
+        }
+
+        // Load only images without refreshing form data
+        async function loadImagesOnly(date) {
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`${API_BASE}/${date}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to load data');
+
+                const data = await response.json();
+
+                // Only update images if user has report access
+                if (data.canAccessReport && data.report && data.report.images) {
+                    displayImages(data.report.images);
+                }
+
+            } catch (error) {
+                console.error('Error loading images:', error);
+            }
         }
 
         // Display images
         function displayImages(images) {
             const container = document.getElementById('imagesPreview');
             
-            if (images.length === 0) {
+            if (!images || images.length === 0) {
                 container.innerHTML = '';
                 return;
             }
@@ -600,8 +643,9 @@
                 <div class="image-item">
                     <img src="${img.image_data}" 
                          alt="Report image" 
-                         onclick="openImageModal('${img.image_data}')">
-                    <button class="delete-btn" onclick="deleteImage(${img.id})">×</button>
+                         onclick="openImageModal('${img.image_data}')"
+                         loading="lazy">
+                    <button class="delete-btn" onclick="deleteImage(${img.id})" title="Delete image">×</button>
                 </div>
             `).join('');
         }
