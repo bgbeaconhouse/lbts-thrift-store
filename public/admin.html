@@ -264,14 +264,13 @@
         <tr>
           <th>Username</th>
           <th>Role</th>
-          <th>Email</th>
           <th>Alerts</th>
           <th>Created</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody id="usersTableBody">
-        <tr><td colspan="6" style="text-align: center;">Loading users...</td></tr>
+        <tr><td colspan="5" style="text-align: center;">Loading users...</td></tr>
       </tbody>
     </table>
   </div>
@@ -307,11 +306,6 @@
             <option value="Bric-a-Brac Manager">Bric-a-Brac Manager</option>
             <option value="Employee">Employee</option>
           </select>
-        </div>
-
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input type="email" id="email">
         </div>
 
         <div class="form-group">
@@ -382,7 +376,7 @@
       const tbody = document.getElementById('usersTableBody');
       
       if (users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No users found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No users found</td></tr>';
         return;
       }
 
@@ -390,7 +384,6 @@
         <tr>
           <td><strong>${user.username}</strong></td>
           <td><span class="badge ${getRoleBadgeClass(user.role)}">${user.role}</span></td>
-          <td>${user.email || '-'}</td>
           <td>
             ${user.furniture_alerts ? '<span class="alert-badge">Furniture</span>' : ''}
             ${user.clothing_alerts ? '<span class="alert-badge">Clothing</span>' : ''}
@@ -450,7 +443,6 @@
         document.getElementById('password').required = false;
         document.getElementById('passwordLabel').textContent = '';
         document.getElementById('role').value = user.role;
-        document.getElementById('email').value = user.email || '';
         document.getElementById('furniture_alerts').checked = user.furniture_alerts;
         document.getElementById('clothing_alerts').checked = user.clothing_alerts;
         document.getElementById('bricabrac_alerts').checked = user.bricabrac_alerts;
@@ -478,7 +470,6 @@
       const userData = {
         username: document.getElementById('username').value,
         role: document.getElementById('role').value,
-        email: document.getElementById('email').value,
         furniture_alerts: document.getElementById('furniture_alerts').checked,
         clothing_alerts: document.getElementById('clothing_alerts').checked,
         bricabrac_alerts: document.getElementById('bricabrac_alerts').checked
