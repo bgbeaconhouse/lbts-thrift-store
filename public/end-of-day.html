@@ -558,20 +558,18 @@
 
             for (const file of files) {
                 try {
-                    // Convert to base64
-                    const base64 = await fileToBase64(file);
+                    // Create FormData for file upload
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    formData.append('reportDate', currentDate);
 
                     // Upload to server
                     const response = await fetch(`${API_BASE}/report/upload-image`, {
                         method: 'POST',
                         headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
+                            'Authorization': `Bearer ${token}`
                         },
-                        body: JSON.stringify({
-                            reportDate: currentDate,
-                            imageData: base64
-                        })
+                        body: formData
                     });
 
                     if (!response.ok) throw new Error('Failed to upload image');
@@ -587,16 +585,6 @@
 
             // Reload data to show new images
             await loadEndOfDayData(currentDate);
-        }
-
-        // Convert file to base64
-        function fileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
         }
 
         // Display images

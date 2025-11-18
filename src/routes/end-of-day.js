@@ -1,6 +1,42 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const { authenticateToken } = require('../middleware/auth');
+
+// Configure multer for image uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const baseUploadDir = process.env.UPLOAD_DIR || 'uploads';
+    const uploadDir = path.isAbsolute(baseUploadDir) 
+      ? path.join(baseUploadDir, 'daily-reports')
+      : path.join(__dirname, '../..', baseUploadDir, 'daily-reports');
+    
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'report-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files are allowed!'), false);
+    }
+    cb(null, true);
+  }
+});
 
 // Middleware to check if user is manager or admin
 const requireManagerOrAdmin = (req, res, next) => {
@@ -177,10 +213,14 @@ router.post('/report', authenticateToken, requireManagerOrAdmin, async (req, res
 });
 
 // Upload image to daily report (manager/admin only)
-router.post('/report/upload-image', authenticateToken, requireManagerOrAdmin, async (req, res) => {
-    const { reportDate, imageData } = req.body;
+router.post('/report/upload-image', authenticateToken, requireManagerOrAdmin, upload.single('image'), async (req, res) => {
+    const { reportDate } = req.body;
     const userId = req.user.id;
     const db = req.app.locals.db;
+
+    if (!req.file) {
+        return res.status(400).json({ error: 'No image file provided' });
+    }
 
     try {
         // Get or create report for this date
@@ -204,12 +244,15 @@ router.post('/report/upload-image', authenticateToken, requireManagerOrAdmin, as
             reportId = reportResult.rows[0].id;
         }
 
-        // Insert image
+        // Store the file path instead of base64 data
+        const imagePath = '/uploads/daily-reports/' + req.file.filename;
+
+        // Insert image path
         const imageResult = await db.query(
             `INSERT INTO daily_report_images (report_id, image_data, uploaded_by)
              VALUES ($1, $2, $3)
              RETURNING *`,
-            [reportId, imageData, userId]
+            [reportId, imagePath, userId]
         );
 
         // Get username for response
@@ -225,6 +268,12 @@ router.post('/report/upload-image', authenticateToken, requireManagerOrAdmin, as
 
     } catch (error) {
         console.error('Error uploading report image:', error);
+        // Delete uploaded file if database insert failed
+        if (req.file) {
+            fs.unlink(req.file.path, (err) => {
+                if (err) console.error('Error deleting file:', err);
+            });
+        }
         res.status(500).json({ error: 'Failed to upload image' });
     }
 });
@@ -242,6 +291,19 @@ router.delete('/report/delete-image/:imageId', authenticateToken, requireManager
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Image not found' });
+        }
+
+        // Delete the physical file
+        const imagePath = result.rows[0].image_data;
+        if (imagePath && imagePath.startsWith('/uploads/')) {
+            const baseUploadDir = process.env.UPLOAD_DIR || 'uploads';
+            const fullPath = path.isAbsolute(baseUploadDir)
+                ? path.join(baseUploadDir, imagePath.replace('/uploads/', ''))
+                : path.join(__dirname, '../..', imagePath.replace('/uploads/', ''));
+            
+            fs.unlink(fullPath, (err) => {
+                if (err) console.error('Error deleting file:', err);
+            });
         }
 
         res.json({ success: true });
