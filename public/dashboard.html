@@ -318,20 +318,6 @@
   link: '/customer-forms-unified.html'
 });
 
-//       navItems.push({
-//         icon: '🔍',
-//         title: 'View Forms',
-//         description: 'View all submitted customer forms with signatures',
-//         link: '/view-forms.html'
-// });
-
-      // navItems.push({
-      //   icon: '📦',
-      //   title: 'Pick Up & Delivery Log',
-      //   description: 'Track items awaiting pickup or delivery',
-      //   link: '/inventory-log.html'
-      // });
-
 // Communication Log - Available to all users
 navItems.push({
   icon: '💬',
@@ -341,13 +327,13 @@ navItems.push({
   id: 'communication-card'
 });
 
-//    // Everyone can send emails
-// navItems.push({
-//   icon: '📧',
-//   title: 'Send Emails',
-//   description: 'Send queued customer form emails',
-//   link: '/send-emails.html'
-// });
+// SOPs - Available to all users
+navItems.push({
+  icon: '📚',
+  title: 'SOPs',
+  description: 'Standard Operating Procedures',
+  link: '/sops.html'
+});
 
 // Admin only features
 if (currentUser.role === 'Admin') {
@@ -357,8 +343,6 @@ if (currentUser.role === 'Admin') {
     description: 'Create and manage user accounts',
     link: '/admin.html'
   });
-
-
 }
 
       // Build navigation cards
@@ -416,7 +400,7 @@ async function updateUnreadCount() {
 // Update unread count every 30 seconds
 setInterval(() => {
   if (currentUser && currentUser.role !== 'Employee') {
-    updateUpdate();
+    updateUnreadCount();
   }
 }, 30000);
 

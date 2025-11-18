@@ -18,6 +18,7 @@ const sendEmailsRoutes = require('./routes/send-emails');
 const inventoryLogRoutes = require('./routes/inventory-log');
 const viewFormsRoutes = require('./routes/view-forms');
 const customerFormsUnifiedRouter = require('./routes/customer-forms-unified');
+const sopsRoutes = require('./routes/sops');
 
 // Initialize Express app
 const app = express();
@@ -78,6 +79,7 @@ app.use('/api/send-emails', sendEmailsRoutes);
 app.use('/api/inventory-log', inventoryLogRoutes);
 app.use('/api/view-forms', viewFormsRoutes);
 app.use('/api/customer-forms-unified', customerFormsUnifiedRouter);
+app.use('/api/sops', sopsRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
