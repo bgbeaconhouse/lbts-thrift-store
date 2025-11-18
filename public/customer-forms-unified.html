@@ -987,6 +987,12 @@
                 <input type="date" id="convert_date_scheduled" required>
               </div>
             </div>
+
+            <!-- Delivery Terms -->
+            <div class="terms-box" style="margin-top: 20px;">
+              <h4>⚠️ Delivery Terms (Customer Will Receive)</h4>
+              <p>I hereby acknowledge that my payment shown above is solely for the delivery of the item(s) to the residence indicated at the time of purchase. The Beacon House Thrift Shop is not responsible for moving said item(s) into said residence due to issues with liability. The item(s) will be placed in the driveway or the front yard.</p>
+            </div>
           </div>
 
           <!-- Pickup-specific fields (shown when converting delivery to pickup) -->
@@ -1001,16 +1007,25 @@
                 <input type="date" id="convert_date_stored" required>
               </div>
             </div>
+
+            <!-- Pickup Terms -->
+            <div class="terms-box" style="margin-top: 20px;">
+              <h4>⚠️ Pick-Up Terms (Customer Will Receive)</h4>
+              <p>You have <strong>48 hours upon purchase</strong> to pick your item up. After 48 hours the item will be placed back on the sales floor and <strong>no refunds will be issued</strong>.</p>
+              <p style="margin-top: 10px;">We will gladly assist you in loading your items. Please be aware that it is the customer's responsibility to ensure items are properly loaded and secured. We are not responsible for any damage caused by loading or failure to secure items.</p>
+              <p style="margin-top: 10px;">Your signature acknowledges that you have read and understand the terms and conditions covered above.</p>
+            </div>
           </div>
 
-          <div class="terms-box" style="margin-top: 20px;">
-            <h4>⚠️ Important</h4>
-            <p>Converting this form will:</p>
-            <ul style="margin-left: 20px; line-height: 1.8;">
-              <li>Create a new form with the updated type</li>
-              <li>Delete the original form</li>
-              <li>Send a new email to the customer with the correct terms</li>
-            </ul>
+          <!-- Customer Signature (required for conversion) -->
+          <div class="form-group" style="margin-top: 20px;">
+            <label>Customer Signature *</label>
+            <div class="signature-pad">
+              <canvas id="convertSignatureCanvas" class="signature-canvas"></canvas>
+              <div class="signature-controls">
+                <button type="button" class="btn btn-secondary" onclick="clearConvertSignature()">Clear</button>
+              </div>
+            </div>
           </div>
 
           <button type="submit" id="convertSubmitBtn" class="btn btn-primary" style="width: 100%; margin-top: 20px;">
@@ -1031,6 +1046,7 @@
     // Signature pad setup
     let canvas, ctx, isDrawing = false;
     let managerCanvas, managerCtx, isDrawingManager = false;
+    let convertCanvas, convertCtx, isDrawingConvert = false;
 
     // Image viewer
     let viewerImages = [];
@@ -1308,8 +1324,39 @@
       managerCanvas.addEventListener('touchend', stopDrawing);
     }
 
+    function initConvertSignaturePad() {
+      convertCanvas = document.getElementById('convertSignatureCanvas');
+      if (!convertCanvas) return;
+      
+      convertCtx = convertCanvas.getContext('2d');
+      
+      const rect = convertCanvas.getBoundingClientRect();
+      convertCanvas.width = rect.width;
+      convertCanvas.height = rect.height;
+      
+      convertCtx.strokeStyle = '#000';
+      convertCtx.lineWidth = 2;
+      convertCtx.lineCap = 'round';
+      
+      convertCanvas.addEventListener('mousedown', (e) => startDrawing(e, 'convert'));
+      convertCanvas.addEventListener('mousemove', (e) => draw(e, 'convert'));
+      convertCanvas.addEventListener('mouseup', stopDrawing);
+      convertCanvas.addEventListener('mouseout', stopDrawing);
+      
+      convertCanvas.addEventListener('touchstart', (e) => handleTouchStart(e, 'convert'));
+      convertCanvas.addEventListener('touchmove', (e) => handleTouchMove(e, 'convert'));
+      convertCanvas.addEventListener('touchend', stopDrawing);
+    }
+
     function startDrawing(e, isManager = false) {
-      if (isManager) {
+      if (isManager === 'convert') {
+        isDrawingConvert = true;
+        const rect = convertCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        convertCtx.beginPath();
+        convertCtx.moveTo(x, y);
+      } else if (isManager) {
         isDrawingManager = true;
         const rect = managerCanvas.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -1327,11 +1374,21 @@
     }
 
     function draw(e, isManager = false) {
-      if (isManager && !isDrawingManager) return;
+      if (isManager === 'convert' && !isDrawingConvert) return;
+      if (isManager === true && !isDrawingManager) return;
       if (!isManager && !isDrawing) return;
       
-      const targetCanvas = isManager ? managerCanvas : canvas;
-      const targetCtx = isManager ? managerCtx : ctx;
+      let targetCanvas, targetCtx;
+      if (isManager === 'convert') {
+        targetCanvas = convertCanvas;
+        targetCtx = convertCtx;
+      } else if (isManager) {
+        targetCanvas = managerCanvas;
+        targetCtx = managerCtx;
+      } else {
+        targetCanvas = canvas;
+        targetCtx = ctx;
+      }
       
       const rect = targetCanvas.getBoundingClientRect();
       const x = e.clientX - rect.left;
@@ -1344,6 +1401,7 @@
     function stopDrawing() {
       isDrawing = false;
       isDrawingManager = false;
+      isDrawingConvert = false;
     }
 
     function handleTouchStart(e, isManager = false) {
@@ -1395,6 +1453,18 @@
     function isManagerSignatureEmpty() {
       if (!managerCanvas || !managerCtx) return true;
       const imageData = managerCtx.getImageData(0, 0, managerCanvas.width, managerCanvas.height);
+      return !imageData.data.some(channel => channel !== 0);
+    }
+
+    function clearConvertSignature() {
+      if (convertCtx && convertCanvas) {
+        convertCtx.clearRect(0, 0, convertCanvas.width, convertCanvas.height);
+      }
+    }
+
+    function isConvertSignatureEmpty() {
+      if (!convertCanvas || !convertCtx) return true;
+      const imageData = convertCtx.getImageData(0, 0, convertCanvas.width, convertCanvas.height);
       return !imageData.data.some(channel => channel !== 0);
     }
 
@@ -1806,15 +1876,27 @@
       }
       
       document.getElementById('convertModal').classList.add('active');
+      
+      // Re-initialize signature canvas after modal is visible
+      setTimeout(() => {
+        initConvertSignaturePad();
+      }, 100);
     }
 
     function closeConvertModal() {
       document.getElementById('convertModal').classList.remove('active');
       document.getElementById('convertForm').reset();
+      clearConvertSignature();
     }
 
     async function handleConvertSubmit(event) {
       event.preventDefault();
+      
+      // Validate signature
+      if (isConvertSignatureEmpty()) {
+        showMessage('Customer signature is required', 'error');
+        return;
+      }
       
       const token = localStorage.getItem('token');
       const fromType = document.getElementById('convert_original_type').value;
@@ -1826,30 +1908,34 @@
       const originalBtnText = submitBtn.innerHTML;
       submitBtn.innerHTML = '<span class="loading-spinner"></span>Converting...';
       
-      const requestData = {
-        from_type: fromType,
-        to_type: targetType,
-        form_id: parseInt(formId)
-      };
+      // Use FormData to include signature
+      const formData = new FormData();
+      formData.append('from_type', fromType);
+      formData.append('to_type', targetType);
+      formData.append('form_id', parseInt(formId));
       
       // Add type-specific fields
       if (targetType === 'delivery') {
-        requestData.delivery_address = document.getElementById('convert_delivery_address').value;
-        requestData.delivery_cost = document.getElementById('convert_delivery_cost').value;
-        requestData.date_scheduled = document.getElementById('convert_date_scheduled').value;
+        formData.append('delivery_address', document.getElementById('convert_delivery_address').value);
+        formData.append('delivery_cost', document.getElementById('convert_delivery_cost').value);
+        formData.append('date_scheduled', document.getElementById('convert_date_scheduled').value);
       } else {
-        requestData.date_purchased = document.getElementById('convert_date_purchased').value || null;
-        requestData.date_stored = document.getElementById('convert_date_stored').value;
+        const datePurchased = document.getElementById('convert_date_purchased').value;
+        if (datePurchased) formData.append('date_purchased', datePurchased);
+        formData.append('date_stored', document.getElementById('convert_date_stored').value);
       }
+      
+      // Add signature
+      const blob = await new Promise(resolve => convertCanvas.toBlob(resolve, 'image/png'));
+      formData.append('signature', blob, 'signature.png');
       
       try {
         const response = await fetch('/api/customer-forms-unified/convert', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify(requestData)
+          body: formData
         });
         
         const data = await response.json();

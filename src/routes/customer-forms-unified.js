@@ -727,7 +727,9 @@ router.delete('/:type/:id', async (req, res) => {
 
 // ==================== CONVERT FORM ====================
 
-router.post('/convert', authenticateToken, async (req, res) => {
+router.post('/convert', authenticateToken, upload.fields([
+  { name: 'signature', maxCount: 1 }
+]), async (req, res) => {
   const { from_type, to_type, form_id, delivery_address, delivery_cost, date_scheduled, date_purchased, date_stored } = req.body;
   
   // Validate types
@@ -746,10 +748,19 @@ router.post('/convert', authenticateToken, async (req, res) => {
     return res.status(400).json({ error: 'Invalid conversion direction' });
   }
 
+  // Validate signature
+  if (!req.files || !req.files.signature || req.files.signature.length === 0) {
+    return res.status(400).json({ error: 'Customer signature is required' });
+  }
+
   try {
     const db = req.app.locals.db;
     const fromTableName = `${from_type}_forms`;
     const toTableName = `${to_type}_forms`;
+    
+    // Get signature URL
+    const signatureFile = req.files.signature[0];
+    const signatureUrl = `/uploads/signatures/${signatureFile.filename}`;
     
     // Get original form
     const originalResult = await db.query(
@@ -790,7 +801,7 @@ router.post('/convert', authenticateToken, async (req, res) => {
           delivery_cost,
           date_scheduled, // Use as delivery_date
           date_scheduled, // Also use as date_scheduled
-          originalForm.signature_url,
+          signatureUrl, // Use new signature
           originalForm.picture_urls || null,
           originalForm.notes || null,
           req.user.id
@@ -814,7 +825,7 @@ router.post('/convert', authenticateToken, async (req, res) => {
           originalForm.phone,
           originalForm.email || null,
           originalForm.items_description || originalForm.notes,
-          originalForm.signature_url,
+          signatureUrl, // Use new signature
           date_purchased || null,
           date_stored,
           originalForm.picture_urls || null,
@@ -870,6 +881,16 @@ router.post('/convert', authenticateToken, async (req, res) => {
 
   } catch (error) {
     console.error('Convert form error:', error);
+    
+    // Clean up uploaded signature file on error
+    if (req.files && req.files.signature) {
+      req.files.signature.forEach(file => {
+        fs.unlink(file.path, (err) => {
+          if (err) console.error('Error deleting signature file:', err);
+        });
+      });
+    }
+    
     res.status(500).json({ error: 'Failed to convert form' });
   }
 });
