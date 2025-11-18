@@ -958,6 +958,69 @@
     </div>
   </div>
 
+  <!-- Conversion Modal -->
+  <div id="convertModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="convertModalTitle">Convert Form</h2>
+        <button class="close-modal" onclick="closeConvertModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="convertForm" onsubmit="handleConvertSubmit(event)">
+          <input type="hidden" id="convert_original_type">
+          <input type="hidden" id="convert_original_id">
+          
+          <!-- Delivery-specific fields (shown when converting pickup to delivery) -->
+          <div id="convertDeliveryFields" style="display: none;">
+            <div class="form-group">
+              <label for="convert_delivery_address">Delivery Address *</label>
+              <textarea id="convert_delivery_address" rows="3" required></textarea>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="convert_delivery_cost">Delivery Cost *</label>
+                <input type="number" id="convert_delivery_cost" step="0.01" min="0" required>
+              </div>
+              <div class="form-group">
+                <label for="convert_date_scheduled">Delivery Date *</label>
+                <input type="date" id="convert_date_scheduled" required>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pickup-specific fields (shown when converting delivery to pickup) -->
+          <div id="convertPickupFields" style="display: none;">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="convert_date_purchased">Date Purchased</label>
+                <input type="date" id="convert_date_purchased">
+              </div>
+              <div class="form-group">
+                <label for="convert_date_stored">Pick-Up Date *</label>
+                <input type="date" id="convert_date_stored" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="terms-box" style="margin-top: 20px;">
+            <h4>⚠️ Important</h4>
+            <p>Converting this form will:</p>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+              <li>Create a new form with the updated type</li>
+              <li>Delete the original form</li>
+              <li>Send a new email to the customer with the correct terms</li>
+            </ul>
+          </div>
+
+          <button type="submit" id="convertSubmitBtn" class="btn btn-primary" style="width: 100%; margin-top: 20px;">
+            Convert Form
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Global state
     let allForms = [];
@@ -1133,6 +1196,12 @@
                 ` : ''}
               </div>
               <div class="form-actions">
+                ${form.form_type === 'pickup' ? `
+                  <button class="btn btn-secondary" onclick="openConvertModal('${form.form_type}', ${form.id})">Switch to Delivery</button>
+                ` : ''}
+                ${form.form_type === 'delivery' ? `
+                  <button class="btn btn-secondary" onclick="openConvertModal('${form.form_type}', ${form.id})">Switch to Pickup</button>
+                ` : ''}
                 ${form.email && form.email_error ? `
                   <button class="btn btn-success" onclick="retryEmail('${form.form_type}', ${form.id})">Retry Email</button>
                 ` : ''}
@@ -1691,6 +1760,121 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+
+    // Conversion functions
+    function openConvertModal(fromType, formId) {
+      const targetType = fromType === 'pickup' ? 'delivery' : 'pickup';
+      const form = allForms.find(f => f.form_type === fromType && f.id === formId);
+      
+      if (!form) {
+        showMessage('Form not found', 'error');
+        return;
+      }
+      
+      document.getElementById('convert_original_type').value = fromType;
+      document.getElementById('convert_original_id').value = formId;
+      
+      // Update modal title
+      const titleText = fromType === 'pickup' 
+        ? 'Convert Pickup to Delivery'
+        : 'Convert Delivery to Pickup';
+      document.getElementById('convertModalTitle').textContent = titleText;
+      
+      // Show/hide appropriate fields
+      document.getElementById('convertDeliveryFields').style.display = 
+        targetType === 'delivery' ? 'block' : 'none';
+      document.getElementById('convertPickupFields').style.display = 
+        targetType === 'pickup' ? 'block' : 'none';
+      
+      // Reset form
+      document.getElementById('convertForm').reset();
+      document.getElementById('convert_original_type').value = fromType;
+      document.getElementById('convert_original_id').value = formId;
+      
+      // Set required attributes based on target type
+      if (targetType === 'delivery') {
+        document.getElementById('convert_delivery_address').required = true;
+        document.getElementById('convert_delivery_cost').required = true;
+        document.getElementById('convert_date_scheduled').required = true;
+        document.getElementById('convert_date_stored').required = false;
+      } else {
+        document.getElementById('convert_delivery_address').required = false;
+        document.getElementById('convert_delivery_cost').required = false;
+        document.getElementById('convert_date_scheduled').required = false;
+        document.getElementById('convert_date_stored').required = true;
+      }
+      
+      document.getElementById('convertModal').classList.add('active');
+    }
+
+    function closeConvertModal() {
+      document.getElementById('convertModal').classList.remove('active');
+      document.getElementById('convertForm').reset();
+    }
+
+    async function handleConvertSubmit(event) {
+      event.preventDefault();
+      
+      const token = localStorage.getItem('token');
+      const fromType = document.getElementById('convert_original_type').value;
+      const formId = document.getElementById('convert_original_id').value;
+      const targetType = fromType === 'pickup' ? 'delivery' : 'pickup';
+      
+      const submitBtn = document.getElementById('convertSubmitBtn');
+      submitBtn.disabled = true;
+      const originalBtnText = submitBtn.innerHTML;
+      submitBtn.innerHTML = '<span class="loading-spinner"></span>Converting...';
+      
+      const requestData = {
+        from_type: fromType,
+        to_type: targetType,
+        form_id: parseInt(formId)
+      };
+      
+      // Add type-specific fields
+      if (targetType === 'delivery') {
+        requestData.delivery_address = document.getElementById('convert_delivery_address').value;
+        requestData.delivery_cost = document.getElementById('convert_delivery_cost').value;
+        requestData.date_scheduled = document.getElementById('convert_date_scheduled').value;
+      } else {
+        requestData.date_purchased = document.getElementById('convert_date_purchased').value || null;
+        requestData.date_stored = document.getElementById('convert_date_stored').value;
+      }
+      
+      try {
+        const response = await fetch('/api/customer-forms-unified/convert', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(requestData)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          let message = data.message;
+          if (data.emailSent) {
+            message += ' and email sent to customer!';
+          } else if (data.emailError) {
+            message += ` but email failed: ${data.emailError}`;
+          }
+          
+          showMessage(message, data.emailSent ? 'success' : 'error');
+          closeConvertModal();
+          loadAllForms();
+        } else {
+          showMessage(data.error || 'Failed to convert form', 'error');
+        }
+      } catch (error) {
+        console.error('Convert error:', error);
+        showMessage('Network error. Please try again.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+      }
     }
   </script>
 </body>

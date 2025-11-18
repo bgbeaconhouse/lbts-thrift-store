@@ -725,4 +725,153 @@ router.delete('/:type/:id', async (req, res) => {
   }
 });
 
+// ==================== CONVERT FORM ====================
+
+router.post('/convert', authenticateToken, async (req, res) => {
+  const { from_type, to_type, form_id, delivery_address, delivery_cost, date_scheduled, date_purchased, date_stored } = req.body;
+  
+  // Validate types
+  const validTypes = ['pickup', 'delivery'];
+  if (!validTypes.includes(from_type) || !validTypes.includes(to_type)) {
+    return res.status(400).json({ error: 'Invalid form types for conversion' });
+  }
+  
+  if (from_type === to_type) {
+    return res.status(400).json({ error: 'Cannot convert to the same type' });
+  }
+  
+  // Validate conversion direction
+  if ((from_type === 'pickup' && to_type !== 'delivery') || 
+      (from_type === 'delivery' && to_type !== 'pickup')) {
+    return res.status(400).json({ error: 'Invalid conversion direction' });
+  }
+
+  try {
+    const db = req.app.locals.db;
+    const fromTableName = `${from_type}_forms`;
+    const toTableName = `${to_type}_forms`;
+    
+    // Get original form
+    const originalResult = await db.query(
+      `SELECT * FROM ${fromTableName} WHERE id = $1 AND deleted_at IS NULL`,
+      [form_id]
+    );
+
+    if (originalResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Original form not found' });
+    }
+
+    const originalForm = originalResult.rows[0];
+    let emailSent = false;
+    let emailError = null;
+
+    // Create new form with converted type
+    let newFormResult;
+    
+    if (to_type === 'delivery') {
+      // Convert pickup to delivery
+      if (!delivery_address || !delivery_cost || !date_scheduled) {
+        return res.status(400).json({ error: 'Missing required delivery fields' });
+      }
+      
+      newFormResult = await db.query(
+        `INSERT INTO ${toTableName} 
+         (customer_name, phone, email, items_description, delivery_address,
+          delivery_cost, delivery_date, date_scheduled, signature_url, 
+          date, picture_urls, notes, created_by, email_sent, email_error)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_DATE, $10, $11, $12, false, NULL)
+         RETURNING *`,
+        [
+          originalForm.customer_name,
+          originalForm.phone,
+          originalForm.email || null,
+          originalForm.items_description || originalForm.notes,
+          delivery_address,
+          delivery_cost,
+          date_scheduled, // Use as delivery_date
+          date_scheduled, // Also use as date_scheduled
+          originalForm.signature_url,
+          originalForm.picture_urls || null,
+          originalForm.notes || null,
+          req.user.id
+        ]
+      );
+    } else {
+      // Convert delivery to pickup
+      if (!date_stored) {
+        return res.status(400).json({ error: 'Missing required pickup date' });
+      }
+      
+      newFormResult = await db.query(
+        `INSERT INTO ${toTableName} 
+         (customer_name, phone, email, items_description, signature_url, 
+          date, date_purchased, date_stored, picture_urls, notes, 
+          created_by, email_sent, email_error)
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10, false, NULL)
+         RETURNING *`,
+        [
+          originalForm.customer_name,
+          originalForm.phone,
+          originalForm.email || null,
+          originalForm.items_description || originalForm.notes,
+          originalForm.signature_url,
+          date_purchased || null,
+          date_stored,
+          originalForm.picture_urls || null,
+          originalForm.notes || null,
+          req.user.id
+        ]
+      );
+    }
+
+    const newForm = newFormResult.rows[0];
+
+    // Send email for new form type (if email provided)
+    if (originalForm.email) {
+      try {
+        await sendFormEmail(newForm, to_type);
+        emailSent = true;
+        
+        // Update new form with email success
+        await db.query(
+          `UPDATE ${toTableName} 
+           SET email_sent = true, email_sent_at = NOW() 
+           WHERE id = $1`,
+          [newForm.id]
+        );
+      } catch (emailErr) {
+        console.error('Failed to send email:', emailErr);
+        emailError = emailErr.message;
+        
+        // Update new form with email error
+        await db.query(
+          `UPDATE ${toTableName} 
+           SET email_error = $1 
+           WHERE id = $2`,
+          [emailError, newForm.id]
+        );
+      }
+    }
+
+    // Delete original form (soft delete)
+    await db.query(
+      `UPDATE ${fromTableName} 
+       SET deleted_at = NOW() 
+       WHERE id = $1`,
+      [form_id]
+    );
+
+    res.json({ 
+      message: `Form converted from ${from_type} to ${to_type} successfully`,
+      form: newForm,
+      emailSent,
+      emailError
+    });
+
+  } catch (error) {
+    console.error('Convert form error:', error);
+    res.status(500).json({ error: 'Failed to convert form' });
+  }
+});
+
 module.exports = router;
