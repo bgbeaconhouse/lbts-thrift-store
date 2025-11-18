@@ -383,29 +383,14 @@
         document.addEventListener('DOMContentLoaded', async () => {
             // Check authentication
             const token = localStorage.getItem('token');
-            if (!token) {
+            const user = JSON.parse(localStorage.getItem('user') || 'null');
+            
+            if (!token || !user) {
                 window.location.href = 'index.html';
                 return;
             }
 
-            // Get current user info
-            try {
-                const response = await fetch('/api/auth/me', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                if (response.ok) {
-                    currentUser = await response.json();
-                } else {
-                    throw new Error('Authentication failed');
-                }
-            } catch (error) {
-                console.error('Auth error:', error);
-                localStorage.removeItem('token');
-                window.location.href = 'index.html';
-                return;
-            }
+            currentUser = user;
 
             // Set today's date as default
             document.getElementById('selectedDate').value = currentDate;
