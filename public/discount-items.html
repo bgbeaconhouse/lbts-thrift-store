@@ -247,26 +247,6 @@
       cursor: pointer;
     }
 
-    .item-images-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 2px;
-      width: 100%;
-      height: 100%;
-    }
-
-    .item-images-grid img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      cursor: pointer;
-    }
-
-    .item-images-grid.single img {
-      grid-column: 1 / -1;
-      grid-row: 1 / -1;
-    }
-
     .image-count-badge {
       position: absolute;
       bottom: 10px;
@@ -546,6 +526,109 @@
       margin-bottom: 20px;
     }
 
+    /* Image Viewer Modal */
+    .image-viewer-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .image-viewer-modal.active {
+      display: flex;
+    }
+
+    .image-viewer-content {
+      max-width: 90vw;
+      max-height: 90vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .viewer-main-image {
+      max-width: 100%;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+
+    .viewer-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: none;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      font-size: 32px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      z-index: 2001;
+    }
+
+    .viewer-close:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .viewer-counter {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      z-index: 2001;
+    }
+
+    .viewer-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border: none;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      font-size: 48px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      z-index: 2001;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .viewer-nav:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .viewer-nav-prev {
+      left: 20px;
+    }
+
+    .viewer-nav-next {
+      right: 20px;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       .header-content {
@@ -635,6 +718,17 @@
     </div>
   </div>
 
+  <!-- Image Viewer Modal -->
+  <div id="imageViewerModal" class="image-viewer-modal" onclick="closeImageViewer(event)">
+    <button class="viewer-close" onclick="closeImageViewer(event)">×</button>
+    <div class="viewer-counter" id="viewerCounter">1 / 1</div>
+    <button class="viewer-nav viewer-nav-prev" onclick="viewerPrevImage(event)">‹</button>
+    <button class="viewer-nav viewer-nav-next" onclick="viewerNextImage(event)">›</button>
+    <div class="image-viewer-content" onclick="event.stopPropagation()">
+      <img id="viewerMainImage" class="viewer-main-image" src="" alt="Full size">
+    </div>
+  </div>
+
   <script>
     let currentEditId = null;
     let currentEditItem = null;
@@ -644,6 +738,8 @@
     let currentFilter = 'all'; // Track current filter
     let currentUser = null; // Store current user info
     let selectedFiles = []; // Track selected files for upload
+    let currentViewerImages = []; // Track images in viewer
+    let currentViewerIndex = 0; // Track current image index in viewer
 
     // Check authentication
     window.onload = function() {
@@ -793,34 +889,90 @@
         return '<span>📦</span>';
       }
       
-      if (pictureUrls.length === 1) {
-        return `<img src="${pictureUrls[0]}" alt="Item" onclick="viewItemImages(${JSON.stringify(pictureUrls).replace(/"/g, '&quot;')}, 0)">`;
-      }
-      
-      // Show up to 4 images in grid, with count badge if more
-      const displayImages = pictureUrls.slice(0, 4);
-      const gridClass = displayImages.length === 1 ? 'single' : '';
-      
-      let imagesHtml = displayImages.map((url, index) => 
-        `<img src="${url}" alt="Item ${index + 1}" onclick="viewItemImages(${JSON.stringify(pictureUrls).replace(/"/g, '&quot;')}, ${index})">`
-      ).join('');
-      
+      // Always show just the first image with a count badge
       const countBadge = pictureUrls.length > 1 
         ? `<div class="image-count-badge">📷 ${pictureUrls.length}</div>` 
         : '';
       
       return `
-        <div class="item-images-grid ${gridClass}">
-          ${imagesHtml}
-        </div>
+        <img src="${pictureUrls[0]}" alt="Item" onclick="openImageViewer(${JSON.stringify(pictureUrls).replace(/"/g, '&quot;')}, 0)">
         ${countBadge}
       `;
     }
 
-    function viewItemImages(urls, startIndex) {
-      // Simple alert for now - you can implement a full image viewer modal later
-      alert(`Viewing image ${startIndex + 1} of ${urls.length}`);
-      // TODO: Implement image viewer modal similar to inventory log
+    function openImageViewer(urls, startIndex) {
+      currentViewerImages = urls;
+      currentViewerIndex = startIndex;
+      
+      const modal = document.getElementById('imageViewerModal');
+      const mainImage = document.getElementById('viewerMainImage');
+      const counter = document.getElementById('viewerCounter');
+      
+      mainImage.src = urls[startIndex];
+      counter.textContent = `${startIndex + 1} / ${urls.length}`;
+      
+      // Update nav button visibility
+      updateViewerNavButtons();
+      
+      modal.classList.add('active');
+      
+      // Add keyboard navigation
+      document.addEventListener('keydown', handleViewerKeyboard);
+    }
+
+    function closeImageViewer(event) {
+      // Only close if clicking the backdrop or close button, not the image
+      if (event && event.target.id !== 'imageViewerModal' && event.target.className !== 'viewer-close') {
+        return;
+      }
+      document.getElementById('imageViewerModal').classList.remove('active');
+      
+      // Remove keyboard navigation
+      document.removeEventListener('keydown', handleViewerKeyboard);
+    }
+
+    function handleViewerKeyboard(event) {
+      if (event.key === 'Escape') {
+        closeImageViewer({ target: { id: 'imageViewerModal' } });
+      } else if (event.key === 'ArrowLeft') {
+        viewerPrevImage({ stopPropagation: () => {} });
+      } else if (event.key === 'ArrowRight') {
+        viewerNextImage({ stopPropagation: () => {} });
+      }
+    }
+
+    function viewerPrevImage(event) {
+      event.stopPropagation();
+      if (currentViewerIndex > 0) {
+        currentViewerIndex--;
+        const mainImage = document.getElementById('viewerMainImage');
+        const counter = document.getElementById('viewerCounter');
+        
+        mainImage.src = currentViewerImages[currentViewerIndex];
+        counter.textContent = `${currentViewerIndex + 1} / ${currentViewerImages.length}`;
+        updateViewerNavButtons();
+      }
+    }
+
+    function viewerNextImage(event) {
+      event.stopPropagation();
+      if (currentViewerIndex < currentViewerImages.length - 1) {
+        currentViewerIndex++;
+        const mainImage = document.getElementById('viewerMainImage');
+        const counter = document.getElementById('viewerCounter');
+        
+        mainImage.src = currentViewerImages[currentViewerIndex];
+        counter.textContent = `${currentViewerIndex + 1} / ${currentViewerImages.length}`;
+        updateViewerNavButtons();
+      }
+    }
+
+    function updateViewerNavButtons() {
+      const prevBtn = document.querySelector('.viewer-nav-prev');
+      const nextBtn = document.querySelector('.viewer-nav-next');
+      
+      if (prevBtn) prevBtn.style.display = currentViewerIndex > 0 ? 'flex' : 'none';
+      if (nextBtn) nextBtn.style.display = currentViewerIndex < currentViewerImages.length - 1 ? 'flex' : 'none';
     }
 
     function displayItems(items) {
