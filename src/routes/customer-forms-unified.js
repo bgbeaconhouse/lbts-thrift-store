@@ -222,10 +222,21 @@ function getDeliveryEmailTemplate(form) {
 function getDonationEmailTemplate(form) {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-     <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
-  <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" alt="Beacon House Logo" style="max-width: 120px; height: auto; margin-bottom: 10px;">
-  <h2 style="margin: 10px 0 0 0; font-weight: normal;">Donation Receipt</h2>
-</div>
+      <div style="text-align:center;padding:20px;background:#ffffff;color:#2d3748">
+        <!--[if !mso]><!-->
+        <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" 
+             alt="Beacon House Logo" 
+             width="200" 
+             style="display:block;width:200px;max-width:100%;height:auto;margin:0 auto 10px">
+        <!--<![endif]-->
+        <!--[if mso]>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
+        <h1 style="margin:0 0 5px 0;color:#2d3748;font-size:28px;font-family:Arial,sans-serif">Beacon House</h1>
+        <p style="margin:0;color:#2d3748;font-size:18px;font-family:Arial,sans-serif">Long Beach Thrift Store</p>
+        </td></tr></table>
+        <![endif]-->
+        <h2 style="margin:10px 0 0;font-weight:400;color:#2d3748">Donation Receipt</h2>
+      </div>
       <div style="padding: 30px; background: white;">
         <h2 style="color: #2d3748; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;">
           Donation Receipt
@@ -272,9 +283,20 @@ function getDonationEmailTemplate(form) {
 function getWaiverEmailTemplate(form) {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="text-align: center; padding: 20px; background: #667eea; color: white;">
-        <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" alt="Beacon House Logo" style="max-width: 120px; height: auto; margin-bottom: 10px;">
-        <h2 style="margin: 10px 0 0 0; font-weight: normal;">Waiver Receipt</h2>
+      <div style="text-align:center;padding:20px;background:#ffffff;color:#2d3748">
+        <!--[if !mso]><!-->
+        <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png" 
+             alt="Beacon House Logo" 
+             width="200" 
+             style="display:block;width:200px;max-width:100%;height:auto;margin:0 auto 10px">
+        <!--<![endif]-->
+        <!--[if mso]>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
+        <h1 style="margin:0 0 5px 0;color:#2d3748;font-size:28px;font-family:Arial,sans-serif">Beacon House</h1>
+        <p style="margin:0;color:#2d3748;font-size:18px;font-family:Arial,sans-serif">Long Beach Thrift Store</p>
+        </td></tr></table>
+        <![endif]-->
+        <h2 style="margin:10px 0 0;font-weight:400;color:#2d3748">Waiver Receipt</h2>
       </div>
       
       <div style="padding: 30px; background: white;">
