@@ -996,14 +996,26 @@
         // Touch/swipe support for mobile
         let touchStartX = 0;
         let touchEndX = 0;
+        let isSingleTouch = false;
 
         document.getElementById('imageModal').addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
+            // Only track single-touch for swipe navigation
+            if (e.touches.length === 1) {
+                isSingleTouch = true;
+                touchStartX = e.changedTouches[0].screenX;
+            } else {
+                // Multi-touch detected (pinch-to-zoom) - disable swipe
+                isSingleTouch = false;
+            }
         });
 
         document.getElementById('imageModal').addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].screenX;
-            handleSwipe();
+            // Only handle swipe if it was a single touch throughout
+            if (isSingleTouch && e.touches.length === 0) {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            }
+            isSingleTouch = false;
         });
 
         function handleSwipe() {
