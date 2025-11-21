@@ -472,6 +472,9 @@
                         <button class="btn btn-secondary" onclick="document.getElementById('imagesPreview').innerHTML=''; document.getElementById('imageInput').click()">
                             Choose Images
                         </button>
+                        <button class="btn btn-danger" onclick="deleteAllImages()" style="margin-left: 10px;">
+                            Clear All Images
+                        </button>
                         <input type="file" id="imageInput" accept="image/*" multiple>
                     </div>
                     <div id="imagesPreview" class="images-preview"></div>
@@ -896,7 +899,7 @@
                          alt="Report image" 
                          onclick="openImageModal('${img.image_data}')"
                          loading="lazy">
-                    <button class="delete-btn" onclick="deleteImage(${img.id})" title="Delete image">×</button>
+                    <button class="delete-btn" onclick="event.stopPropagation(); deleteImage(${img.id})" title="Delete image">×</button>
                 </div>
             `).join('');
         }
@@ -916,11 +919,49 @@
 
                 if (!response.ok) throw new Error('Failed to delete image');
 
-                await loadEndOfDayData(currentDate);
+                // Reload only images, not the entire form
+                await loadImagesOnly(currentDate);
 
             } catch (error) {
                 console.error('Error deleting image:', error);
                 alert('Failed to delete image');
+            }
+        }
+
+        // Delete all images for current date
+        async function deleteAllImages() {
+            const previewContainer = document.getElementById('imagesPreview');
+            const imageCount = previewContainer.querySelectorAll('.image-item').length;
+            
+            if (imageCount === 0) {
+                alert('No images to delete');
+                return;
+            }
+            
+            if (!confirm(`Delete all ${imageCount} image(s) for this date? This cannot be undone.`)) {
+                return;
+            }
+
+            const token = localStorage.getItem('token');
+            
+            try {
+                const response = await fetch(`${API_BASE}/report/delete-all-images/${currentDate}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to delete images');
+
+                // Clear preview and reload
+                previewContainer.innerHTML = '';
+                await loadImagesOnly(currentDate);
+                alert('All images deleted successfully');
+
+            } catch (error) {
+                console.error('Error deleting all images:', error);
+                alert('Failed to delete images');
             }
         }
 

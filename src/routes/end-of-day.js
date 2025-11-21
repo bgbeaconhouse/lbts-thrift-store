@@ -315,4 +315,60 @@ router.delete('/report/delete-image/:imageId', authenticateToken, requireManager
     }
 });
 
+// Delete all images for a specific date (manager/admin only)
+router.delete('/report/delete-all-images/:date', authenticateToken, requireManagerOrAdmin, async (req, res) => {
+    const { date } = req.params;
+    const db = req.app.locals.db;
+
+    try {
+        // Get the report for this date
+        const reportResult = await db.query(
+            'SELECT id FROM daily_reports WHERE report_date = $1',
+            [date]
+        );
+
+        if (reportResult.rows.length === 0) {
+            return res.status(404).json({ error: 'No report found for this date' });
+        }
+
+        const reportId = reportResult.rows[0].id;
+
+        // Get all images for this report
+        const imagesResult = await db.query(
+            'SELECT * FROM daily_report_images WHERE report_id = $1',
+            [reportId]
+        );
+
+        // Delete all images from database
+        await db.query(
+            'DELETE FROM daily_report_images WHERE report_id = $1',
+            [reportId]
+        );
+
+        // Delete physical files
+        const baseUploadDir = process.env.UPLOAD_DIR || 'uploads';
+        imagesResult.rows.forEach(img => {
+            if (img.image_data && img.image_data.startsWith('/uploads/')) {
+                const fullPath = path.isAbsolute(baseUploadDir)
+                    ? path.join(baseUploadDir, img.image_data.replace('/uploads/', ''))
+                    : path.join(__dirname, '../..', img.image_data.replace('/uploads/', ''));
+                
+                fs.unlink(fullPath, (err) => {
+                    if (err) console.error('Error deleting file:', err);
+                });
+            }
+        });
+
+        res.json({ 
+            success: true, 
+            deletedCount: imagesResult.rows.length,
+            message: `Deleted ${imagesResult.rows.length} image(s)` 
+        });
+
+    } catch (error) {
+        console.error('Error deleting all images:', error);
+        res.status(500).json({ error: 'Failed to delete images' });
+    }
+});
+
 module.exports = router;
