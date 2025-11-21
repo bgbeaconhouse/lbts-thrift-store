@@ -743,6 +743,9 @@
 
             const token = localStorage.getItem('token');
             
+            // Clear existing image previews immediately when new files are selected
+            document.getElementById('imagesPreview').innerHTML = '';
+            
             // Show loading indicator
             const uploadBtn = document.querySelector('.upload-btn-wrapper button');
             const originalText = uploadBtn.textContent;
@@ -763,6 +766,8 @@
                     const formData = new FormData();
                     formData.append('image', compressedFile);
                     formData.append('reportDate', currentDate);
+                    
+                    console.log('Uploading image for date:', currentDate); // DEBUG
 
                     // Upload to server
                     const response = await fetch(`${API_BASE}/report/upload-image`, {
