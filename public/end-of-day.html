@@ -462,23 +462,24 @@
                         <label for="total">Total ($):</label>
                         <input type="number" id="total" step="0.01" min="0" placeholder="0.00">
                     </div>
+
+                    <!-- Image Upload -->
+                    <div class="image-upload" style="margin-bottom: 20px;">
+                        <h3>Upload Receipt Images</h3>
+                        <div class="upload-btn-wrapper">
+                            <button type="button" class="btn btn-secondary" onclick="document.getElementById('imagesPreview').innerHTML=''; document.getElementById('imageInput').click()">
+                                Choose Images
+                            </button>
+                            <button type="button" class="btn btn-danger" onclick="deleteAllImages()" style="margin-left: 10px;">
+                                Clear All Images
+                            </button>
+                            <input type="file" id="imageInput" accept="image/*" multiple>
+                        </div>
+                        <div id="imagesPreview" class="images-preview"></div>
+                    </div>
+
                     <button type="submit" class="btn" id="saveReportBtn">Save Report</button>
                 </form>
-
-                <!-- Image Upload -->
-                <div class="image-upload">
-                    <h3>Upload Images</h3>
-                    <div class="upload-btn-wrapper">
-                        <button class="btn btn-secondary" onclick="document.getElementById('imagesPreview').innerHTML=''; document.getElementById('imageInput').click()">
-                            Choose Images
-                        </button>
-                        <button class="btn btn-danger" onclick="deleteAllImages()" style="margin-left: 10px;">
-                            Clear All Images
-                        </button>
-                        <input type="file" id="imageInput" accept="image/*" multiple>
-                    </div>
-                    <div id="imagesPreview" class="images-preview"></div>
-                </div>
             </div>
         </div>
 
