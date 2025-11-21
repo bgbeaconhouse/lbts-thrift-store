@@ -469,7 +469,7 @@
                 <div class="image-upload">
                     <h3>Upload Images</h3>
                     <div class="upload-btn-wrapper">
-                        <button class="btn btn-secondary" onclick="document.getElementById('imageInput').click()">
+                        <button class="btn btn-secondary" onclick="document.getElementById('imagesPreview').innerHTML=''; document.getElementById('imageInput').click()">
                             Choose Images
                         </button>
                         <input type="file" id="imageInput" accept="image/*" multiple>
@@ -534,6 +534,12 @@
 
             // Image input change
             document.getElementById('imageInput').addEventListener('change', handleImageUpload);
+            
+            // Also clear preview when the input is clicked (before file picker opens)
+            // This prevents old images from showing on mobile
+            document.getElementById('imageInput').addEventListener('click', function() {
+                document.getElementById('imagesPreview').innerHTML = '';
+            });
         });
 
         // Load end of day data
@@ -741,10 +747,11 @@
             const files = Array.from(e.target.files);
             if (files.length === 0) return;
 
+            // Clear existing image previews IMMEDIATELY - before any async operations
+            const previewContainer = document.getElementById('imagesPreview');
+            previewContainer.innerHTML = '<p style="color: #666; text-align: center; padding: 20px;">Uploading images...</p>';
+
             const token = localStorage.getItem('token');
-            
-            // Clear existing image previews immediately when new files are selected
-            document.getElementById('imagesPreview').innerHTML = '';
             
             // Show loading indicator
             const uploadBtn = document.querySelector('.upload-btn-wrapper button');
