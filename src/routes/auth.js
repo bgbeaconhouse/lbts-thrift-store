@@ -49,8 +49,8 @@ router.post('/login', async (req, res) => {
         clothing_alerts: user.clothing_alerts,
         bricabrac_alerts: user.bricabrac_alerts
       },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      process.env.JWT_SECRET
+      
     );
 
     // Return token and user info
