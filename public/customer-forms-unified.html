@@ -498,6 +498,57 @@
     }
 
     /* File Upload */
+    .file-upload-wrapper {
+      width: 100%;
+    }
+
+    .file-input-styled {
+      width: 100%;
+      padding: 40px 20px;
+      border: 2px dashed #e2e8f0;
+      border-radius: 8px;
+      background: #f7fafc;
+      cursor: pointer;
+      font-size: 16px;
+      color: #4a5568;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .file-input-styled::-webkit-file-upload-button {
+      display: none;
+    }
+
+    .file-input-styled::before {
+      content: '📷 Choose Photos or Take Picture';
+      display: block;
+      font-size: 16px;
+      font-weight: 600;
+      color: #2d3748;
+      margin-bottom: 5px;
+    }
+
+    .file-input-styled::after {
+      content: 'Up to 10 images';
+      display: block;
+      font-size: 12px;
+      color: #718096;
+      margin-top: 5px;
+    }
+
+    .file-input-styled:hover,
+    .file-input-styled:focus {
+      border-color: #00a0e0;
+      background: #edf2f7;
+      outline: none;
+    }
+
+    /* Hide the default "No file chosen" text */
+    .file-input-styled::-webkit-file-upload-button {
+      visibility: hidden;
+      width: 0;
+    }
+
     .file-upload-area {
       border: 2px dashed #e2e8f0;
       border-radius: 8px;
@@ -821,12 +872,9 @@
 
             <div class="form-group">
               <label>Photos (optional)</label>
-              <input type="file" id="pictures_pickup" accept="image/*" multiple capture="environment" style="display: none;" onchange="handleFileSelect(event)">
-              <label for="pictures_pickup" class="file-upload-area" style="cursor: pointer;">
-                <div class="upload-icon">📷</div>
-                <p>Click to upload photos or take picture</p>
-                <small>Up to 10 images</small>
-              </label>
+              <div class="file-upload-wrapper">
+                <input type="file" id="pictures_pickup" class="file-input-styled" accept="image/*" multiple capture="environment" onchange="handleFileSelect(event)">
+              </div>
               <div id="imagePreviews_pickup" class="image-preview-container"></div>
             </div>
 
@@ -863,12 +911,9 @@
 
             <div class="form-group">
               <label>Photos (optional)</label>
-              <input type="file" id="pictures_delivery" accept="image/*" multiple capture="environment" style="display: none;" onchange="handleFileSelect(event)">
-              <label for="pictures_delivery" class="file-upload-area" style="cursor: pointer;">
-                <div class="upload-icon">📷</div>
-                <p>Click to upload photos or take picture</p>
-                <small>Up to 10 images</small>
-              </label>
+              <div class="file-upload-wrapper">
+                <input type="file" id="pictures_delivery" class="file-input-styled" accept="image/*" multiple capture="environment" onchange="handleFileSelect(event)">
+              </div>
               <div id="imagePreviews_delivery" class="image-preview-container"></div>
             </div>
               </div>
