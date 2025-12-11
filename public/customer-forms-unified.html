@@ -1473,18 +1473,20 @@
       const files = Array.from(event.target.files);
       const formType = document.getElementById('formTypeSelect').value;
       
-      if (files.length > 10) {
-        showMessage('Maximum 10 images allowed', 'error');
+      // Check if adding new files would exceed limit
+      if (selectedFiles.length + files.length > 10) {
+        showMessage(`Cannot add ${files.length} more image(s). You can only have 10 images total. Currently have ${selectedFiles.length}.`, 'error');
+        event.target.value = ''; // Clear the input
         return;
       }
       
-      selectedFiles = [];
+      // Don't clear selectedFiles - keep existing images and add new ones
       const previewContainer = document.getElementById(`imagePreviews_${formType}`);
-      previewContainer.innerHTML = '';
       
       for (const file of files) {
         // Compress image
         const compressed = await compressImage(file);
+        const newIndex = selectedFiles.length;
         selectedFiles.push(compressed);
         
         // Show preview
@@ -1494,12 +1496,15 @@
           div.className = 'image-preview-item';
           div.innerHTML = `
             <img src="${e.target.result}" alt="Preview">
-            <button type="button" class="remove-image" onclick="removeImage(${selectedFiles.length - 1}, '${formType}')">&times;</button>
+            <button type="button" class="remove-image" onclick="removeImage(${newIndex}, '${formType}')">&times;</button>
           `;
           previewContainer.appendChild(div);
         };
         reader.readAsDataURL(compressed);
       }
+      
+      // Clear the file input so user can select the same file again if needed
+      event.target.value = '';
     }
 
     async function compressImage(file) {
@@ -1539,10 +1544,8 @@
 
     function removeImage(index, formType) {
       selectedFiles.splice(index, 1);
-      const input = document.getElementById(`pictures_${formType}`);
-      input.value = '';
       
-      // Refresh preview
+      // Refresh the entire preview with updated indices
       const previewContainer = document.getElementById(`imagePreviews_${formType}`);
       previewContainer.innerHTML = '';
       
@@ -1559,6 +1562,10 @@
         };
         reader.readAsDataURL(file);
       });
+      
+      // Clear the file input
+      const input = document.getElementById(`pictures_${formType}`);
+      if (input) input.value = '';
     }
 
     // Form submission
