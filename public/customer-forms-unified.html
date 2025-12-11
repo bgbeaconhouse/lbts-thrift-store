@@ -1292,12 +1292,14 @@
       }, 100);
     }
 
-    function closeModal() {
-      document.getElementById('formModal').classList.remove('active');
-      document.getElementById('customerForm').reset();
-      selectedFiles = [];
-      isSubmitting = false;
-    }
+ function closeModal() {
+  document.getElementById('formModal').classList.remove('active');
+  document.getElementById('customerForm').reset();
+  selectedFiles = [];
+  isSubmitting = false;
+  // Safety: restore scrolling when closing modal
+  document.body.style.overflow = '';
+}
 
     // Initialize signature pad
     function initSignaturePad() {
@@ -1781,17 +1783,26 @@
       mainImage.addEventListener('touchend', handleViewerTouchEnd, { passive: true });
     }
 
-    function closeImageViewer(event) {
-      if (event && event.target !== event.currentTarget && !event.target.classList.contains('viewer-close')) {
-        return;
-      }
-      document.getElementById('imageViewerModal').classList.remove('active');
-      document.body.style.overflow = '';
-      
-      const mainImage = document.getElementById('viewerMainImage');
-      mainImage.removeEventListener('touchstart', handleViewerTouchStart);
-      mainImage.removeEventListener('touchend', handleViewerTouchEnd);
-    }
+function closeImageViewer(event) {
+  if (event && event.target !== event.currentTarget && !event.target.classList.contains('viewer-close')) {
+    return;
+  }
+  document.getElementById('imageViewerModal').classList.remove('active');
+  document.body.style.overflow = '';
+  
+  const mainImage = document.getElementById('viewerMainImage');
+  mainImage.removeEventListener('touchstart', handleViewerTouchStart);
+  mainImage.removeEventListener('touchend', handleViewerTouchEnd);
+}
+
+// Safety: Periodically check if modals are closed but body is still locked
+setInterval(function() {
+  const hasActiveModal = document.querySelector('.modal.active, #imageViewerModal.active');
+  if (!hasActiveModal && document.body.style.overflow === 'hidden') {
+    console.log('Restoring scroll - no active modals found');
+    document.body.style.overflow = '';
+  }
+}, 2000); // Check every 2 seconds
 
     function showViewerImage(index) {
       if (viewerImages.length === 0) return;
@@ -1926,11 +1937,13 @@
       }, 100);
     }
 
-    function closeConvertModal() {
-      document.getElementById('convertModal').classList.remove('active');
-      document.getElementById('convertForm').reset();
-      clearConvertSignature();
-    }
+  function closeConvertModal() {
+  document.getElementById('convertModal').classList.remove('active');
+  document.getElementById('convertForm').reset();
+  clearConvertSignature();
+  // Safety: restore scrolling when closing modal
+  document.body.style.overflow = '';
+}
 
     async function handleConvertSubmit(event) {
       event.preventDefault();
