@@ -792,7 +792,7 @@
             </div>
             <div class="form-group">
               <label for="phone">Phone *</label>
-              <input type="tel" id="phone" required>
+              <input type="tel" id="phone" required placeholder="(555) 123-4567" maxlength="14" minlength="14">
             </div>
           </div>
 
@@ -1060,7 +1060,33 @@
       loadAllForms();
       initSignaturePad();
       initManagerSignaturePad();
+      initPhoneFormatting();
     };
+
+    // Phone number formatting
+    function initPhoneFormatting() {
+      const phoneInput = document.getElementById('phone');
+      if (phoneInput) {
+        phoneInput.addEventListener('input', formatPhoneNumber);
+      }
+    }
+
+    function formatPhoneNumber(e) {
+      let input = e.target.value.replace(/\D/g, ''); // Remove all non-digits
+      let formatted = '';
+
+      if (input.length > 0) {
+        formatted = '(' + input.substring(0, 3);
+      }
+      if (input.length >= 4) {
+        formatted += ') ' + input.substring(3, 6);
+      }
+      if (input.length >= 7) {
+        formatted += '-' + input.substring(6, 10);
+      }
+
+      e.target.value = formatted;
+    }
 
     function checkAuth() {
       const token = localStorage.getItem('token');
@@ -1258,10 +1284,11 @@
       
       document.getElementById('formModal').classList.add('active');
       
-      // Re-initialize canvas after modal is visible
+      // Re-initialize canvas and phone formatting after modal is visible
       setTimeout(() => {
         initSignaturePad();
         initManagerSignaturePad();
+        initPhoneFormatting();
       }, 100);
     }
 
@@ -1574,6 +1601,15 @@
       
       if (isSubmitting) {
         console.log('Form already submitting...');
+        return;
+      }
+      
+      // Validate phone number length
+      const phoneInput = document.getElementById('phone');
+      const phoneValue = phoneInput.value;
+      if (phoneValue.length < 14) {
+        showMessage('Please enter a complete 10-digit phone number', 'error');
+        phoneInput.focus();
         return;
       }
       
