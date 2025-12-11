@@ -821,12 +821,12 @@
 
             <div class="form-group">
               <label>Photos (optional)</label>
-              <input type="file" id="pictures_pickup" accept="image/*" multiple style="display: none;" onchange="handleFileSelect(event)">
-              <div class="file-upload-area" onclick="document.getElementById('pictures_pickup').click()">
+              <input type="file" id="pictures_pickup" accept="image/*" multiple capture="environment" style="display: none;" onchange="handleFileSelect(event)">
+              <label for="pictures_pickup" class="file-upload-area" style="cursor: pointer;">
                 <div class="upload-icon">📷</div>
-                <p>Click to upload photos or drag and drop</p>
+                <p>Click to upload photos or take picture</p>
                 <small>Up to 10 images</small>
-              </div>
+              </label>
               <div id="imagePreviews_pickup" class="image-preview-container"></div>
             </div>
 
@@ -863,11 +863,14 @@
 
             <div class="form-group">
               <label>Photos (optional)</label>
-              <input type="file" id="pictures_delivery" accept="image/*" multiple style="display: none;" onchange="handleFileSelect(event)">
-              <div class="file-upload-area" onclick="document.getElementById('pictures_delivery').click()">
+              <input type="file" id="pictures_delivery" accept="image/*" multiple capture="environment" style="display: none;" onchange="handleFileSelect(event)">
+              <label for="pictures_delivery" class="file-upload-area" style="cursor: pointer;">
                 <div class="upload-icon">📷</div>
-                <p>Click to upload photos or drag and drop</p>
+                <p>Click to upload photos or take picture</p>
                 <small>Up to 10 images</small>
+              </label>
+              <div id="imagePreviews_delivery" class="image-preview-container"></div>
+            </div>
               </div>
               <div id="imagePreviews_delivery" class="image-preview-container"></div>
             </div>
