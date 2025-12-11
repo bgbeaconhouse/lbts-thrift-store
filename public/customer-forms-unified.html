@@ -483,12 +483,14 @@
       margin-top: 10px;
     }
 
-    .signature-canvas {
-      width: 100%;
-      height: 200px;
-      touch-action: none;
-      cursor: crosshair;
-    }
+.signature-canvas {
+  width: 100%;
+  height: 200px;
+  touch-action: none;
+  cursor: crosshair;
+  /* Prevent touch-action from affecting parent/body */
+  isolation: isolate;
+}
 
     .signature-controls {
       padding: 10px;
@@ -1433,33 +1435,35 @@
       isDrawingConvert = false;
     }
 
-    function handleTouchStart(e, isManager = false) {
-      e.preventDefault();
-      const touch = e.touches[0];
-      const mouseEvent = new MouseEvent('mousedown', {
-        clientX: touch.clientX,
-        clientY: touch.clientY
-      });
-      if (isManager) {
-        managerCanvas.dispatchEvent(mouseEvent);
-      } else {
-        canvas.dispatchEvent(mouseEvent);
-      }
-    }
+function handleTouchStart(e, isManager = false) {
+  e.preventDefault();
+  e.stopPropagation(); // Add this
+  const touch = e.touches[0];
+  const mouseEvent = new MouseEvent('mousedown', {
+    clientX: touch.clientX,
+    clientY: touch.clientY
+  });
+  if (isManager) {
+    managerCanvas.dispatchEvent(mouseEvent);
+  } else {
+    canvas.dispatchEvent(mouseEvent);
+  }
+}
 
-    function handleTouchMove(e, isManager = false) {
-      e.preventDefault();
-      const touch = e.touches[0];
-      const mouseEvent = new MouseEvent('mousemove', {
-        clientX: touch.clientX,
-        clientY: touch.clientY
-      });
-      if (isManager) {
-        managerCanvas.dispatchEvent(mouseEvent);
-      } else {
-        canvas.dispatchEvent(mouseEvent);
-      }
-    }
+function handleTouchMove(e, isManager = false) {
+  e.preventDefault();
+  e.stopPropagation(); // Add this
+  const touch = e.touches[0];
+  const mouseEvent = new MouseEvent('mousemove', {
+    clientX: touch.clientX,
+    clientY: touch.clientY
+  });
+  if (isManager) {
+    managerCanvas.dispatchEvent(mouseEvent);
+  } else {
+    canvas.dispatchEvent(mouseEvent);
+  }
+}
 
     function clearSignature() {
       if (ctx && canvas) {
