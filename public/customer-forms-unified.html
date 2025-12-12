@@ -1429,14 +1429,29 @@
       targetCtx.stroke();
     }
 
-    function stopDrawing() {
-      isDrawing = false;
-      isDrawingManager = false;
-      isDrawingConvert = false;
-
-       document.body.style.overflow = '';
-  document.body.style.touchAction = '';
-    }
+ function stopDrawing() {
+  isDrawing = false;
+  isDrawingManager = false;
+  isDrawingConvert = false;
+  
+  // AGGRESSIVE: Force restore scrolling on Fully Kiosk
+  setTimeout(function() {
+    document.body.style.overflow = 'auto';
+    document.body.style.touchAction = 'auto';
+    document.body.style.position = 'relative';
+    document.documentElement.style.overflow = 'auto';
+    document.documentElement.style.touchAction = 'auto';
+    
+    // Also restore on modal body
+    const modalBodies = document.querySelectorAll('.modal-body');
+    modalBodies.forEach(function(mb) {
+      mb.style.overflow = 'auto';
+      mb.style.touchAction = 'auto';
+    });
+    
+    console.log('✓ Scrolling forcefully restored after signature');
+  }, 100);
+}
 
 function handleTouchStart(e, isManager = false) {
   // Only preventDefault if touch is actually on the canvas
@@ -2034,6 +2049,17 @@ setInterval(function() {
         submitBtn.innerHTML = originalBtnText;
       }
     }
+
+    // Global fix: Restore scrolling after any canvas touch ends
+document.addEventListener('touchend', function(e) {
+  if (e.target.classList.contains('signature-canvas')) {
+    setTimeout(function() {
+      document.body.style.overflow = 'auto';
+      document.body.style.touchAction = 'auto';
+      console.log('✓ Global scroll restore after canvas touch');
+    }, 150);
+  }
+}, { passive: true });
   </script>
 </body>
 </html>
