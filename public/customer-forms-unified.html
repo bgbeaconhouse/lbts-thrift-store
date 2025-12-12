@@ -1433,11 +1433,19 @@
       isDrawing = false;
       isDrawingManager = false;
       isDrawingConvert = false;
+
+       document.body.style.overflow = '';
+  document.body.style.touchAction = '';
     }
 
 function handleTouchStart(e, isManager = false) {
-  e.preventDefault();
-  e.stopPropagation(); // Add this
+  // Only preventDefault if touch is actually on the canvas
+  const targetCanvas = isManager ? managerCanvas : canvas;
+  if (e.target === targetCanvas) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  
   const touch = e.touches[0];
   const mouseEvent = new MouseEvent('mousedown', {
     clientX: touch.clientX,
@@ -1451,8 +1459,12 @@ function handleTouchStart(e, isManager = false) {
 }
 
 function handleTouchMove(e, isManager = false) {
-  e.preventDefault();
-  e.stopPropagation(); // Add this
+  // Only preventDefault if we're actually drawing
+  if ((isManager && isDrawingManager) || (!isManager && isDrawing)) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  
   const touch = e.touches[0];
   const mouseEvent = new MouseEvent('mousemove', {
     clientX: touch.clientX,
