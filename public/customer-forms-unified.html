@@ -483,14 +483,12 @@
       margin-top: 10px;
     }
 
-.signature-canvas {
-  width: 100%;
-  height: 200px;
-  touch-action: none;
-  cursor: crosshair;
-  /* Prevent touch-action from affecting parent/body */
-  isolation: isolate;
-}
+    .signature-canvas {
+      width: 100%;
+      height: 200px;
+      touch-action: none;
+      cursor: crosshair;
+    }
 
     .signature-controls {
       padding: 10px;
@@ -1294,14 +1292,12 @@
       }, 100);
     }
 
- function closeModal() {
-  document.getElementById('formModal').classList.remove('active');
-  document.getElementById('customerForm').reset();
-  selectedFiles = [];
-  isSubmitting = false;
-  // Safety: restore scrolling when closing modal
-  document.body.style.overflow = '';
-}
+    function closeModal() {
+      document.getElementById('formModal').classList.remove('active');
+      document.getElementById('customerForm').reset();
+      selectedFiles = [];
+      isSubmitting = false;
+    }
 
     // Initialize signature pad
     function initSignaturePad() {
@@ -1429,68 +1425,39 @@
       targetCtx.stroke();
     }
 
- function stopDrawing() {
-  isDrawing = false;
-  isDrawingManager = false;
-  isDrawingConvert = false;
-  
-  // AGGRESSIVE: Force restore scrolling on Fully Kiosk
-  setTimeout(function() {
-    document.body.style.overflow = 'auto';
-    document.body.style.touchAction = 'auto';
-    document.body.style.position = 'relative';
-    document.documentElement.style.overflow = 'auto';
-    document.documentElement.style.touchAction = 'auto';
-    
-    // Also restore on modal body
-    const modalBodies = document.querySelectorAll('.modal-body');
-    modalBodies.forEach(function(mb) {
-      mb.style.overflow = 'auto';
-      mb.style.touchAction = 'auto';
-    });
-    
-    console.log('✓ Scrolling forcefully restored after signature');
-  }, 100);
-}
+    function stopDrawing() {
+      isDrawing = false;
+      isDrawingManager = false;
+      isDrawingConvert = false;
+    }
 
-function handleTouchStart(e, isManager = false) {
-  // Only preventDefault if touch is actually on the canvas
-  const targetCanvas = isManager ? managerCanvas : canvas;
-  if (e.target === targetCanvas) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-  
-  const touch = e.touches[0];
-  const mouseEvent = new MouseEvent('mousedown', {
-    clientX: touch.clientX,
-    clientY: touch.clientY
-  });
-  if (isManager) {
-    managerCanvas.dispatchEvent(mouseEvent);
-  } else {
-    canvas.dispatchEvent(mouseEvent);
-  }
-}
+    function handleTouchStart(e, isManager = false) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent('mousedown', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+      });
+      if (isManager) {
+        managerCanvas.dispatchEvent(mouseEvent);
+      } else {
+        canvas.dispatchEvent(mouseEvent);
+      }
+    }
 
-function handleTouchMove(e, isManager = false) {
-  // Only preventDefault if we're actually drawing
-  if ((isManager && isDrawingManager) || (!isManager && isDrawing)) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-  
-  const touch = e.touches[0];
-  const mouseEvent = new MouseEvent('mousemove', {
-    clientX: touch.clientX,
-    clientY: touch.clientY
-  });
-  if (isManager) {
-    managerCanvas.dispatchEvent(mouseEvent);
-  } else {
-    canvas.dispatchEvent(mouseEvent);
-  }
-}
+    function handleTouchMove(e, isManager = false) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent('mousemove', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+      });
+      if (isManager) {
+        managerCanvas.dispatchEvent(mouseEvent);
+      } else {
+        canvas.dispatchEvent(mouseEvent);
+      }
+    }
 
     function clearSignature() {
       if (ctx && canvas) {
@@ -1814,26 +1781,17 @@ function handleTouchMove(e, isManager = false) {
       mainImage.addEventListener('touchend', handleViewerTouchEnd, { passive: true });
     }
 
-function closeImageViewer(event) {
-  if (event && event.target !== event.currentTarget && !event.target.classList.contains('viewer-close')) {
-    return;
-  }
-  document.getElementById('imageViewerModal').classList.remove('active');
-  document.body.style.overflow = '';
-  
-  const mainImage = document.getElementById('viewerMainImage');
-  mainImage.removeEventListener('touchstart', handleViewerTouchStart);
-  mainImage.removeEventListener('touchend', handleViewerTouchEnd);
-}
-
-// Safety: Periodically check if modals are closed but body is still locked
-setInterval(function() {
-  const hasActiveModal = document.querySelector('.modal.active, #imageViewerModal.active');
-  if (!hasActiveModal && document.body.style.overflow === 'hidden') {
-    console.log('Restoring scroll - no active modals found');
-    document.body.style.overflow = '';
-  }
-}, 2000); // Check every 2 seconds
+    function closeImageViewer(event) {
+      if (event && event.target !== event.currentTarget && !event.target.classList.contains('viewer-close')) {
+        return;
+      }
+      document.getElementById('imageViewerModal').classList.remove('active');
+      document.body.style.overflow = '';
+      
+      const mainImage = document.getElementById('viewerMainImage');
+      mainImage.removeEventListener('touchstart', handleViewerTouchStart);
+      mainImage.removeEventListener('touchend', handleViewerTouchEnd);
+    }
 
     function showViewerImage(index) {
       if (viewerImages.length === 0) return;
@@ -1968,13 +1926,11 @@ setInterval(function() {
       }, 100);
     }
 
-  function closeConvertModal() {
-  document.getElementById('convertModal').classList.remove('active');
-  document.getElementById('convertForm').reset();
-  clearConvertSignature();
-  // Safety: restore scrolling when closing modal
-  document.body.style.overflow = '';
-}
+    function closeConvertModal() {
+      document.getElementById('convertModal').classList.remove('active');
+      document.getElementById('convertForm').reset();
+      clearConvertSignature();
+    }
 
     async function handleConvertSubmit(event) {
       event.preventDefault();
@@ -2049,17 +2005,6 @@ setInterval(function() {
         submitBtn.innerHTML = originalBtnText;
       }
     }
-
-    // Global fix: Restore scrolling after any canvas touch ends
-document.addEventListener('touchend', function(e) {
-  if (e.target.classList.contains('signature-canvas')) {
-    setTimeout(function() {
-      document.body.style.overflow = 'auto';
-      document.body.style.touchAction = 'auto';
-      console.log('✓ Global scroll restore after canvas touch');
-    }, 150);
-  }
-}, { passive: true });
   </script>
 </body>
 </html>
