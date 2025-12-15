@@ -1433,33 +1433,36 @@
       isDrawingConvert = false;
     }
 
-    function handleTouchStart(e, isManager = false) {
-      e.preventDefault();
-      const touch = e.touches[0];
-      const mouseEvent = new MouseEvent('mousedown', {
-        clientX: touch.clientX,
-        clientY: touch.clientY
-      });
-      if (isManager) {
-        managerCanvas.dispatchEvent(mouseEvent);
-      } else {
-        canvas.dispatchEvent(mouseEvent);
-      }
-    }
-
-    function handleTouchMove(e, isManager = false) {
-      e.preventDefault();
-      const touch = e.touches[0];
-      const mouseEvent = new MouseEvent('mousemove', {
-        clientX: touch.clientX,
-        clientY: touch.clientY
-      });
-      if (isManager) {
-        managerCanvas.dispatchEvent(mouseEvent);
-      } else {
-        canvas.dispatchEvent(mouseEvent);
-      }
-    }
+function handleTouchStart(e, isManager = false) {
+  if (e.cancelable) {
+    e.preventDefault();
+  }
+  const touch = e.touches[0];
+  const mouseEvent = new MouseEvent('mousedown', {
+    clientX: touch.clientX,
+    clientY: touch.clientY
+  });
+  if (isManager) {
+    managerCanvas.dispatchEvent(mouseEvent);
+  } else {
+    canvas.dispatchEvent(mouseEvent);
+  }
+}
+function handleTouchMove(e, isManager = false) {
+  if (e.cancelable) {
+    e.preventDefault();
+  }
+  const touch = e.touches[0];
+  const mouseEvent = new MouseEvent('mousemove', {
+    clientX: touch.clientX,
+    clientY: touch.clientY
+  });
+  if (isManager) {
+    managerCanvas.dispatchEvent(mouseEvent);
+  } else {
+    canvas.dispatchEvent(mouseEvent);
+  }
+}
 
     function clearSignature() {
       if (ctx && canvas) {
