@@ -65,13 +65,13 @@
     /* Category Tabs */
     .category-tabs {
       display: flex;
+      flex-wrap: wrap; /* Tabs wrap instead of scrolling horizontally */
       gap: 10px;
       margin-bottom: 20px;
       border-bottom: 2px solid #e2e8f0;
-      overflow-x: auto;
-      overflow-y: hidden;
-      touch-action: pan-x; /* Only allow horizontal scrolling in this area */
-      -webkit-overflow-scrolling: touch;
+      overflow-x: visible; /* No horizontal scrolling */
+      overflow-y: visible;
+      touch-action: auto; /* Normal touch behavior */
     }
 
     .tab {
