@@ -148,14 +148,14 @@
       to { transform: rotate(360deg); }
     }
 
-    .filter-tabs {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-      border-bottom: 2px solid #e2e8f0;
-      overflow-x: auto;
-    }
-
+  .filter-tabs {
+  display: flex;
+  flex-wrap: wrap;  /* ADD THIS */
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #e2e8f0;
+  overflow-x: visible;  /* CHANGE from auto */
+}
     .filter-tab {
       padding: 12px 24px;
       background: none;
