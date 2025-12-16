@@ -7,6 +7,9 @@
 
   let eventSource = null;
   let currentAlertNoteId = null;
+  let sseReconnectAttempts = 0;
+  const MAX_SSE_RECONNECTS = 3;
+  const SSE_RECONNECT_DELAY = 10000; // 10 seconds
 
   // Initialize urgent alert system
   function initUrgentAlerts() {
@@ -59,6 +62,7 @@
         
         if (data.type === 'connected') {
           console.log('Connected to urgent alerts stream');
+          sseReconnectAttempts = 0; // Reset counter on successful connection
         } else if (data.type === 'urgent_note') {
           // New urgent note received - show it immediately
           showUrgentAlert(data.note);
@@ -70,13 +74,23 @@
 
     eventSource.addEventListener('error', (error) => {
       console.error('SSE connection error:', error);
-      // Attempt to reconnect after 5 seconds
+      sseReconnectAttempts++;
+      
+      // If we've exceeded max reconnects, stop trying
+      if (sseReconnectAttempts >= MAX_SSE_RECONNECTS) {
+        console.error('🛑 Max SSE reconnection attempts reached, closing connection');
+        eventSource.close();
+        eventSource = null;
+        return;
+      }
+      
+      // Attempt to reconnect after delay
       setTimeout(() => {
-        if (eventSource.readyState === EventSource.CLOSED) {
-          console.log('Attempting to reconnect to urgent alerts stream...');
+        if (eventSource && eventSource.readyState === EventSource.CLOSED) {
+          console.log(`Attempting to reconnect to urgent alerts stream (${sseReconnectAttempts}/${MAX_SSE_RECONNECTS})...`);
           connectToUrgentStream();
         }
-      }, 5000);
+      }, SSE_RECONNECT_DELAY);
     });
   }
 
