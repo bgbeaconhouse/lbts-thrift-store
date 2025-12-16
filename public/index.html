@@ -4,10 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LBTS - Login</title>
-  <script src="/js/fully-touch-fix.js"></script>
-  <script src="/js/idle-break-logger.js"></script>
- <script src="/storage-fallback.js"></script>
-
   <style>
     * {
       margin: 0;
@@ -213,31 +209,6 @@
       }
     };
 
-    // Force keyboard on input focus (Fully Kiosk) - ADD THIS WHOLE SECTION
-document.addEventListener('DOMContentLoaded', () => {
-  const inputs = document.querySelectorAll('input');
-  
-  inputs.forEach(input => {
-    // On click
-    input.addEventListener('click', () => {
-      input.focus();
-      if (window.fully && typeof fully.showKeyboard === 'function') {
-        setTimeout(() => fully.showKeyboard(), 50);
-      }
-    });
-    
-    // On touch (better for mobile)
-    input.addEventListener('touchstart', () => {
-      setTimeout(() => {
-        input.focus();
-        if (window.fully && typeof fully.showKeyboard === 'function') {
-          fully.showKeyboard();
-        }
-      }, 50);
-    }, { passive: true });
-  });
-});
-
    async function handleLogin(event) {
   event.preventDefault();
   
@@ -333,22 +304,17 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('message').style.display = 'none';
       }, 2000);
     }
-function showMessage(text, type) {
-  const messageDiv = document.getElementById('message');
-  messageDiv.textContent = text;
-  messageDiv.className = `message ${type}`;
-  messageDiv.style.display = 'block';
-  
-  // If error, just show keyboard without forcing focus
-  if (type === 'error') {
-    setTimeout(() => {
-      // Force keyboard on Fully Kiosk without locking focus
-      if (window.fully && typeof fully.showKeyboard === 'function') {
-        fully.showKeyboard();
-      }
-    }, 100);
+
+    function showMessage(text, type) {
+      const messageDiv = document.getElementById('message');
+      messageDiv.textContent = text;
+      messageDiv.className = `message ${type}`;
+      messageDiv.style.display = 'block';
+
+       if (type === 'error') {
+    document.activeElement.blur();
   }
-}
+    }
   </script>
 </body>
 </html>
