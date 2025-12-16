@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blank Test Page</title>
+  <script src="/js/idle-break-logger.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      background: #f0f0f0;
+    }
+    h1 {
+      color: #333;
+    }
+    .content {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    /* Make it scrollable */
+    .spacer {
+      height: 2000px;
+      background: linear-gradient(to bottom, white, #e0e0e0);
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Blank Test Page</h1>
+  <div class="content">
+    <p>This is a minimal test page to isolate the scroll issue.</p>
+    <p>The idle-break-logger is loaded.</p>
+    <p>Scroll down, then don't touch for 30 seconds and see if automatic scrolls happen.</p>
+  </div>
+  
+  <div class="spacer"></div>
+  
+  <div class="content">
+    <p>Bottom of page</p>
+  </div>
+</body>
+</html>
