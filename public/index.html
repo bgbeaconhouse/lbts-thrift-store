@@ -339,18 +339,12 @@ function showMessage(text, type) {
   messageDiv.className = `message ${type}`;
   messageDiv.style.display = 'block';
   
-  // If error, refocus username field and show keyboard
+  // If error, just show keyboard without forcing focus
   if (type === 'error') {
     setTimeout(() => {
-      const usernameInput = document.getElementById('username');
-      if (usernameInput) {
-        usernameInput.focus();
-        usernameInput.select(); // Select all text for easy correction
-        
-        // Force keyboard on Fully Kiosk
-        if (window.fully && typeof fully.showKeyboard === 'function') {
-          fully.showKeyboard();
-        }
+      // Force keyboard on Fully Kiosk without locking focus
+      if (window.fully && typeof fully.showKeyboard === 'function') {
+        fully.showKeyboard();
       }
     }, 100);
   }
