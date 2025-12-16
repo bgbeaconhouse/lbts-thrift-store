@@ -1,222 +1,197 @@
 /**
- * Fully Kiosk Browser - Global Touch & Scroll Fix
- * Include this on ALL pages to prevent scroll breaking
- * Add to <head>: <script src="/js/fully-touch-fix.js"></script>
+ * Fully Kiosk - Navigation-Aware Touch Fix
+ * Prevents stuck touches during page navigation
  */
 
 (function() {
   'use strict';
 
-  console.log('🔧 Fully Kiosk Global Touch Fix Loaded');
+  console.log('🔧 Navigation-Aware Touch Fix Loaded');
 
-  // Track touch state
-  let activeTouches = new Map();
-  let lastTouchStart = 0;
-  
-  // Constants
-  const STUCK_TOUCH_TIMEOUT = 3000; // 3 seconds
-  const SCROLL_CHECK_INTERVAL = 2000; // 2 seconds
+  let activeTouches = new Set();
+  let isNavigating = false;
 
   // ===========================================
-  // TOUCH EVENT TRACKING
+  // INTERCEPT ALL NAVIGATION
   // ===========================================
 
-  function trackTouchStart(e) {
-    lastTouchStart = Date.now();
-    for (let touch of e.touches) {
-      activeTouches.set(touch.identifier, {
-        startTime: Date.now(),
-        startX: touch.clientX,
-        startY: touch.clientY
-      });
-    }
-  }
-
-  function trackTouchEnd(e) {
-    for (let touch of e.changedTouches) {
-      activeTouches.delete(touch.identifier);
-    }
-  }
-
-  function trackTouchCancel(e) {
-    for (let touch of e.changedTouches) {
-      activeTouches.delete(touch.identifier);
-    }
-    console.warn('⚠️ Touch cancelled');
-  }
-
-  // Add listeners at capture phase to catch all events
-  document.addEventListener('touchstart', trackTouchStart, { capture: true, passive: true });
-  document.addEventListener('touchend', trackTouchEnd, { capture: true, passive: true });
-  document.addEventListener('touchcancel', trackTouchCancel, { capture: true, passive: true });
-
-  // ===========================================
-  // FORCE CLEANUP STUCK TOUCHES
-  // ===========================================
-
-  function forceEndAllTouches() {
-    if (activeTouches.size === 0) return;
-
-    console.error('🚨 FORCING END OF ALL TOUCHES (' + activeTouches.size + ' stuck)');
-    
-    try {
-      // Dispatch synthetic touchend to all elements
-      const touchEndEvent = new TouchEvent('touchend', {
-        bubbles: true,
-        cancelable: true,
-        view: window,
-        touches: [],
-        targetTouches: [],
-        changedTouches: []
-      });
-      document.body.dispatchEvent(touchEndEvent);
-    } catch (err) {
-      console.error('Error dispatching touchend:', err);
-    }
-
-    // Clear our tracking
-    activeTouches.clear();
-    
-    // Reset CSS that might be blocking scroll
-    restoreScrollability();
-    
-    console.log('✅ All touches forcefully cleared');
-  }
-
-  function restoreScrollability() {
-    document.body.style.overflow = '';
-    document.documentElement.style.overflow = '';
-    document.body.style.touchAction = 'pan-y pinch-zoom';
-    document.documentElement.style.touchAction = 'pan-y pinch-zoom';
-    
-    // Remove any position locks
-    document.body.style.position = '';
-    document.body.style.width = '';
-  }
-
-  // ===========================================
-  // PERIODIC STUCK TOUCH CHECK
-  // ===========================================
-
-  setInterval(() => {
-    const now = Date.now();
-    
-    // Check each active touch
-    for (let [id, touchInfo] of activeTouches.entries()) {
-      const touchAge = now - touchInfo.startTime;
+  // Before ANY navigation, force clear all touches
+  function clearTouchesBeforeNavigation() {
+    if (activeTouches.size > 0) {
+      console.warn(`⚠️ Navigation with ${activeTouches.size} active touches - force clearing`);
       
-      if (touchAge > STUCK_TOUCH_TIMEOUT) {
-        console.error(`🚨 STUCK TOUCH DETECTED (ID: ${id}, Age: ${touchAge}ms)`);
-        forceEndAllTouches();
-        break; // Exit after fixing
+      // Dispatch touchend
+      try {
+        const event = new TouchEvent('touchend', {
+          bubbles: true,
+          cancelable: false,
+          touches: [],
+          targetTouches: [],
+          changedTouches: []
+        });
+        document.body.dispatchEvent(event);
+        document.dispatchEvent(event);
+      } catch (err) {
+        console.error('Navigation touchend error:', err);
       }
+      
+      activeTouches.clear();
     }
-  }, SCROLL_CHECK_INTERVAL);
+    
+    isNavigating = true;
+  }
+
+  // Intercept all link clicks
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('a[href]');
+    if (link && !link.href.startsWith('javascript:')) {
+      console.log('🔗 Link click detected:', link.href);
+      clearTouchesBeforeNavigation();
+    }
+  }, { capture: true });
+
+  // Intercept all form submissions
+  document.addEventListener('submit', () => {
+    console.log('📝 Form submit detected');
+    clearTouchesBeforeNavigation();
+  }, { capture: true });
+
+  // Intercept all button clicks that might navigate
+  document.addEventListener('click', (e) => {
+    const button = e.target.closest('button');
+    if (button) {
+      // Wait a moment then clear touches (in case button triggers navigation)
+      setTimeout(() => {
+        if (activeTouches.size > 0) {
+          console.log('🔘 Button click - clearing touches');
+          clearTouchesBeforeNavigation();
+        }
+      }, 50);
+    }
+  }, { capture: true });
 
   // ===========================================
-  // VISIBILITY CHANGE CLEANUP
+  // TRACK TOUCH EVENTS
+  // ===========================================
+
+  document.addEventListener('touchstart', (e) => {
+    if (isNavigating) {
+      console.warn('⚠️ Touch started during navigation - blocking');
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
+    }
+    
+    for (let touch of e.touches) {
+      activeTouches.add(touch.identifier);
+    }
+  }, { capture: true, passive: false });
+
+  document.addEventListener('touchend', (e) => {
+    for (let touch of e.changedTouches) {
+      activeTouches.delete(touch.identifier);
+    }
+  }, { capture: true });
+
+  document.addEventListener('touchcancel', (e) => {
+    for (let touch of e.changedTouches) {
+      activeTouches.delete(touch.identifier);
+    }
+  }, { capture: true });
+
+  // ===========================================
+  // VISIBILITY CHANGE HANDLER
   // ===========================================
 
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden && activeTouches.size > 0) {
-      console.warn('⚠️ Page hidden with active touches, force clearing');
-      forceEndAllTouches();
-    }
-  });
-
-  window.addEventListener('blur', () => {
-    if (activeTouches.size > 0) {
-      console.warn('⚠️ Window blur with active touches, force clearing');
-      forceEndAllTouches();
+    if (document.hidden) {
+      console.log('📄 Page hidden - clearing all touches');
+      clearTouchesBeforeNavigation();
+    } else {
+      // Page visible again - reset navigation flag
+      isNavigating = false;
+      activeTouches.clear();
     }
   });
 
   // ===========================================
-  // HORIZONTAL SCROLL FIX
+  // PAGE LOAD HANDLER
   // ===========================================
 
-  // Fix horizontal scroll areas to not break vertical scroll
-  function fixHorizontalScrollAreas() {
-    // Target common horizontal scroll containers
-    const selectors = [
-      '.category-tabs',
-      '.horizontal-scroll',
-      '.tabs-wrapper',
-      '.swipe-container',
-      '[style*="overflow-x: auto"]',
-      '[style*="overflow-x:auto"]'
-    ];
+  // When page loads, ensure clean state
+  window.addEventListener('load', () => {
+    console.log('📄 Page loaded - resetting touch state');
+    isNavigating = false;
+    activeTouches.clear();
     
-    selectors.forEach(selector => {
-      const containers = document.querySelectorAll(selector);
-      containers.forEach(container => {
-        // Only allow horizontal panning in this specific area
-        container.style.touchAction = 'pan-x';
-        container.style.overflowX = 'auto';
-        container.style.overflowY = 'hidden';
-        container.style.webkitOverflowScrolling = 'touch';
-        
-        console.log('📏 Fixed horizontal scroll area:', selector);
+    // Force clear any stuck touches from previous page
+    try {
+      const event = new TouchEvent('touchend', {
+        bubbles: true,
+        cancelable: false
       });
+      document.body.dispatchEvent(event);
+    } catch (err) {
+      // Ignore
+    }
+  });
+
+  // ===========================================
+  // BEFORE UNLOAD
+  // ===========================================
+
+  window.addEventListener('beforeunload', () => {
+    console.log('📤 Page unloading - clearing touches');
+    clearTouchesBeforeNavigation();
+  });
+
+  // ===========================================
+  // PAGEHIDE (for mobile)
+  // ===========================================
+
+  window.addEventListener('pagehide', () => {
+    console.log('👋 Page hide - clearing touches');
+    clearTouchesBeforeNavigation();
+  });
+
+  // ===========================================
+  // STUCK TOUCH DETECTOR
+  // ===========================================
+
+  let lastTouchStart = 0;
+  
+  document.addEventListener('touchstart', () => {
+    lastTouchStart = Date.now();
+  }, { capture: true, passive: true });
+
+  setInterval(() => {
+    if (activeTouches.size > 0 && !isNavigating) {
+      const age = Date.now() - lastTouchStart;
+      if (age > 2000) {
+        console.error(`🚨 STUCK TOUCH (${age}ms) - force clearing`);
+        clearTouchesBeforeNavigation();
+        isNavigating = false;
+      }
+    }
+  }, 1000);
+
+  // ===========================================
+  // GLOBAL CSS
+  // ===========================================
+
+  const style = document.createElement('style');
+  style.textContent = `
+    body, html {
+      touch-action: pan-y pinch-zoom !important;
+    }
+  `;
+  if (document.head) {
+    document.head.appendChild(style);
+  } else {
+    document.addEventListener('DOMContentLoaded', () => {
+      document.head.appendChild(style);
     });
   }
 
-  // Apply fixes when DOM is ready
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', fixHorizontalScrollAreas);
-  } else {
-    fixHorizontalScrollAreas();
-  }
-
-  // Also reapply after a delay (for dynamically added content)
-  setTimeout(fixHorizontalScrollAreas, 1000);
-
-  // ===========================================
-  // GLOBAL TOUCH ACTION FIX
-  // ===========================================
-
-  // Set default touch action on body
-  function setBodyTouchAction() {
-    document.body.style.touchAction = 'pan-y pinch-zoom';
-  }
-
-  if (document.body) {
-    setBodyTouchAction();
-  } else {
-    document.addEventListener('DOMContentLoaded', setBodyTouchAction);
-  }
-
-  // ===========================================
-  // FULLY KIOSK SPECIFIC FIXES
-  // ===========================================
-
-  if (window.fully) {
-    console.log('📱 Fully Kiosk detected, applying specific fixes');
-    
-    // Periodically check if Fully has locked scroll
-    setInterval(() => {
-      // Ensure scroll isn't locked
-      if (document.body && document.body.style.overflow === 'hidden') {
-        console.warn('⚠️ Scroll appears locked, restoring...');
-        restoreScrollability();
-      }
-    }, 5000);
-  }
-
-  // ===========================================
-  // EXPOSE GLOBAL FUNCTIONS FOR DEBUGGING
-  // ===========================================
-
-  window.fullyFixDebug = {
-    activeTouches: activeTouches,
-    forceEndAllTouches: forceEndAllTouches,
-    restoreScrollability: restoreScrollability,
-    getActiveTouchCount: () => activeTouches.size
-  };
-
-  console.log('✅ Touch fix initialized');
-  console.log('   - Touch tracking: active');
-  console.log('   - Stuck touch detection: active');
-  console.log('   - Horizontal scroll fix: active');
-  console.log('   - Debug: window.fullyFixDebug');
+  console.log('✅ Navigation-aware touch fix initialized');
 })();
