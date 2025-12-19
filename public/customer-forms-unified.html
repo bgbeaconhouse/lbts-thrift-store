@@ -150,7 +150,7 @@
       gap: 10px;
       margin-bottom: 20px;
       border-bottom: 2px solid #e2e8f0;
-      overflow-x: auto;
+      flex-wrap: wrap;
     }
 
     .filter-tab {
@@ -751,7 +751,7 @@
         <select id="formTypeSelect" onchange="handleDropdownChange()">
           <option value="pickup">Pick-Up</option>
           <option value="delivery">Delivery</option>
-          <option value="donation">Donation</option>
+          <!-- <option value="donation">Donation</option> -->
           <option value="waiver">Waiver</option>
         </select>
       </div>
@@ -762,7 +762,7 @@
     <div class="filter-tabs">
       <button class="filter-tab active" data-filter="pickup" onclick="setFilter('pickup')">Pick-Up</button>
       <button class="filter-tab" data-filter="delivery" onclick="setFilter('delivery')">Delivery</button>
-      <button class="filter-tab" data-filter="donation" onclick="setFilter('donation')">Donation</button>
+      <button class="filter-tab" data-filter="donation" onclick="setFilter('donation')" style="display: none;">Donation</button>
       <button class="filter-tab" data-filter="waiver" onclick="setFilter('waiver')">Waiver</button>
     </div>
 
