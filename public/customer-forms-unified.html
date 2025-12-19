@@ -4,9 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LBTS - Customer Forms</title>
-   <script src="/js/fully-touch-fix.js"></script>
- <script src="/js/idle-break-logger.js"></script>
-   <script src="/storage-fallback.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
@@ -148,14 +145,14 @@
       to { transform: rotate(360deg); }
     }
 
-  .filter-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 20px;
-  border-bottom: 2px solid #e2e8f0;
-  overflow-x: visible;
-}
+    .filter-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #e2e8f0;
+      overflow-x: auto;
+    }
+
     .filter-tab {
       padding: 12px 24px;
       background: none;
@@ -754,7 +751,7 @@
         <select id="formTypeSelect" onchange="handleDropdownChange()">
           <option value="pickup">Pick-Up</option>
           <option value="delivery">Delivery</option>
-          <!-- <option value="donation">Donation</option> -->
+          <option value="donation">Donation</option>
           <option value="waiver">Waiver</option>
         </select>
       </div>
@@ -765,7 +762,7 @@
     <div class="filter-tabs">
       <button class="filter-tab active" data-filter="pickup" onclick="setFilter('pickup')">Pick-Up</button>
       <button class="filter-tab" data-filter="delivery" onclick="setFilter('delivery')">Delivery</button>
-      <button class="filter-tab" data-filter="donation" onclick="setFilter('donation')" style="display: none;">Donation</button>
+      <button class="filter-tab" data-filter="donation" onclick="setFilter('donation')">Donation</button>
       <button class="filter-tab" data-filter="waiver" onclick="setFilter('waiver')">Waiver</button>
     </div>
 
@@ -1300,38 +1297,6 @@
       document.getElementById('customerForm').reset();
       selectedFiles = [];
       isSubmitting = false;
-      
-      // Clear all image previews
-      const formTypes = ['pickup', 'delivery', 'donation', 'waiver'];
-      formTypes.forEach(type => {
-        const previewContainer = document.getElementById(`imagePreviews_${type}`);
-        if (previewContainer) {
-          previewContainer.innerHTML = '';
-        }
-      });
-      
-      // CRITICAL FIX: Remove touch event listeners by replacing canvases
-      // This prevents orphaned touch handlers from breaking page interaction
-      if (canvas) {
-        clearSignature();
-        const parent = canvas.parentNode;
-        if (parent) {
-          const newCanvas = canvas.cloneNode(true);
-          parent.replaceChild(newCanvas, canvas);
-        }
-        canvas = null;
-        ctx = null;
-      }
-      if (managerCanvas) {
-        clearManagerSignature();
-        const parent = managerCanvas.parentNode;
-        if (parent) {
-          const newCanvas = managerCanvas.cloneNode(true);
-          parent.replaceChild(newCanvas, managerCanvas);
-        }
-        managerCanvas = null;
-        managerCtx = null;
-      }
     }
 
     // Initialize signature pad
@@ -1467,9 +1432,7 @@
     }
 
     function handleTouchStart(e, isManager = false) {
-      if (e.cancelable) {
-        e.preventDefault();
-      }
+      e.preventDefault();
       const touch = e.touches[0];
       const mouseEvent = new MouseEvent('mousedown', {
         clientX: touch.clientX,
@@ -1483,9 +1446,7 @@
     }
 
     function handleTouchMove(e, isManager = false) {
-      if (e.cancelable) {
-        e.preventDefault();
-      }
+      e.preventDefault();
       const touch = e.touches[0];
       const mouseEvent = new MouseEvent('mousemove', {
         clientX: touch.clientX,
@@ -1969,17 +1930,6 @@
       document.getElementById('convertModal').classList.remove('active');
       document.getElementById('convertForm').reset();
       clearConvertSignature();
-      
-      // CRITICAL FIX: Remove touch event listeners from convert canvas
-      if (convertCanvas) {
-        const parent = convertCanvas.parentNode;
-        if (parent) {
-          const newCanvas = convertCanvas.cloneNode(true);
-          parent.replaceChild(newCanvas, convertCanvas);
-        }
-        convertCanvas = null;
-        convertCtx = null;
-      }
     }
 
     async function handleConvertSubmit(event) {
