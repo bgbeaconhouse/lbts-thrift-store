@@ -150,11 +150,11 @@
 
   .filter-tabs {
   display: flex;
-  flex-wrap: wrap;  /* ADD THIS */
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 20px;
   border-bottom: 2px solid #e2e8f0;
-  overflow-x: visible;  /* CHANGE from auto */
+  overflow-x: visible;
 }
     .filter-tab {
       padding: 12px 24px;
@@ -489,7 +489,7 @@
     .signature-canvas {
       width: 100%;
       height: 200px;
-      touch-action: manipulation;
+      touch-action: none;
       cursor: crosshair;
     }
 
@@ -1300,6 +1300,38 @@
       document.getElementById('customerForm').reset();
       selectedFiles = [];
       isSubmitting = false;
+      
+      // Clear all image previews
+      const formTypes = ['pickup', 'delivery', 'donation', 'waiver'];
+      formTypes.forEach(type => {
+        const previewContainer = document.getElementById(`imagePreviews_${type}`);
+        if (previewContainer) {
+          previewContainer.innerHTML = '';
+        }
+      });
+      
+      // CRITICAL FIX: Remove touch event listeners by replacing canvases
+      // This prevents orphaned touch handlers from breaking page interaction
+      if (canvas) {
+        clearSignature();
+        const parent = canvas.parentNode;
+        if (parent) {
+          const newCanvas = canvas.cloneNode(true);
+          parent.replaceChild(newCanvas, canvas);
+        }
+        canvas = null;
+        ctx = null;
+      }
+      if (managerCanvas) {
+        clearManagerSignature();
+        const parent = managerCanvas.parentNode;
+        if (parent) {
+          const newCanvas = managerCanvas.cloneNode(true);
+          parent.replaceChild(newCanvas, managerCanvas);
+        }
+        managerCanvas = null;
+        managerCtx = null;
+      }
     }
 
     // Initialize signature pad
@@ -1434,36 +1466,37 @@
       isDrawingConvert = false;
     }
 
-function handleTouchStart(e, isManager = false) {
-  if (e.cancelable) {
-    e.preventDefault();
-  }
-  const touch = e.touches[0];
-  const mouseEvent = new MouseEvent('mousedown', {
-    clientX: touch.clientX,
-    clientY: touch.clientY
-  });
-  if (isManager) {
-    managerCanvas.dispatchEvent(mouseEvent);
-  } else {
-    canvas.dispatchEvent(mouseEvent);
-  }
-}
-function handleTouchMove(e, isManager = false) {
-  if (e.cancelable) {
-    e.preventDefault();
-  }
-  const touch = e.touches[0];
-  const mouseEvent = new MouseEvent('mousemove', {
-    clientX: touch.clientX,
-    clientY: touch.clientY
-  });
-  if (isManager) {
-    managerCanvas.dispatchEvent(mouseEvent);
-  } else {
-    canvas.dispatchEvent(mouseEvent);
-  }
-}
+    function handleTouchStart(e, isManager = false) {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent('mousedown', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+      });
+      if (isManager) {
+        managerCanvas.dispatchEvent(mouseEvent);
+      } else {
+        canvas.dispatchEvent(mouseEvent);
+      }
+    }
+
+    function handleTouchMove(e, isManager = false) {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      const touch = e.touches[0];
+      const mouseEvent = new MouseEvent('mousemove', {
+        clientX: touch.clientX,
+        clientY: touch.clientY
+      });
+      if (isManager) {
+        managerCanvas.dispatchEvent(mouseEvent);
+      } else {
+        canvas.dispatchEvent(mouseEvent);
+      }
+    }
 
     function clearSignature() {
       if (ctx && canvas) {
@@ -1936,6 +1969,17 @@ function handleTouchMove(e, isManager = false) {
       document.getElementById('convertModal').classList.remove('active');
       document.getElementById('convertForm').reset();
       clearConvertSignature();
+      
+      // CRITICAL FIX: Remove touch event listeners from convert canvas
+      if (convertCanvas) {
+        const parent = convertCanvas.parentNode;
+        if (parent) {
+          const newCanvas = convertCanvas.cloneNode(true);
+          parent.replaceChild(newCanvas, convertCanvas);
+        }
+        convertCanvas = null;
+        convertCtx = null;
+      }
     }
 
     async function handleConvertSubmit(event) {
