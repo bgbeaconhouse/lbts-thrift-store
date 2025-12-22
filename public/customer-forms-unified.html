@@ -1595,6 +1595,22 @@
       if (input) input.value = '';
     }
 
+    // Helper function to format date as local date string (YYYY-MM-DD) with timezone offset
+    function formatDateForSubmission(dateString) {
+      if (!dateString) return null;
+      
+      // Create a date at noon local time to avoid timezone shifts
+      const [year, month, day] = dateString.split('-');
+      const date = new Date(year, month - 1, day, 12, 0, 0);
+      
+      // Format as YYYY-MM-DD in local timezone
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
     // Form submission
     async function handleSubmit(event) {
       event.preventDefault();
@@ -1634,8 +1650,8 @@
         const dateStored = document.getElementById('date_stored').value;
         const description = document.getElementById('items_description_pickup').value;
         
-        if (datePurchased) formData.append('date_purchased', datePurchased);
-        if (dateStored) formData.append('date_stored', dateStored);
+        if (datePurchased) formData.append('date_purchased', formatDateForSubmission(datePurchased));
+        if (dateStored) formData.append('date_stored', formatDateForSubmission(dateStored));
         if (description) formData.append('items_description', description);
         
         // Add photos
@@ -1651,7 +1667,7 @@
         
         if (address) formData.append('delivery_address', address);
         if (cost) formData.append('delivery_cost', cost);
-        if (dateScheduled) formData.append('date_scheduled', dateScheduled);
+        if (dateScheduled) formData.append('date_scheduled', formatDateForSubmission(dateScheduled));
         if (description) formData.append('items_description', description);
         
         // Add photos
@@ -1961,11 +1977,11 @@
       if (targetType === 'delivery') {
         formData.append('delivery_address', document.getElementById('convert_delivery_address').value);
         formData.append('delivery_cost', document.getElementById('convert_delivery_cost').value);
-        formData.append('date_scheduled', document.getElementById('convert_date_scheduled').value);
+        formData.append('date_scheduled', formatDateForSubmission(document.getElementById('convert_date_scheduled').value));
       } else {
         const datePurchased = document.getElementById('convert_date_purchased').value;
-        if (datePurchased) formData.append('date_purchased', datePurchased);
-        formData.append('date_stored', document.getElementById('convert_date_stored').value);
+        if (datePurchased) formData.append('date_purchased', formatDateForSubmission(datePurchased));
+        formData.append('date_stored', formatDateForSubmission(document.getElementById('convert_date_stored').value));
       }
       
       // Add signature
