@@ -451,7 +451,10 @@ router.get('/:type', async (req, res) => {
     if (type === 'pickup') {
       query = `
         SELECT id, customer_name, phone, email, items_description, signature_url, 
-               date, date_purchased, date_stored, picture_urls, notes,
+               date, 
+               to_char(date_purchased, 'YYYY-MM-DD') as date_purchased, 
+               to_char(date_stored, 'YYYY-MM-DD') as date_stored, 
+               picture_urls, notes,
                email_sent, email_sent_at, email_error, created_at
         FROM ${tableName}
         WHERE deleted_at IS NULL 
@@ -460,7 +463,10 @@ router.get('/:type', async (req, res) => {
     } else if (type === 'delivery') {
       query = `
         SELECT id, customer_name, phone, email, items_description, delivery_address,
-               delivery_cost, delivery_date, date_scheduled, signature_url, 
+               delivery_cost, 
+               to_char(delivery_date, 'YYYY-MM-DD') as delivery_date, 
+               to_char(date_scheduled, 'YYYY-MM-DD') as date_scheduled, 
+               signature_url, 
                date, picture_urls, notes,
                email_sent, email_sent_at, email_error, created_at
         FROM ${tableName}
