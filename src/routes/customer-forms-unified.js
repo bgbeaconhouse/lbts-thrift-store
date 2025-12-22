@@ -10,6 +10,21 @@ const { authenticateToken, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Helper function to format date string for PostgreSQL DATE column
+// This prevents timezone conversion issues by explicitly treating as DATE type
+function formatDateForDB(dateString) {
+  if (!dateString) return null;
+  
+  // If it's already in YYYY-MM-DD format, return as-is
+  // PostgreSQL will treat this as a DATE (not TIMESTAMP) which doesn't have timezone issues
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (dateRegex.test(dateString)) {
+    return dateString;
+  }
+  
+  return null;
+}
+
 // Configure multer for file uploads (signatures and photos)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -531,10 +546,10 @@ router.post('/create', upload.fields([
          (customer_name, phone, email, items_description, signature_url, 
           date, date_purchased, date_stored, picture_urls, notes, 
           created_by, email_sent, email_error)
-         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10, false, NULL)
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6::date, $7::date, $8, $9, $10, false, NULL)
          RETURNING *`,
         [customer_name, phone, email || null, items_description || notes, signatureUrl, 
-         date_purchased || null, date_stored || null, pictureUrls, notes || null, req.user.id]
+         formatDateForDB(date_purchased), formatDateForDB(date_stored), pictureUrls, notes || null, req.user.id]
       );
     } else if (form_type === 'delivery') {
       result = await db.query(
@@ -542,10 +557,10 @@ router.post('/create', upload.fields([
          (customer_name, phone, email, items_description, delivery_address,
           delivery_cost, delivery_date, date_scheduled, signature_url, 
           date, picture_urls, notes, created_by, email_sent, email_error)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_DATE, $10, $11, $12, false, NULL)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::date, $8::date, $9, CURRENT_DATE, $10, $11, $12, false, NULL)
          RETURNING *`,
         [customer_name, phone, email || null, items_description || notes, delivery_address || null,
-         delivery_cost || null, delivery_date || null, date_scheduled || null, signatureUrl,
+         delivery_cost || null, formatDateForDB(delivery_date), formatDateForDB(date_scheduled), signatureUrl,
          pictureUrls, notes || null, req.user.id]
       );
     } else if (form_type === 'donation') {
@@ -790,7 +805,7 @@ router.post('/convert', authenticateToken, upload.fields([
          (customer_name, phone, email, items_description, delivery_address,
           delivery_cost, delivery_date, date_scheduled, signature_url, 
           date, picture_urls, notes, created_by, email_sent, email_error)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_DATE, $10, $11, $12, false, NULL)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::date, $8::date, $9, CURRENT_DATE, $10, $11, $12, false, NULL)
          RETURNING *`,
         [
           originalForm.customer_name,
@@ -799,8 +814,8 @@ router.post('/convert', authenticateToken, upload.fields([
           originalForm.items_description || originalForm.notes,
           delivery_address,
           delivery_cost,
-          date_scheduled, // Use as delivery_date
-          date_scheduled, // Also use as date_scheduled
+          formatDateForDB(date_scheduled), // Use as delivery_date
+          formatDateForDB(date_scheduled), // Also use as date_scheduled
           signatureUrl, // Use new signature
           originalForm.picture_urls || null,
           originalForm.notes || null,
@@ -818,7 +833,7 @@ router.post('/convert', authenticateToken, upload.fields([
          (customer_name, phone, email, items_description, signature_url, 
           date, date_purchased, date_stored, picture_urls, notes, 
           created_by, email_sent, email_error)
-         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6, $7, $8, $9, $10, false, NULL)
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6::date, $7::date, $8, $9, $10, false, NULL)
          RETURNING *`,
         [
           originalForm.customer_name,
@@ -826,8 +841,8 @@ router.post('/convert', authenticateToken, upload.fields([
           originalForm.email || null,
           originalForm.items_description || originalForm.notes,
           signatureUrl, // Use new signature
-          date_purchased || null,
-          date_stored,
+          formatDateForDB(date_purchased),
+          formatDateForDB(date_stored),
           originalForm.picture_urls || null,
           originalForm.notes || null,
           req.user.id
