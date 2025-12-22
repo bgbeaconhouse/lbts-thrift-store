@@ -33,7 +33,9 @@ const pool = new Pool(
         connectionString: process.env.DATABASE_URL,
         ssl: {
           rejectUnauthorized: false
-        }
+        },
+        // Force UTC timezone to prevent date shifting
+        options: '-c timezone=UTC'
       }
     : {
         user: process.env.DB_USER,
@@ -41,15 +43,26 @@ const pool = new Pool(
         database: process.env.DB_NAME,
         password: process.env.DB_PASSWORD,
         port: process.env.DB_PORT,
+        // Force UTC timezone to prevent date shifting
+        options: '-c timezone=UTC'
       }
 );
 
-// Test database connection
+// Test database connection and set timezone
 pool.query('SELECT NOW()', (err, res) => {
   if (err) {
     console.error('❌ Database connection error:', err);
   } else {
     console.log('✅ Database connected successfully');
+    
+    // Set timezone to UTC to prevent date shifting issues
+    pool.query("SET TIME ZONE 'UTC'", (tzErr) => {
+      if (tzErr) {
+        console.error('⚠️ Warning: Could not set timezone to UTC:', tzErr);
+      } else {
+        console.log('✅ Database timezone set to UTC');
+      }
+    });
   }
 });
 

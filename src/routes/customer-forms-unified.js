@@ -11,15 +11,24 @@ const { authenticateToken, requireRole } = require('../middleware/auth');
 const router = express.Router();
 
 // Helper function to format date string for PostgreSQL DATE column
-// This prevents timezone conversion issues by explicitly treating as DATE type
+// This prevents timezone conversion issues by ensuring dates are stored as-is
 function formatDateForDB(dateString) {
   if (!dateString) return null;
   
-  // If it's already in YYYY-MM-DD format, return as-is
-  // PostgreSQL will treat this as a DATE (not TIMESTAMP) which doesn't have timezone issues
-  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-  if (dateRegex.test(dateString)) {
-    return dateString;
+  // If it's already in YYYY-MM-DD format, validate and return as-is
+  const dateRegex = /^(\d{4})-(\d{2})-(\d{2})$/;
+  const match = dateString.match(dateRegex);
+  
+  if (match) {
+    // Validate that it's a real date
+    const year = parseInt(match[1]);
+    const month = parseInt(match[2]);
+    const day = parseInt(match[3]);
+    
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+      // Return the date string as-is - PostgreSQL DATE type doesn't use timezone
+      return dateString;
+    }
   }
   
   return null;
@@ -506,6 +515,15 @@ router.post('/create', upload.fields([
     date_scheduled,
     notes
   } = req.body;
+
+  // Debug logging for dates
+  console.log('📅 Date values received:');
+  console.log('  date_purchased:', date_purchased);
+  console.log('  date_stored:', date_stored);
+  console.log('  date_scheduled:', date_scheduled);
+  console.log('  Formatted date_purchased:', formatDateForDB(date_purchased));
+  console.log('  Formatted date_stored:', formatDateForDB(date_stored));
+  console.log('  Formatted date_scheduled:', formatDateForDB(date_scheduled));
 
   // Validate form type
   const validTypes = ['pickup', 'delivery', 'donation', 'waiver'];
