@@ -1216,9 +1216,9 @@
                   <span><strong>${typeLabel}</strong></span>
                   <span>📞 ${escapeHtml(form.phone)}</span>
                   ${form.email ? `<span>📧 ${escapeHtml(form.email)}</span>` : ''}
-                  <span>📅 ${new Date(form.created_at).toLocaleDateString()}</span>
+                  <span>📅 ${formatDateForDisplay(form.created_at)}</span>
                   ${form.delivery_cost ? `<span>💵 $${parseFloat(form.delivery_cost).toFixed(2)}</span>` : ''}
-                  ${form.date_scheduled || form.date_stored ? `<span>🗓️ ${new Date(form.date_scheduled || form.date_stored).toLocaleDateString()}</span>` : ''}
+                  ${form.date_scheduled || form.date_stored ? `<span>🗓️ ${formatDateForDisplay(form.date_scheduled || form.date_stored)}</span>` : ''}
                   <span>${emailBadge}</span>
                 </div>
                 ${description ? `<div class="form-description">${escapeHtml(description).substring(0, 150)}${description.length > 150 ? '...' : ''}</div>` : ''}
@@ -1609,6 +1609,27 @@
       const dd = String(date.getDate()).padStart(2, '0');
       
       return `${yyyy}-${mm}-${dd}`;
+    }
+
+    // Helper function to format date for display without timezone conversion
+    function formatDateForDisplay(dateString) {
+      if (!dateString) return 'N/A';
+      
+      // If it's a YYYY-MM-DD string, parse it manually to avoid timezone issues
+      const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        const year = match[1];
+        const month = match[2];
+        const day = match[3];
+        
+        // Create date at noon local time to prevent timezone shifts
+        const date = new Date(year, month - 1, day, 12, 0, 0);
+        
+        return date.toLocaleDateString();
+      }
+      
+      // Fallback to regular Date parsing for timestamps
+      return new Date(dateString).toLocaleDateString();
     }
 
     // Form submission
