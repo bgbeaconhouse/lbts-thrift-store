@@ -732,9 +732,11 @@ router.post('/retry-email/:type/:id', async (req, res) => {
 
 // ==================== UPDATE FORM ====================
 
-router.put('/:type/:id', authenticateToken, async (req, res) => {
+router.put('/:type/:id', authenticateToken, upload.fields([
+  { name: 'new_pictures', maxCount: 10 }
+]), async (req, res) => {
   const { type, id } = req.params;
-  const {
+  let {
     customer_name,
     phone,
     email,
@@ -747,6 +749,15 @@ router.put('/:type/:id', authenticateToken, async (req, res) => {
     date_scheduled,
     photos_to_delete
   } = req.body;
+  
+  // Parse photos_to_delete if it's a JSON string
+  if (typeof photos_to_delete === 'string') {
+    try {
+      photos_to_delete = JSON.parse(photos_to_delete);
+    } catch (e) {
+      photos_to_delete = [];
+    }
+  }
   
   // Validate type
   const validTypes = ['pickup', 'delivery'];
@@ -763,20 +774,21 @@ router.put('/:type/:id', authenticateToken, async (req, res) => {
     const db = req.app.locals.db;
     const tableName = `${type}_forms`;
     
-    // Handle photo deletion
+    // Get current photos
+    const currentForm = await db.query(
+      `SELECT picture_urls FROM ${tableName} WHERE id = $1`,
+      [id]
+    );
+    
     let updatedPhotoUrls = null;
-    if (photos_to_delete && photos_to_delete.length > 0) {
-      // Get current photos
-      const currentForm = await db.query(
-        `SELECT picture_urls FROM ${tableName} WHERE id = $1`,
-        [id]
-      );
+    
+    if (currentForm.rows.length > 0) {
+      let currentPhotos = currentForm.rows[0].picture_urls || [];
       
-      if (currentForm.rows.length > 0) {
-        let currentPhotos = currentForm.rows[0].picture_urls || [];
-        
+      // Handle photo deletion
+      if (photos_to_delete && photos_to_delete.length > 0) {
         // Remove photos marked for deletion
-        updatedPhotoUrls = currentPhotos.filter(url => !photos_to_delete.includes(url));
+        currentPhotos = currentPhotos.filter(url => !photos_to_delete.includes(url));
         
         // Delete photo files from filesystem
         photos_to_delete.forEach(photoUrl => {
@@ -785,6 +797,18 @@ router.put('/:type/:id', authenticateToken, async (req, res) => {
             if (err) console.error('Error deleting photo file:', err);
           });
         });
+      }
+      
+      // Handle new photo uploads
+      if (req.files && req.files.new_pictures && req.files.new_pictures.length > 0) {
+        const newPhotoUrls = req.files.new_pictures.map(file => `/uploads/${type}/${file.filename}`);
+        currentPhotos = [...currentPhotos, ...newPhotoUrls];
+      }
+      
+      // Only update if we modified photos
+      if ((photos_to_delete && photos_to_delete.length > 0) || 
+          (req.files && req.files.new_pictures && req.files.new_pictures.length > 0)) {
+        updatedPhotoUrls = currentPhotos;
       }
     }
     

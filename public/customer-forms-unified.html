@@ -1147,10 +1147,22 @@
           </div>
 
           <!-- Photo Management -->
-          <div class="form-group" id="editPhotosSection" style="display: none;">
-            <label>Photos</label>
+          <div class="form-group">
+            <label>Current Photos</label>
             <div id="editPhotosList" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
-              <!-- Photos will be loaded here -->
+              <!-- Existing photos will be loaded here -->
+            </div>
+            <div id="editNoPhotosMessage" style="display: none; color: #718096; font-size: 14px; margin-top: 10px;">
+              No photos attached
+            </div>
+          </div>
+
+          <!-- Add New Photos -->
+          <div class="form-group">
+            <label for="edit_new_photos">Add New Photos (Optional)</label>
+            <input type="file" id="edit_new_photos" accept="image/*" multiple style="margin-top: 5px;">
+            <div id="editNewPhotosPreview" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+              <!-- New photos preview will appear here -->
             </div>
           </div>
 
@@ -1170,6 +1182,7 @@
     let isSubmitting = false;
     let currentFormPhotos = []; // Track current photos in edit mode
     let photosToDelete = []; // Track photos marked for deletion
+    let newPhotosToUpload = []; // Track new photos to add during edit
     
     // Signature pad setup
     let canvas, ctx, isDrawing = false;
@@ -2153,15 +2166,17 @@
     }
 
     function displayEditPhotos() {
-      const photosSection = document.getElementById('editPhotosSection');
       const photosList = document.getElementById('editPhotosList');
+      const noPhotosMsg = document.getElementById('editNoPhotosMessage');
       
       if (currentFormPhotos.length === 0) {
-        photosSection.style.display = 'none';
+        photosList.style.display = 'none';
+        noPhotosMsg.style.display = 'block';
         return;
       }
       
-      photosSection.style.display = 'block';
+      photosList.style.display = 'flex';
+      noPhotosMsg.style.display = 'none';
       photosList.innerHTML = currentFormPhotos.map((url, index) => `
         <div class="edit-photo-item">
           <img src="${url}" alt="Photo ${index + 1}">
@@ -2187,11 +2202,57 @@
       displayEditPhotos();
     }
 
+    // Handle new photo uploads in edit mode
+    document.addEventListener('DOMContentLoaded', function() {
+      const editNewPhotosInput = document.getElementById('edit_new_photos');
+      if (editNewPhotosInput) {
+        editNewPhotosInput.addEventListener('change', function(e) {
+          const files = Array.from(e.target.files);
+          newPhotosToUpload = files;
+          
+          // Display preview
+          const previewContainer = document.getElementById('editNewPhotosPreview');
+          previewContainer.innerHTML = '';
+          
+          files.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              const photoItem = document.createElement('div');
+              photoItem.className = 'edit-photo-item';
+              photoItem.innerHTML = `
+                <img src="${e.target.result}" alt="New photo ${index + 1}">
+                <button type="button" class="delete-photo-btn" onclick="removeNewPhoto(${index})" title="Remove photo">×</button>
+              `;
+              previewContainer.appendChild(photoItem);
+            };
+            reader.readAsDataURL(file);
+          });
+        });
+      }
+    });
+
+    function removeNewPhoto(index) {
+      newPhotosToUpload.splice(index, 1);
+      
+      // Update file input
+      const dataTransfer = new DataTransfer();
+      newPhotosToUpload.forEach(file => {
+        dataTransfer.items.add(file);
+      });
+      document.getElementById('edit_new_photos').files = dataTransfer.files;
+      
+      // Refresh preview
+      const changeEvent = new Event('change');
+      document.getElementById('edit_new_photos').dispatchEvent(changeEvent);
+    }
+
     function closeEditModal() {
       document.getElementById('editModal').classList.remove('active');
       document.getElementById('editForm').reset();
       currentFormPhotos = [];
       photosToDelete = [];
+      newPhotosToUpload = [];
+      document.getElementById('editNewPhotosPreview').innerHTML = '';
     }
 
     async function handleEditSubmit(event) {
@@ -2206,43 +2267,46 @@
       const originalBtnText = submitBtn.innerHTML;
       submitBtn.innerHTML = '<span class="loading-spinner"></span>Saving...';
       
-      // Build update data
-      const updateData = {
-        customer_name: document.getElementById('edit_customer_name').value,
-        phone: document.getElementById('edit_phone').value,
-        email: document.getElementById('edit_email').value,
-        items_description: document.getElementById('edit_items_description').value,
-        notes: document.getElementById('edit_notes').value
-      };
+      // Use FormData to support file uploads
+      const formData = new FormData();
+      formData.append('customer_name', document.getElementById('edit_customer_name').value);
+      formData.append('phone', document.getElementById('edit_phone').value);
+      formData.append('email', document.getElementById('edit_email').value);
+      formData.append('items_description', document.getElementById('edit_items_description').value);
+      formData.append('notes', document.getElementById('edit_notes').value);
       
       // Add type-specific fields
       if (formType === 'pickup') {
         const datePurchased = document.getElementById('edit_date_purchased').value;
         const dateStored = document.getElementById('edit_date_stored').value;
         
-        if (datePurchased) updateData.date_purchased = formatDateForSubmission(datePurchased);
-        if (dateStored) updateData.date_stored = formatDateForSubmission(dateStored);
+        if (datePurchased) formData.append('date_purchased', formatDateForSubmission(datePurchased));
+        if (dateStored) formData.append('date_stored', formatDateForSubmission(dateStored));
       } else if (formType === 'delivery') {
-        updateData.delivery_address = document.getElementById('edit_delivery_address').value;
-        updateData.delivery_cost = document.getElementById('edit_delivery_cost').value;
+        formData.append('delivery_address', document.getElementById('edit_delivery_address').value);
+        formData.append('delivery_cost', document.getElementById('edit_delivery_cost').value);
         
         const dateScheduled = document.getElementById('edit_date_scheduled').value;
-        if (dateScheduled) updateData.date_scheduled = formatDateForSubmission(dateScheduled);
+        if (dateScheduled) formData.append('date_scheduled', formatDateForSubmission(dateScheduled));
       }
       
       // Add photos to delete
       if (photosToDelete.length > 0) {
-        updateData.photos_to_delete = photosToDelete;
+        formData.append('photos_to_delete', JSON.stringify(photosToDelete));
       }
+      
+      // Add new photos
+      newPhotosToUpload.forEach(file => {
+        formData.append('new_pictures', file);
+      });
       
       try {
         const response = await fetch(`/api/customer-forms-unified/${formType}/${formId}`, {
           method: 'PUT',
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify(updateData)
+          body: formData
         });
         
         const data = await response.json();
