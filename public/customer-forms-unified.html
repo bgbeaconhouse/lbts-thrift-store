@@ -1160,6 +1160,7 @@
           <!-- Add New Photos -->
           <div class="form-group">
             <label for="edit_new_photos">Add New Photos (Optional)</label>
+            <div style="font-size: 12px; color: #718096; margin-bottom: 5px;">You can select multiple photos at once or add more photos multiple times</div>
             <input type="file" id="edit_new_photos" accept="image/*" multiple style="margin-top: 5px;">
             <div id="editNewPhotosPreview" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
               <!-- New photos preview will appear here -->
@@ -2207,43 +2208,42 @@
       const editNewPhotosInput = document.getElementById('edit_new_photos');
       if (editNewPhotosInput) {
         editNewPhotosInput.addEventListener('change', function(e) {
-          const files = Array.from(e.target.files);
-          newPhotosToUpload = files;
+          const newFiles = Array.from(e.target.files);
           
-          // Display preview
-          const previewContainer = document.getElementById('editNewPhotosPreview');
-          previewContainer.innerHTML = '';
+          // Add new files to existing array (accumulate instead of replace)
+          newPhotosToUpload = [...newPhotosToUpload, ...newFiles];
           
-          files.forEach((file, index) => {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-              const photoItem = document.createElement('div');
-              photoItem.className = 'edit-photo-item';
-              photoItem.innerHTML = `
-                <img src="${e.target.result}" alt="New photo ${index + 1}">
-                <button type="button" class="delete-photo-btn" onclick="removeNewPhoto(${index})" title="Remove photo">×</button>
-              `;
-              previewContainer.appendChild(photoItem);
-            };
-            reader.readAsDataURL(file);
-          });
+          // Display preview of ALL photos
+          displayNewPhotosPreview();
+          
+          // Clear the file input so the same file can be selected again if needed
+          e.target.value = '';
         });
       }
     });
 
+    function displayNewPhotosPreview() {
+      const previewContainer = document.getElementById('editNewPhotosPreview');
+      previewContainer.innerHTML = '';
+      
+      newPhotosToUpload.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const photoItem = document.createElement('div');
+          photoItem.className = 'edit-photo-item';
+          photoItem.innerHTML = `
+            <img src="${e.target.result}" alt="New photo ${index + 1}">
+            <button type="button" class="delete-photo-btn" onclick="removeNewPhoto(${index})" title="Remove photo">×</button>
+          `;
+          previewContainer.appendChild(photoItem);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
     function removeNewPhoto(index) {
       newPhotosToUpload.splice(index, 1);
-      
-      // Update file input
-      const dataTransfer = new DataTransfer();
-      newPhotosToUpload.forEach(file => {
-        dataTransfer.items.add(file);
-      });
-      document.getElementById('edit_new_photos').files = dataTransfer.files;
-      
-      // Refresh preview
-      const changeEvent = new Event('change');
-      document.getElementById('edit_new_photos').dispatchEvent(changeEvent);
+      displayNewPhotosPreview();
     }
 
     function closeEditModal() {
