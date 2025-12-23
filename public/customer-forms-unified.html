@@ -1358,9 +1358,9 @@
                   <span><strong>${typeLabel}</strong></span>
                   <span>📞 ${escapeHtml(form.phone)}</span>
                   ${form.email ? `<span>📧 ${escapeHtml(form.email)}</span>` : ''}
-                  <span>📅 ${formatDateForDisplay(form.created_at)}</span>
+                  ${form.date_purchased ? `<span>📅 Purchased: ${formatDateForDisplay(form.date_purchased)}</span>` : ''}
+                  ${form.date_scheduled || form.date_stored ? `<span>🗓️ Pickup: ${formatDateForDisplay(form.date_scheduled || form.date_stored)}</span>` : ''}
                   ${form.delivery_cost ? `<span>💵 $${parseFloat(form.delivery_cost).toFixed(2)}</span>` : ''}
-                  ${form.date_scheduled || form.date_stored ? `<span>🗓️ ${formatDateForDisplay(form.date_scheduled || form.date_stored)}</span>` : ''}
                   <span>${emailBadge}</span>
                 </div>
                 ${description ? `<div class="form-description">${escapeHtml(description).substring(0, 150)}${description.length > 150 ? '...' : ''}</div>` : ''}
