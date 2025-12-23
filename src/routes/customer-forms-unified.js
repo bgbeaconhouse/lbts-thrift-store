@@ -730,6 +730,168 @@ router.post('/retry-email/:type/:id', async (req, res) => {
   }
 });
 
+// ==================== UPDATE FORM ====================
+
+router.put('/:type/:id', authenticateToken, async (req, res) => {
+  const { type, id } = req.params;
+  const {
+    customer_name,
+    phone,
+    email,
+    items_description,
+    notes,
+    date_purchased,
+    date_stored,
+    delivery_address,
+    delivery_cost,
+    date_scheduled,
+    photos_to_delete
+  } = req.body;
+  
+  // Validate type
+  const validTypes = ['pickup', 'delivery'];
+  if (!validTypes.includes(type)) {
+    return res.status(400).json({ error: 'Invalid form type for editing' });
+  }
+  
+  // Validate required fields
+  if (!customer_name || !phone) {
+    return res.status(400).json({ error: 'Customer name and phone are required' });
+  }
+  
+  try {
+    const db = req.app.locals.db;
+    const tableName = `${type}_forms`;
+    
+    // Handle photo deletion
+    let updatedPhotoUrls = null;
+    if (photos_to_delete && photos_to_delete.length > 0) {
+      // Get current photos
+      const currentForm = await db.query(
+        `SELECT picture_urls FROM ${tableName} WHERE id = $1`,
+        [id]
+      );
+      
+      if (currentForm.rows.length > 0) {
+        let currentPhotos = currentForm.rows[0].picture_urls || [];
+        
+        // Remove photos marked for deletion
+        updatedPhotoUrls = currentPhotos.filter(url => !photos_to_delete.includes(url));
+        
+        // Delete photo files from filesystem
+        photos_to_delete.forEach(photoUrl => {
+          const filePath = path.join(__dirname, '../..', photoUrl);
+          fs.unlink(filePath, (err) => {
+            if (err) console.error('Error deleting photo file:', err);
+          });
+        });
+      }
+    }
+    
+    let result;
+    
+    if (type === 'pickup') {
+      // Validate pickup-specific required fields
+      if (!date_stored) {
+        return res.status(400).json({ error: 'Pick-up date is required' });
+      }
+      
+      result = await db.query(
+        `UPDATE ${tableName}
+         SET customer_name = $1,
+             phone = $2,
+             email = $3,
+             items_description = $4,
+             notes = $5,
+             date_purchased = $6::date,
+             date_stored = $7::date
+             ${updatedPhotoUrls !== null ? ', picture_urls = $9' : ''}
+         WHERE id = $8 AND deleted_at IS NULL
+         RETURNING *`,
+        updatedPhotoUrls !== null 
+          ? [
+              customer_name,
+              phone,
+              email || null,
+              items_description || null,
+              notes || null,
+              formatDateForDB(date_purchased),
+              formatDateForDB(date_stored),
+              id,
+              updatedPhotoUrls
+            ]
+          : [
+              customer_name,
+              phone,
+              email || null,
+              items_description || null,
+              notes || null,
+              formatDateForDB(date_purchased),
+              formatDateForDB(date_stored),
+              id
+            ]
+      );
+    } else if (type === 'delivery') {
+      // Validate delivery-specific required fields
+      if (!delivery_address || !delivery_cost || !date_scheduled) {
+        return res.status(400).json({ error: 'Delivery address, cost, and date are required' });
+      }
+      
+      result = await db.query(
+        `UPDATE ${tableName}
+         SET customer_name = $1,
+             phone = $2,
+             email = $3,
+             items_description = $4,
+             notes = $5,
+             delivery_address = $6,
+             delivery_cost = $7,
+             date_scheduled = $8::date
+             ${updatedPhotoUrls !== null ? ', picture_urls = $10' : ''}
+         WHERE id = $9 AND deleted_at IS NULL
+         RETURNING *`,
+        updatedPhotoUrls !== null
+          ? [
+              customer_name,
+              phone,
+              email || null,
+              items_description || null,
+              notes || null,
+              delivery_address,
+              delivery_cost,
+              formatDateForDB(date_scheduled),
+              id,
+              updatedPhotoUrls
+            ]
+          : [
+              customer_name,
+              phone,
+              email || null,
+              items_description || null,
+              notes || null,
+              delivery_address,
+              delivery_cost,
+              formatDateForDB(date_scheduled),
+              id
+            ]
+      );
+    }
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Form not found' });
+    }
+    
+    res.json({
+      message: `${type.charAt(0).toUpperCase() + type.slice(1)} form updated successfully`,
+      form: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error(`Update ${type} form error:`, error);
+    res.status(500).json({ error: `Failed to update ${type} form` });
+  }
+});
+
 // ==================== DELETE FORM ====================
 
 router.delete('/:type/:id', async (req, res) => {
