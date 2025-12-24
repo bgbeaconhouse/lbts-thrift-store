@@ -1359,7 +1359,7 @@
                   <span>📞 ${escapeHtml(form.phone)}</span>
                   ${form.email ? `<span>📧 ${escapeHtml(form.email)}</span>` : ''}
                   ${form.date_purchased ? `<span>📅 Purchased: ${formatDateForDisplay(form.date_purchased)}</span>` : ''}
-                  ${form.date_scheduled || form.date_stored ? `<span>🗓️ Pickup: ${formatDateForDisplay(form.date_scheduled || form.date_stored)}</span>` : ''}
+                 ${form.date_scheduled || form.date_stored ? `<span>🗓️ ${form.form_type === 'delivery' ? 'Delivery' : 'Pickup'}: ${formatDateForDisplay(form.date_scheduled || form.date_stored)}</span>` : ''}
                   ${form.delivery_cost ? `<span>💵 $${parseFloat(form.delivery_cost).toFixed(2)}</span>` : ''}
                   <span>${emailBadge}</span>
                 </div>
