@@ -503,12 +503,30 @@ router.put('/:id', upload.array('pictures', 10), async (req, res) => {
   }
 });
 
-// PATCH /api/communication/:id/pin - Toggle pin status
+// PATCH /api/communication/:id/pin - Toggle pin status (Admins can pin any note)
 router.patch('/:id/pin', async (req, res) => {
   const { id } = req.params;
 
   try {
     const db = req.app.locals.db;
+
+    // Check if entry exists and get owner info
+    const entryCheck = await db.query(
+      'SELECT user_id FROM communication_log WHERE id = $1 AND deleted_at IS NULL',
+      [id]
+    );
+
+    if (entryCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    // Only admins can pin/unpin other people's notes
+    const isOwner = entryCheck.rows[0].user_id === req.user.id;
+    const isAdmin = req.user.role === 'Admin';
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: 'Only admins can pin other users\' notes' });
+    }
 
     const result = await db.query(
       `UPDATE communication_log 
@@ -531,21 +549,29 @@ router.patch('/:id/pin', async (req, res) => {
   }
 });
 
-// DELETE /api/communication/:id - Soft delete entry
+// DELETE /api/communication/:id - Soft delete entry (Admins can delete any note)
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
     const db = req.app.locals.db;
 
-    // Get the entry to delete its photos
+    // Get the entry to check ownership and delete its photos
     const entry = await db.query(
-      'SELECT picture_urls FROM communication_log WHERE id = $1 AND deleted_at IS NULL',
+      'SELECT user_id, picture_urls FROM communication_log WHERE id = $1 AND deleted_at IS NULL',
       [id]
     );
 
     if (entry.rows.length === 0) {
       return res.status(404).json({ error: 'Entry not found' });
+    }
+
+    // Only admins can delete other people's notes
+    const isOwner = entry.rows[0].user_id === req.user.id;
+    const isAdmin = req.user.role === 'Admin';
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: 'Only admins can delete other users\' notes' });
     }
 
     // Delete photos from filesystem
@@ -564,7 +590,7 @@ router.delete('/:id', async (req, res) => {
       });
     });
 
-    // Soft delete the entry
+    // Soft delete the entry (this will cascade delete comments via ON DELETE CASCADE)
     const result = await db.query(
       'UPDATE communication_log SET deleted_at = NOW() WHERE id = $1 RETURNING id',
       [id]
@@ -578,6 +604,144 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('Delete communication entry error:', error);
     res.status(500).json({ error: 'Failed to delete entry' });
+  }
+});
+
+// ============================================================================
+// COMMENT ROUTES
+// ============================================================================
+
+// GET /api/communication/:id/comments - Get all comments for a note
+router.get('/:id/comments', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const db = req.app.locals.db;
+
+    // Verify the note exists
+    const noteCheck = await db.query(
+      'SELECT id FROM communication_log WHERE id = $1 AND deleted_at IS NULL',
+      [id]
+    );
+
+    if (noteCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+
+    // Get all comments for this note
+    const result = await db.query(
+      `SELECT 
+        cc.id, cc.note_id, cc.user_id, cc.comment, cc.created_at,
+        u.username, u.role
+      FROM communication_comments cc
+      LEFT JOIN users u ON cc.user_id = u.id
+      WHERE cc.note_id = $1 AND cc.deleted_at IS NULL
+      ORDER BY cc.created_at ASC`,
+      [id]
+    );
+
+    res.json({ comments: result.rows });
+  } catch (error) {
+    console.error('Get comments error:', error);
+    res.status(500).json({ error: 'Failed to get comments' });
+  }
+});
+
+// POST /api/communication/:id/comments - Add a comment to a note
+router.post('/:id/comments', async (req, res) => {
+  const { id } = req.params;
+  const { comment } = req.body;
+
+  // Validation
+  if (!comment || comment.trim().length === 0) {
+    return res.status(400).json({ error: 'Comment cannot be empty' });
+  }
+
+  if (comment.length > 1000) {
+    return res.status(400).json({ error: 'Comment is too long (max 1000 characters)' });
+  }
+
+  try {
+    const db = req.app.locals.db;
+
+    // Verify the note exists
+    const noteCheck = await db.query(
+      'SELECT id FROM communication_log WHERE id = $1 AND deleted_at IS NULL',
+      [id]
+    );
+
+    if (noteCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Note not found' });
+    }
+
+    // Insert the comment
+    const result = await db.query(
+      `INSERT INTO communication_comments (note_id, user_id, comment)
+       VALUES ($1, $2, $3)
+       RETURNING id`,
+      [id, req.user.id, comment.trim()]
+    );
+
+    // Get the comment with user info
+    const commentWithUser = await db.query(
+      `SELECT 
+        cc.id, cc.note_id, cc.user_id, cc.comment, cc.created_at,
+        u.username, u.role
+      FROM communication_comments cc
+      LEFT JOIN users u ON cc.user_id = u.id
+      WHERE cc.id = $1`,
+      [result.rows[0].id]
+    );
+
+    res.status(201).json({ 
+      message: 'Comment added successfully',
+      comment: commentWithUser.rows[0]
+    });
+  } catch (error) {
+    console.error('Add comment error:', error);
+    res.status(500).json({ error: 'Failed to add comment' });
+  }
+});
+
+// DELETE /api/communication/:noteId/comments/:commentId - Delete a comment (owner or admin)
+router.delete('/:noteId/comments/:commentId', async (req, res) => {
+  const { noteId, commentId } = req.params;
+
+  try {
+    const db = req.app.locals.db;
+
+    // Get the comment to check ownership
+    const comment = await db.query(
+      'SELECT user_id FROM communication_comments WHERE id = $1 AND note_id = $2 AND deleted_at IS NULL',
+      [commentId, noteId]
+    );
+
+    if (comment.rows.length === 0) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    // Only the comment owner or an admin can delete
+    const isOwner = comment.rows[0].user_id === req.user.id;
+    const isAdmin = req.user.role === 'Admin';
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: 'Only the comment owner or admins can delete comments' });
+    }
+
+    // Soft delete the comment
+    const result = await db.query(
+      'UPDATE communication_comments SET deleted_at = NOW() WHERE id = $1 RETURNING id',
+      [commentId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Comment not found' });
+    }
+
+    res.json({ message: 'Comment deleted successfully' });
+  } catch (error) {
+    console.error('Delete comment error:', error);
+    res.status(500).json({ error: 'Failed to delete comment' });
   }
 });
 
