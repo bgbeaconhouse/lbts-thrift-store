@@ -950,6 +950,85 @@ router.delete('/:type/:id', async (req, res) => {
   }
 });
 
+// ==================== RECENTLY DELETED ====================
+
+// GET /:type/recently-deleted - Get recently deleted forms (within 7 days)
+router.get('/:type/recently-deleted', authenticateToken, async (req, res) => {
+  const { type } = req.params;
+  
+  // Validate type
+  const validTypes = ['pickup', 'delivery', 'donation', 'waiver'];
+  if (!validTypes.includes(type)) {
+    return res.status(400).json({ error: 'Invalid form type' });
+  }
+
+  try {
+    const db = req.app.locals.db;
+    const tableName = `${type}_forms`;
+
+    const result = await db.query(
+      `SELECT *,
+        EXTRACT(DAY FROM (NOW() - deleted_at)) as days_deleted
+       FROM ${tableName}
+       WHERE deleted_at IS NOT NULL
+         AND deleted_at > NOW() - INTERVAL '7 days'
+       ORDER BY deleted_at DESC`
+    );
+
+    res.json({ forms: result.rows });
+  } catch (error) {
+    console.error(`Get recently deleted ${type} forms error:`, error);
+    res.status(500).json({ error: `Failed to get recently deleted ${type} forms` });
+  }
+});
+
+// POST /:type/:id/restore - Restore a deleted form
+router.post('/:type/:id/restore', authenticateToken, async (req, res) => {
+  const { type, id } = req.params;
+  
+  // Validate type
+  const validTypes = ['pickup', 'delivery', 'donation', 'waiver'];
+  if (!validTypes.includes(type)) {
+    return res.status(400).json({ error: 'Invalid form type' });
+  }
+
+  try {
+    const db = req.app.locals.db;
+    const tableName = `${type}_forms`;
+
+    // Check if form exists and was deleted within 7 days
+    const checkResult = await db.query(
+      `SELECT id, deleted_at
+       FROM ${tableName}
+       WHERE id = $1
+         AND deleted_at IS NOT NULL
+         AND deleted_at > NOW() - INTERVAL '7 days'`,
+      [id]
+    );
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Form not found or cannot be restored (deleted more than 7 days ago)' });
+    }
+
+    // Restore the form
+    const result = await db.query(
+      `UPDATE ${tableName}
+       SET deleted_at = NULL
+       WHERE id = $1
+       RETURNING *`,
+      [id]
+    );
+
+    res.json({ 
+      message: `${type.charAt(0).toUpperCase() + type.slice(1)} form restored successfully`,
+      form: result.rows[0]
+    });
+  } catch (error) {
+    console.error(`Restore ${type} form error:`, error);
+    res.status(500).json({ error: `Failed to restore ${type} form` });
+  }
+});
+
 // ==================== CONVERT FORM ====================
 
 router.post('/convert', authenticateToken, upload.fields([
