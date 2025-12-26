@@ -1025,13 +1025,18 @@
           `;
         }
         
-        // Build actions HTML - only show edit/delete for pending items
+        // Build actions HTML
+        // Edit: only for pending items
+        // Delete: for pending items, OR for approved items if user is admin
         let actionsHtml = '';
-        if (isPending) {
+        const canEdit = isPending;
+        const canDelete = isPending || (isApproved && isAdmin);
+        
+        if (canEdit || canDelete) {
           actionsHtml = `
             <div class="item-actions">
-              <button class="btn btn-secondary" onclick="openEditModal(${item.id})">Edit</button>
-              <button class="btn btn-danger" onclick="deleteItem(${item.id})">Delete</button>
+              ${canEdit ? `<button class="btn btn-secondary" onclick="openEditModal(${item.id})">Edit</button>` : ''}
+              ${canDelete ? `<button class="btn btn-danger" onclick="deleteItem(${item.id})">Delete</button>` : ''}
             </div>
           `;
         }
