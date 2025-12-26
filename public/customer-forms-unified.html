@@ -216,6 +216,33 @@
       border-left: 4px solid #f56565;
     }
 
+    .form-card.deleted-form {
+      opacity: 0.85;
+      border: 2px solid #fed7d7;
+      position: relative;
+    }
+
+    .deleted-banner {
+      background: #f56565;
+      color: white;
+      padding: 8px 15px;
+      margin: -20px -20px 15px -20px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 8px 8px 0 0;
+    }
+
+    .type-badge {
+      display: inline-block;
+      background: #edf2f7;
+      color: #4a5568;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 8px;
+    }
+
     .form-header {
       display: flex;
       justify-content: space-between;
@@ -791,9 +818,10 @@
           <option value="delivery">Delivery</option>
           <!-- <option value="donation">Donation</option> -->
           <option value="waiver">Waiver</option>
+          <option value="recently-deleted">🗑️ Recently Deleted</option>
         </select>
       </div>
-      <button class="btn btn-primary" onclick="openCreateModal()">+ New Form</button>
+      <button class="btn btn-primary" id="newFormBtn" onclick="openCreateModal()">+ New Form</button>
     </div>
 
     <!-- Filter Tabs -->
@@ -1268,9 +1296,49 @@
       filterForms();
     }
 
+    // Load recently deleted forms (all types combined)
+    async function loadRecentlyDeletedForms() {
+      const token = localStorage.getItem('token');
+      const types = ['pickup', 'delivery', 'donation', 'waiver'];
+      
+      let deletedForms = [];
+      
+      for (const type of types) {
+        try {
+          const response = await fetch(`/api/customer-forms-unified/${type}/recently-deleted`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            // Add type to each form for display
+            const formsWithType = data.forms.map(form => ({ 
+              ...form, 
+              form_type: type,
+              _isDeleted: true
+            }));
+            deletedForms = deletedForms.concat(formsWithType);
+          }
+        } catch (error) {
+          console.error(`Error loading deleted ${type} forms:`, error);
+        }
+      }
+      
+      // Sort by deleted_at desc (most recently deleted first)
+      deletedForms.sort((a, b) => new Date(b.deleted_at) - new Date(a.deleted_at));
+      
+      displayForms(deletedForms);
+    }
+
     // Set filter
     function setFilter(filter) {
       currentFilter = filter;
+      
+      // Hide/show New Form button based on filter
+      const newFormBtn = document.getElementById('newFormBtn');
+      if (newFormBtn) {
+        newFormBtn.style.display = filter === 'recently-deleted' ? 'none' : 'inline-block';
+      }
       
       // Update active tab
       document.querySelectorAll('.filter-tab').forEach(tab => {
@@ -1283,7 +1351,12 @@
       // Update dropdown to match the filter
       document.getElementById('formTypeSelect').value = filter;
       
-      filterForms();
+      // If recently-deleted is selected, load deleted forms
+      if (filter === 'recently-deleted') {
+        loadRecentlyDeletedForms();
+      } else {
+        filterForms();
+      }
     }
 
     // Handle dropdown change - sync tabs with dropdown selection
@@ -1297,6 +1370,11 @@
       const searchTerm = document.getElementById('searchInput').value.toLowerCase();
       
       let filtered = allForms;
+      
+      // Skip filtering for recently-deleted (uses different data source)
+      if (currentFilter === 'recently-deleted') {
+        return;
+      }
       
       // Filter by type (always filter since we removed 'all')
       filtered = filtered.filter(form => form.form_type === currentFilter);
@@ -1318,17 +1396,28 @@
       const list = document.getElementById('formsList');
       
       if (forms.length === 0) {
+        const emptyMessage = currentFilter === 'recently-deleted' 
+          ? 'No recently deleted forms'
+          : 'No forms found';
+        const emptySubtext = currentFilter === 'recently-deleted'
+          ? 'Deleted forms appear here for 7 days before being permanently removed'
+          : 'Create your first form using the "New Form" button above';
+        
         list.innerHTML = `
           <div class="empty-state">
-            <div class="empty-state-icon">📋</div>
-            <h3>No forms found</h3>
-            <p>Create your first form using the "New Form" button above</p>
+            <div class="empty-state-icon">${currentFilter === 'recently-deleted' ? '🗑️' : '📋'}</div>
+            <h3>${emptyMessage}</h3>
+            <p>${emptySubtext}</p>
           </div>
         `;
         return;
       }
       
       list.innerHTML = forms.map(form => {
+        const isDeleted = form._isDeleted || false;
+        const daysDeleted = form.days_deleted ? Math.floor(form.days_deleted) : null;
+        const daysRemaining = daysDeleted !== null ? 7 - daysDeleted : null;
+        
         const emailClass = form.email_sent ? 'email-success' : (form.email_error ? 'email-failed' : '');
         const emailBadge = form.email_sent 
           ? '<span class="badge badge-success">✓ Email Sent</span>'
@@ -1350,18 +1439,26 @@
         const hasPhotos = form.picture_urls && form.picture_urls.length > 0;
         
         return `
-          <div class="form-card ${emailClass}">
+          <div class="form-card ${emailClass} ${isDeleted ? 'deleted-form' : ''}">
+            ${isDeleted && daysRemaining !== null ? `
+              <div class="deleted-banner">
+                🗑️ Deleted ${new Date(form.deleted_at).toLocaleDateString()} - 
+                <strong>${daysRemaining > 1 ? `${daysRemaining} days remaining` : daysRemaining === 1 ? '1 day remaining' : 'Expires soon'}</strong>
+              </div>
+            ` : ''}
             <div class="form-header">
               <div class="form-info">
-                <div class="customer-name">${escapeHtml(form.customer_name)}</div>
+                <div class="customer-name">
+                  ${isDeleted ? `<span class="type-badge">${typeLabel}</span> ` : ''}${escapeHtml(form.customer_name)}
+                </div>
                 <div class="form-meta">
-                  <span><strong>${typeLabel}</strong></span>
+                  ${!isDeleted ? `<span><strong>${typeLabel}</strong></span>` : ''}
                   <span>📞 ${escapeHtml(form.phone)}</span>
                   ${form.email ? `<span>📧 ${escapeHtml(form.email)}</span>` : ''}
                   ${form.date_purchased ? `<span>📅 Purchased: ${formatDateForDisplay(form.date_purchased)}</span>` : ''}
                  ${form.date_scheduled || form.date_stored ? `<span>🗓️ ${form.form_type === 'delivery' ? 'Delivery' : 'Pickup'}: ${formatDateForDisplay(form.date_scheduled || form.date_stored)}</span>` : ''}
                   ${form.delivery_cost ? `<span>💵 $${parseFloat(form.delivery_cost).toFixed(2)}</span>` : ''}
-                  <span>${emailBadge}</span>
+                  ${!isDeleted ? `<span>${emailBadge}</span>` : ''}
                 </div>
                 ${description ? `<div class="form-description">${escapeHtml(description).substring(0, 150)}${description.length > 150 ? '...' : ''}</div>` : ''}
                 ${hasPhotos ? `
@@ -1380,19 +1477,23 @@
                 ` : ''}
               </div>
               <div class="form-actions">
-                ${(form.form_type === 'pickup' || form.form_type === 'delivery') ? `
-                  <button class="btn btn-secondary" onclick="openEditModal('${form.form_type}', ${form.id})">Edit</button>
-                ` : ''}
-                ${form.form_type === 'pickup' ? `
-                  <button class="btn btn-secondary" onclick="openConvertModal('${form.form_type}', ${form.id})">Switch to Delivery</button>
-                ` : ''}
-                ${form.form_type === 'delivery' ? `
-                  <button class="btn btn-secondary" onclick="openConvertModal('${form.form_type}', ${form.id})">Switch to Pickup</button>
-                ` : ''}
-                ${form.email && form.email_error ? `
-                  <button class="btn btn-success" onclick="retryEmail('${form.form_type}', ${form.id})">Retry Email</button>
-                ` : ''}
-                <button class="btn btn-danger" onclick="deleteForm('${form.form_type}', ${form.id})">Delete</button>
+                ${isDeleted ? `
+                  <button class="btn btn-success" onclick="restoreForm('${form.form_type}', ${form.id})">↩️ Restore</button>
+                ` : `
+                  ${(form.form_type === 'pickup' || form.form_type === 'delivery') ? `
+                    <button class="btn btn-secondary" onclick="openEditModal('${form.form_type}', ${form.id})">Edit</button>
+                  ` : ''}
+                  ${form.form_type === 'pickup' ? `
+                    <button class="btn btn-secondary" onclick="openConvertModal('${form.form_type}', ${form.id})">Switch to Delivery</button>
+                  ` : ''}
+                  ${form.form_type === 'delivery' ? `
+                    <button class="btn btn-secondary" onclick="openConvertModal('${form.form_type}', ${form.id})">Switch to Pickup</button>
+                  ` : ''}
+                  ${form.email && form.email_error ? `
+                    <button class="btn btn-success" onclick="retryEmail('${form.form_type}', ${form.id})">Retry Email</button>
+                  ` : ''}
+                  <button class="btn btn-danger" onclick="deleteForm('${form.form_type}', ${form.id})">Delete</button>
+                `}
               </div>
             </div>
           </div>
@@ -1946,6 +2047,35 @@
         }
       } catch (error) {
         console.error('Delete error:', error);
+        showMessage('Network error. Please try again.', 'error');
+      }
+    }
+
+    async function restoreForm(type, id) {
+      if (!confirm('Are you sure you want to restore this form?')) {
+        return;
+      }
+      
+      const token = localStorage.getItem('token');
+      
+      try {
+        const response = await fetch(`/api/customer-forms-unified/${type}/${id}/restore`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          showMessage(data.message + ' - Form restored successfully', 'success');
+          loadRecentlyDeletedForms(); // Reload the recently deleted list
+        } else {
+          showMessage(data.error || 'Restore failed', 'error');
+        }
+      } catch (error) {
+        console.error('Restore error:', error);
         showMessage('Network error. Please try again.', 'error');
       }
     }
