@@ -71,6 +71,29 @@ router.get('/pickup', async (req, res) => {
   }
 });
 
+// GET /api/inventory-log/pickup/recently-deleted - Get recently deleted pickup items (within 7 days)
+router.get('/pickup/recently-deleted', async (req, res) => {
+  try {
+    const db = req.app.locals.db;
+    
+    const result = await db.query(
+      `SELECT 
+        id, customer_name, phone, date_purchased, date_stored, picture_urls, notes,
+        created_by, created_at, deleted_at,
+        EXTRACT(DAY FROM (NOW() - deleted_at)) as days_deleted
+      FROM pickup_inventory 
+      WHERE deleted_at IS NOT NULL 
+        AND deleted_at > NOW() - INTERVAL '7 days'
+      ORDER BY deleted_at DESC`
+    );
+
+    res.json({ items: result.rows });
+  } catch (error) {
+    console.error('Get recently deleted pickup items error:', error);
+    res.status(500).json({ error: 'Failed to get recently deleted items' });
+  }
+});
+
 // GET /api/inventory-log/pickup/:id - Get single pickup item
 router.get('/pickup/:id', async (req, res) => {
   const { id } = req.params;
@@ -269,6 +292,46 @@ router.delete('/pickup/:id', async (req, res) => {
   }
 });
 
+// POST /api/inventory-log/pickup/:id/restore - Restore a deleted pickup item
+router.post('/pickup/:id/restore', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const db = req.app.locals.db;
+
+    // Check if item exists and was deleted within 7 days
+    const checkResult = await db.query(
+      `SELECT id, deleted_at 
+       FROM pickup_inventory 
+       WHERE id = $1 
+         AND deleted_at IS NOT NULL
+         AND deleted_at > NOW() - INTERVAL '7 days'`,
+      [id]
+    );
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Item not found or cannot be restored (deleted more than 7 days ago)' });
+    }
+
+    // Restore the item
+    const result = await db.query(
+      `UPDATE pickup_inventory 
+       SET deleted_at = NULL 
+       WHERE id = $1
+       RETURNING id, customer_name, phone, date_purchased, date_stored, picture_urls, notes, created_by, created_at`,
+      [id]
+    );
+
+    res.json({ 
+      message: 'Pickup inventory item restored successfully',
+      item: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Restore pickup inventory error:', error);
+    res.status(500).json({ error: 'Failed to restore pickup inventory item' });
+  }
+});
+
 // ==================== DELIVERY INVENTORY ====================
 
 // GET /api/inventory-log/delivery - Get all delivery inventory
@@ -289,6 +352,29 @@ router.get('/delivery', async (req, res) => {
   } catch (error) {
     console.error('Get delivery inventory error:', error);
     res.status(500).json({ error: 'Failed to get delivery inventory' });
+  }
+});
+
+// GET /api/inventory-log/delivery/recently-deleted - Get recently deleted delivery items (within 7 days)
+router.get('/delivery/recently-deleted', async (req, res) => {
+  try {
+    const db = req.app.locals.db;
+    
+    const result = await db.query(
+      `SELECT 
+        id, customer_name, phone, delivery_address, date_scheduled, picture_urls, notes,
+        created_by, created_at, deleted_at,
+        EXTRACT(DAY FROM (NOW() - deleted_at)) as days_deleted
+      FROM delivery_inventory 
+      WHERE deleted_at IS NOT NULL 
+        AND deleted_at > NOW() - INTERVAL '7 days'
+      ORDER BY deleted_at DESC`
+    );
+
+    res.json({ items: result.rows });
+  } catch (error) {
+    console.error('Get recently deleted delivery items error:', error);
+    res.status(500).json({ error: 'Failed to get recently deleted items' });
   }
 });
 
@@ -484,6 +570,46 @@ router.delete('/delivery/:id', async (req, res) => {
   } catch (error) {
     console.error('Delete delivery inventory error:', error);
     res.status(500).json({ error: 'Failed to delete delivery inventory item' });
+  }
+});
+
+// POST /api/inventory-log/delivery/:id/restore - Restore a deleted delivery item
+router.post('/delivery/:id/restore', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const db = req.app.locals.db;
+
+    // Check if item exists and was deleted within 7 days
+    const checkResult = await db.query(
+      `SELECT id, deleted_at 
+       FROM delivery_inventory 
+       WHERE id = $1 
+         AND deleted_at IS NOT NULL
+         AND deleted_at > NOW() - INTERVAL '7 days'`,
+      [id]
+    );
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Item not found or cannot be restored (deleted more than 7 days ago)' });
+    }
+
+    // Restore the item
+    const result = await db.query(
+      `UPDATE delivery_inventory 
+       SET deleted_at = NULL 
+       WHERE id = $1
+       RETURNING id, customer_name, phone, delivery_address, date_scheduled, picture_urls, notes, created_by, created_at`,
+      [id]
+    );
+
+    res.json({ 
+      message: 'Delivery inventory item restored successfully',
+      item: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Restore delivery inventory error:', error);
+    res.status(500).json({ error: 'Failed to restore delivery inventory item' });
   }
 });
 

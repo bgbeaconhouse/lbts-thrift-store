@@ -143,6 +143,17 @@
       background: #4a5568;
     }
 
+    .btn-success {
+      background: #48bb78;
+      color: white;
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+
+    .btn-success:hover {
+      background: #38a169;
+    }
+
     .btn:disabled {
       opacity: 0.6;
       cursor: not-allowed;
@@ -207,6 +218,39 @@
     .item-card:hover {
       transform: translateY(-5px);
       box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    }
+
+    /* Deleted Item Styles */
+    .item-card.deleted-item {
+      position: relative;
+      opacity: 0.85;
+      border: 2px solid #fed7d7;
+    }
+
+    .deleted-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #f56565;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(245, 101, 101, 0.4);
+    }
+
+    .item-type-badge {
+      display: inline-block;
+      background: #edf2f7;
+      color: #4a5568;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 8px;
     }
 
     .item-images {
@@ -654,6 +698,9 @@
       <button class="type-tab" data-type="delivery" onclick="switchType('delivery')">
         🚚 Delivery Inventory
       </button>
+      <button class="type-tab" data-type="recently-deleted" onclick="switchType('recently-deleted')">
+        🗑️ Recently Deleted
+      </button>
     </div>
 
     <!-- Top Bar -->
@@ -777,12 +824,19 @@ window.onload = function() {
     }
   });
 
-  // Update title
+  // Update title and hide/show Add Item button
   const titles = {
     pickup: 'Pick-Up Inventory',
-    delivery: 'Delivery Inventory'
+    delivery: 'Delivery Inventory',
+    'recently-deleted': 'Recently Deleted Items'
   };
   document.getElementById('typeTitle').textContent = titles[type];
+  
+  // Hide Add Item button on Recently Deleted tab
+  const addButton = document.querySelector('.top-bar .btn-primary');
+  if (addButton) {
+    addButton.style.display = type === 'recently-deleted' ? 'none' : 'inline-block';
+  }
 
   loadItems();
 }
@@ -791,16 +845,41 @@ window.onload = function() {
       const token = localStorage.getItem('token');
 
       try {
-        const response = await fetch(`/api/inventory-log/${currentType}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        let url;
+        if (currentType === 'recently-deleted') {
+          // Load both pickup and delivery deleted items
+          const [pickupRes, deliveryRes] = await Promise.all([
+            fetch('/api/inventory-log/pickup/recently-deleted', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            }),
+            fetch('/api/inventory-log/delivery/recently-deleted', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+          ]);
 
-        if (!response.ok) throw new Error('Failed to load items');
+          if (!pickupRes.ok || !deliveryRes.ok) throw new Error('Failed to load deleted items');
 
-        const data = await response.json();
-        allItems = data.items;
+          const pickupData = await pickupRes.json();
+          const deliveryData = await deliveryRes.json();
+          
+          // Combine and mark type
+          const pickupItems = pickupData.items.map(item => ({ ...item, _type: 'pickup' }));
+          const deliveryItems = deliveryData.items.map(item => ({ ...item, _type: 'delivery' }));
+          allItems = [...pickupItems, ...deliveryItems].sort((a, b) => 
+            new Date(b.deleted_at) - new Date(a.deleted_at)
+          );
+        } else {
+          url = `/api/inventory-log/${currentType}`;
+          const response = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+
+          if (!response.ok) throw new Error('Failed to load items');
+
+          const data = await response.json();
+          allItems = data.items;
+        }
+        
         displayItems(allItems);
       } catch (error) {
         console.error('Load items error:', error);
@@ -814,13 +893,21 @@ window.onload = function() {
   if (items.length === 0) {
     const typeNames = {
       pickup: 'pick-up',
-      delivery: 'delivery'
+      delivery: 'delivery',
+      'recently-deleted': 'recently deleted'
     };
+    const emptyMessage = currentType === 'recently-deleted'
+      ? 'No recently deleted items'
+      : `No ${typeNames[currentType]} items yet`;
+    const emptySubtext = currentType === 'recently-deleted'
+      ? 'Deleted items appear here for 7 days before being permanently removed'
+      : `Click "Add Item" to create your first ${typeNames[currentType]} inventory item`;
+    
     grid.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state-icon">📦</div>
-        <h3>No ${typeNames[currentType]} items yet</h3>
-        <p>Click "Add Item" to create your first ${typeNames[currentType]} inventory item</p>
+        <div class="empty-state-icon">${currentType === 'recently-deleted' ? '🗑️' : '📦'}</div>
+        <h3>${emptyMessage}</h3>
+        <p>${emptySubtext}</p>
       </div>
     `;
     return;
@@ -830,9 +917,17 @@ window.onload = function() {
     const photos = item.picture_urls || [];
     const firstPhoto = photos.length > 0 ? photos[0] : null;
     const photosJson = JSON.stringify(photos).replace(/'/g, '&apos;');
+    const itemType = currentType === 'recently-deleted' ? item._type : currentType;
+    const daysDeleted = item.days_deleted ? Math.floor(item.days_deleted) : null;
+    const daysRemaining = daysDeleted !== null ? 7 - daysDeleted : null;
 
     return `
-      <div class="item-card">
+      <div class="item-card ${currentType === 'recently-deleted' ? 'deleted-item' : ''}">
+        ${currentType === 'recently-deleted' && daysRemaining !== null ? `
+          <div class="deleted-badge">
+            ${daysRemaining > 1 ? `${daysRemaining} days remaining` : daysRemaining === 1 ? '1 day remaining' : 'Expires soon'}
+          </div>
+        ` : ''}
         <div class="item-images" ${photos.length > 0 ? `style="cursor: pointer;" onclick='openImageViewer(${photosJson})'` : ''}>
           ${firstPhoto 
             ? `<img src="${firstPhoto}" alt="Item">` 
@@ -840,10 +935,13 @@ window.onload = function() {
           ${photos.length > 1 ? `<span class="image-count">📷 ${photos.length}</span>` : ''}
         </div>
         <div class="item-content">
+          ${currentType === 'recently-deleted' ? `
+            <div class="item-type-badge">${itemType === 'pickup' ? '📦 Pick-Up' : '🚚 Delivery'}</div>
+          ` : ''}
           <div class="customer-name">${escapeHtml(item.customer_name)}</div>
           <div class="item-meta">
             <span>📞 ${escapeHtml(item.phone)}</span>
-            ${currentType === 'pickup' 
+            ${itemType === 'pickup' 
               ? `
                 <span>🛒 Purchased: ${new Date(item.date_purchased).toLocaleDateString()}</span>
                 <span>📦 Pickup: ${new Date(item.date_stored).toLocaleDateString()}</span>
@@ -852,14 +950,22 @@ window.onload = function() {
                 <span>📅 Scheduled: ${new Date(item.date_scheduled).toLocaleDateString()}</span>
               `
             }
-            ${currentType === 'delivery' && item.delivery_address 
+            ${itemType === 'delivery' && item.delivery_address 
               ? `<span>📍 ${escapeHtml(item.delivery_address)}</span>` 
+              : ''}
+            ${currentType === 'recently-deleted' 
+              ? `<span style="color: #f56565;">🗑️ Deleted: ${new Date(item.deleted_at).toLocaleDateString()}</span>` 
               : ''}
           </div>
           ${item.notes ? `<div class="item-notes">${escapeHtml(item.notes)}</div>` : ''}
           <div class="item-actions">
-            <button class="btn btn-secondary" onclick="openEditModal(${item.id})">Edit</button>
-            <button class="btn btn-danger" onclick="deleteItem(${item.id})">Delete</button>
+            ${currentType === 'recently-deleted' 
+              ? `<button class="btn btn-success" onclick="restoreItem('${itemType}', ${item.id})">↩️ Restore</button>`
+              : `
+                <button class="btn btn-secondary" onclick="openEditModal(${item.id})">Edit</button>
+                <button class="btn btn-danger" onclick="deleteItem(${item.id})">Delete</button>
+              `
+            }
           </div>
         </div>
       </div>
@@ -1322,6 +1428,35 @@ async function handleSubmit(event) {
         }
       } catch (error) {
         console.error('Delete error:', error);
+        showMessage('Network error. Please try again.', 'error');
+      }
+    }
+
+    async function restoreItem(type, itemId) {
+      if (!confirm('Are you sure you want to restore this item?')) {
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+
+      try {
+        const response = await fetch(`/api/inventory-log/${type}/${itemId}/restore`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showMessage(data.message + ' - Item restored to active inventory', 'success');
+          loadItems(); // Reload the recently deleted list
+        } else {
+          showMessage(data.error || 'Restore failed', 'error');
+        }
+      } catch (error) {
+        console.error('Restore error:', error);
         showMessage('Network error. Please try again.', 'error');
       }
     }
