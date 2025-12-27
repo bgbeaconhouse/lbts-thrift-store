@@ -917,6 +917,11 @@
       // Update nav button visibility
       updateViewerNavButtons();
       
+      // Prevent body scroll
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      
       modal.classList.add('active');
       
       // Add keyboard navigation
@@ -928,6 +933,12 @@
       if (event && event.target.id !== 'imageViewerModal' && event.target.className !== 'viewer-close') {
         return;
       }
+      
+      // Restore body scroll
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      
       document.getElementById('imageViewerModal').classList.remove('active');
       
       // Remove keyboard navigation
@@ -1111,6 +1122,12 @@
       document.getElementById('itemId').value = '';
       document.getElementById('imagePreviews').innerHTML = '';
       document.getElementById('uploadStatus').className = 'upload-status';
+      
+      // Prevent body scroll to avoid screen lock on mobile
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.width = '100%';
+      
       document.getElementById('itemModal').classList.add('active');
     }
 
@@ -1159,6 +1176,11 @@
           });
         }
         
+        // Prevent body scroll to avoid screen lock on mobile
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        
         document.getElementById('itemModal').classList.add('active');
       } catch (error) {
         console.error('Load item error:', error);
@@ -1167,6 +1189,11 @@
     }
 
     function closeModal() {
+      // Restore body scroll
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.width = '';
+      
       document.getElementById('itemModal').classList.remove('active');
       document.getElementById('itemForm').reset();
       document.getElementById('imagePreviews').innerHTML = '';
@@ -1231,14 +1258,22 @@
 
         if (response.ok) {
           showMessage(data.message, 'success');
-          closeModal();
+          closeModal(); // This will restore body scroll
           loadItems();
         } else {
           showMessage(data.error || 'Operation failed', 'error');
+          // Restore body scroll even on error so user isn't locked
+          document.body.style.overflow = '';
+          document.body.style.position = '';
+          document.body.style.width = '';
         }
       } catch (error) {
         console.error('Submit error:', error);
         showMessage('Network error. Please try again.', 'error');
+        // Restore body scroll on network error
+        document.body.style.overflow = '';
+        document.body.style.position = '';
+        document.body.style.width = '';
       } finally {
         // Re-enable button
         isSubmitting = false;
