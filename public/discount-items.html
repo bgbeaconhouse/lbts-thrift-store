@@ -376,6 +376,9 @@
       width: 90%;
       max-width: 500px;
       margin: 20px;
+      touch-action: pan-y pinch-zoom;
+      overflow-y: auto;
+      max-height: 90vh;
     }
 
     .modal-header {
@@ -919,8 +922,7 @@
       
       // Prevent body scroll
       document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
+      document.body.style.touchAction = 'none';
       
       modal.classList.add('active');
       
@@ -936,8 +938,7 @@
       
       // Restore body scroll
       document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
+      document.body.style.touchAction = '';
       
       document.getElementById('imageViewerModal').classList.remove('active');
       
@@ -1125,8 +1126,7 @@
       
       // Prevent body scroll to avoid screen lock on mobile
       document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.width = '100%';
+      document.body.style.touchAction = 'none';
       
       document.getElementById('itemModal').classList.add('active');
     }
@@ -1178,8 +1178,7 @@
         
         // Prevent body scroll to avoid screen lock on mobile
         document.body.style.overflow = 'hidden';
-        document.body.style.position = 'fixed';
-        document.body.style.width = '100%';
+        document.body.style.touchAction = 'none';
         
         document.getElementById('itemModal').classList.add('active');
       } catch (error) {
@@ -1191,8 +1190,7 @@
     function closeModal() {
       // Restore body scroll
       document.body.style.overflow = '';
-      document.body.style.position = '';
-      document.body.style.width = '';
+      document.body.style.touchAction = '';
       
       document.getElementById('itemModal').classList.remove('active');
       document.getElementById('itemForm').reset();
@@ -1264,16 +1262,14 @@
           showMessage(data.error || 'Operation failed', 'error');
           // Restore body scroll even on error so user isn't locked
           document.body.style.overflow = '';
-          document.body.style.position = '';
-          document.body.style.width = '';
+          document.body.style.touchAction = '';
         }
       } catch (error) {
         console.error('Submit error:', error);
         showMessage('Network error. Please try again.', 'error');
         // Restore body scroll on network error
         document.body.style.overflow = '';
-        document.body.style.position = '';
-        document.body.style.width = '';
+        document.body.style.touchAction = '';
       } finally {
         // Re-enable button
         isSubmitting = false;

@@ -51,9 +51,18 @@
   }, { capture: true });
 
   // Intercept all form submissions
-  document.addEventListener('submit', () => {
+  document.addEventListener('submit', (e) => {
     console.log('📝 Form submit detected');
     clearTouchesBeforeNavigation();
+    
+    // If form doesn't actually navigate (AJAX submission), reset after 1 second
+    setTimeout(() => {
+      if (isNavigating && !document.hidden) {
+        console.log('📝 Form submit completed without navigation - resetting');
+        isNavigating = false;
+        activeTouches.clear();
+      }
+    }, 1000);
   }, { capture: true });
 
   // Intercept all button clicks that might navigate
@@ -65,6 +74,15 @@
         if (activeTouches.size > 0) {
           console.log('🔘 Button click - clearing touches');
           clearTouchesBeforeNavigation();
+          
+          // If button doesn't actually navigate, reset after 1 second
+          setTimeout(() => {
+            if (isNavigating && !document.hidden) {
+              console.log('🔘 Button click completed without navigation - resetting');
+              isNavigating = false;
+              activeTouches.clear();
+            }
+          }, 1000);
         }
       }, 50);
     }
@@ -75,17 +93,10 @@
   // ===========================================
 
   document.addEventListener('touchstart', (e) => {
-    if (isNavigating) {
-      console.warn('⚠️ Touch started during navigation - blocking');
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      return;
-    }
-    
     for (let touch of e.touches) {
       activeTouches.add(touch.identifier);
     }
-  }, { capture: true, passive: false });
+  }, { capture: true, passive: true });
 
   document.addEventListener('touchend', (e) => {
     for (let touch of e.changedTouches) {
