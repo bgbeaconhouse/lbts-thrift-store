@@ -294,9 +294,9 @@
     }
 
     .week-1 { background: #48bb78; color: white; }
-    .week-2 { background: #ed8936; color: white; }
-    .week-3 { background: #f56565; color: white; }
-    .week-4 { background: #9f7aea; color: white; }
+    .week-3 { background: #ed8936; color: white; }
+    .week-5 { background: #f56565; color: white; }
+    .week-7 { background: #9f7aea; color: white; }
 
     .alert-badge {
       position: absolute;
@@ -636,9 +636,9 @@
         <span style="color: #718096; font-weight: 600; font-size: 14px;">Filter by Week:</span>
         <button class="week-btn active" data-week="all" onclick="filterByWeek('all')">All</button>
         <button class="week-btn" data-week="1" onclick="filterByWeek(1)">Week 1</button>
-        <button class="week-btn" data-week="2" onclick="filterByWeek(2)">Week 2</button>
         <button class="week-btn" data-week="3" onclick="filterByWeek(3)">Week 3</button>
-        <button class="week-btn" data-week="4" onclick="filterByWeek(4)">Week 4</button>
+        <button class="week-btn" data-week="5" onclick="filterByWeek(5)">Week 5</button>
+        <button class="week-btn" data-week="7" onclick="filterByWeek(7)">Week 7</button>
       </div>
       <button class="btn btn-primary" onclick="openCreateModal()">+ Add Item</button>
     </div>
@@ -687,9 +687,9 @@
           <label for="week">Week *</label>
           <select id="week" required>
             <option value="1">Week 1 (New arrival)</option>
-            <option value="2">Week 2</option>
-            <option value="3">Week 3</option>
-            <option value="4">Week 4</option>
+            <option value="3">Week 3 (2 weeks old)</option>
+            <option value="5">Week 5 (4 weeks old)</option>
+            <option value="7">Week 7 (6 weeks old)</option>
           </select>
         </div>
 
@@ -1123,10 +1123,10 @@
                 </td>
                 <td>
                   <select data-item-id="${item.id}" data-field="week">
-                    <option value="1" ${item.week >= 1 ? '' : 'selected'}>Week 1</option>
-                    <option value="2" ${item.week >= 2 ? 'selected' : ''}>Week 2</option>
-                    <option value="3" ${item.week >= 3 ? 'selected' : ''}>Week 3</option>
-                    <option value="4" ${item.week >= 4 ? 'selected' : ''}>Week 4</option>
+                    <option value="1" ${item.week === 1 ? 'selected' : ''}>Week 1</option>
+                    <option value="3" ${item.week === 3 ? 'selected' : ''}>Week 3</option>
+                    <option value="5" ${item.week === 5 ? 'selected' : ''}>Week 5</option>
+                    <option value="7" ${item.week === 7 ? 'selected' : ''}>Week 7</option>
                   </select>
                 </td>
               </tr>

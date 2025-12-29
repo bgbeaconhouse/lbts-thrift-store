@@ -118,8 +118,8 @@ const result = await db.query(
     AND category = ANY($1)
     AND (
       (week = 1 AND CURRENT_DATE - date_arrived >= 14) OR
-      (week = 2 AND CURRENT_DATE - date_arrived >= 28) OR
-      (week = 3 AND CURRENT_DATE - date_arrived >= 42)
+      (week = 3 AND CURRENT_DATE - date_arrived >= 28) OR
+      (week = 5 AND CURRENT_DATE - date_arrived >= 42)
     )
   ORDER BY date_arrived ASC`,
   [categories]
@@ -220,8 +220,8 @@ router.put('/:id', upload.single('picture'), async (req, res) => {
   try {
     const db = req.app.locals.db;
 
-if (![1, 2, 3, 4].includes(parseInt(week))) {
-  return res.status(400).json({ error: 'Week must be 1, 2, 3, or 4' });
+if (![1, 3, 5, 7].includes(parseInt(week))) {
+  return res.status(400).json({ error: 'Week must be 1, 3, 5, or 7' });
 }
 
     // Get existing item
