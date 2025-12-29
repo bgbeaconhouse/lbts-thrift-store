@@ -45,30 +45,12 @@ const upload = multer({
 // All routes require authentication
 router.use(authenticateToken);
 
-
-// Helper function to auto-promote items to Week 5
-async function autoPromoteToWeek5(db) {
-  try {
-    await db.query(
-      `UPDATE exclusive_items 
-       SET week = 5, updated_at = NOW()
-       WHERE deleted_at IS NULL 
-         AND week = 4 
-         AND CURRENT_DATE - date_arrived >= 28`
-    );
-  } catch (error) {
-    console.error('Auto-promote to Week 5 error:', error);
-  }
-}
-
 // GET /api/exclusive-items - Get all exclusive items
 router.get('/', async (req, res) => {
   const { category } = req.query;
 
   try {
     const db = req.app.locals.db;
-
-     await autoPromoteToWeek5(db);
     
     let query = `
       SELECT 
@@ -126,7 +108,7 @@ router.get('/alerts', async (req, res) => {
       return res.json({ alerts: [] });
     }
 
- // Get items that need week updates based on days since arrival OR are in color cycle (week 5)
+ // Get items that need week updates based on days since arrival (2-week intervals)
 const result = await db.query(
   `SELECT 
     id, category, picture_url, date_arrived, current_price, week, notes,
@@ -135,10 +117,9 @@ const result = await db.query(
   WHERE deleted_at IS NULL 
     AND category = ANY($1)
     AND (
-      (week = 1 AND CURRENT_DATE - date_arrived >= 7) OR
-      (week = 2 AND CURRENT_DATE - date_arrived >= 14) OR
-      (week = 3 AND CURRENT_DATE - date_arrived >= 21) OR
-      (week = 5)
+      (week = 1 AND CURRENT_DATE - date_arrived >= 14) OR
+      (week = 2 AND CURRENT_DATE - date_arrived >= 28) OR
+      (week = 3 AND CURRENT_DATE - date_arrived >= 42)
     )
   ORDER BY date_arrived ASC`,
   [categories]
@@ -148,28 +129,6 @@ const result = await db.query(
   } catch (error) {
     console.error('Get alerts error:', error);
     res.status(500).json({ error: 'Failed to get alerts' });
-  }
-});
-
-// GET /api/exclusive-items/color-cycle - Get items ready for color cycle (Week 5+)
-router.get('/color-cycle', async (req, res) => {
-  try {
-    const db = req.app.locals.db;
-    
-    // Get items that are week 5 (color cycle)
-    const result = await db.query(
-      `SELECT id, category, picture_url, date_arrived, current_price, week, notes,
-              CURRENT_DATE - date_arrived as days_in_store
-       FROM exclusive_items
-       WHERE deleted_at IS NULL 
-         AND week = 5
-       ORDER BY date_arrived ASC`
-    );
-
-    res.json({ items: result.rows || [] });
-  } catch (error) {
-    console.error('Get color cycle items error:', error);
-    res.status(500).json({ error: 'Failed to get color cycle items' });
   }
 });
 
@@ -261,13 +220,8 @@ router.put('/:id', upload.single('picture'), async (req, res) => {
   try {
     const db = req.app.locals.db;
 
-// Handle color-cycle selection (change to week 5, don't delete)
-if (week === 'color-cycle') {
-  week = 5; // Set to week 5 instead of deleting
-}
-
-if (![1, 2, 3, 4, 5].includes(parseInt(week))) {
-  return res.status(400).json({ error: 'Week must be 1, 2, 3, 4, or 5' });
+if (![1, 2, 3, 4].includes(parseInt(week))) {
+  return res.status(400).json({ error: 'Week must be 1, 2, 3, or 4' });
 }
 
     // Get existing item
@@ -377,38 +331,6 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('Delete exclusive item error:', error);
     res.status(500).json({ error: 'Failed to delete exclusive item' });
-  }
-});
-
-
-
-// POST /api/exclusive-items/:id/move-to-color-cycle - Confirm item moved to color cycle
-router.post('/:id/move-to-color-cycle', async (req, res) => {
-  const { id } = req.params;
-
-  try {
-    const db = req.app.locals.db;
-
-    // Soft delete the item
-    const result = await db.query(
-      `UPDATE exclusive_items 
-       SET deleted_at = NOW() 
-       WHERE id = $1 AND deleted_at IS NULL
-       RETURNING id, category`,
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Item not found' });
-    }
-
-    res.json({ 
-      message: 'Item successfully moved to color cycle',
-      item: result.rows[0]
-    });
-  } catch (error) {
-    console.error('Move to color cycle error:', error);
-    res.status(500).json({ error: 'Failed to move item to color cycle' });
   }
 });
 
