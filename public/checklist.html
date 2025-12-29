@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Closing Checklist - LBTS</title>
+   <script src="/js/fully-touch-fix.js"></script>
+    <script src="/storage-fallback.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #00a0e0 0%, #1a2f5c 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .date-picker {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .date-picker label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .date-picker input[type="date"] {
+            padding: 8px 12px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .checklist {
+            list-style: none;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            transition: background 0.2s;
+        }
+
+        .checklist-item:hover {
+            background: #e9ecef;
+        }
+
+        .checklist-item.completed {
+            background: #d4edda;
+        }
+
+        .checklist-item input[type="checkbox"] {
+            width: 24px;
+            height: 24px;
+            margin-right: 12px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .checklist-item label {
+            cursor: pointer;
+            flex: 1;
+            line-height: 1.5;
+        }
+
+        .checklist-item.completed label {
+            text-decoration: line-through;
+            color: #6c757d;
+        }
+
+        .completion-info {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        .back-btn {
+            display: inline-block;
+            background: white;
+            color: #00a0e0;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            margin-bottom: 20px;
+            transition: background 0.3s;
+        }
+
+        .back-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .header {
+                padding: 15px;
+            }
+
+            .section {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="dashboard.html" class="back-btn">← Back to Dashboard</a>
+
+        <div class="header">
+            <h1>Closing Duties Checklist</h1>
+            <div class="date-picker">
+                <label for="selectedDate">Select Date:</label>
+                <input type="date" id="selectedDate" value="">
+            </div>
+        </div>
+
+        <!-- Checklist Section -->
+        <div id="checklistSection" class="section">
+            <h2>Closing Duties Checklist</h2>
+            <ul id="checklistItems" class="checklist">
+                <li class="loading">Loading checklist...</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+    const API_BASE = '/api/end-of-day';
+    // Get today's date in local timezone (not UTC)
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    let currentDate = `${year}-${month}-${day}`;
+    let currentUser = null;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check authentication
+            const token = localStorage.getItem('token');
+            const user = JSON.parse(localStorage.getItem('user') || 'null');
+            
+            if (!token || !user) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            currentUser = user;
+
+            // Set today's date as default
+            document.getElementById('selectedDate').value = currentDate;
+
+            // Load data for today
+            await loadChecklistData(currentDate);
+
+            // Date picker change handler
+            document.getElementById('selectedDate').addEventListener('change', async (e) => {
+                currentDate = e.target.value;
+                await loadChecklistData(currentDate);
+            });
+        });
+
+        // Load checklist data
+        async function loadChecklistData(date) {
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`${API_BASE}/${date}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (!response.ok) throw new Error('Failed to load data');
+
+                const data = await response.json();
+
+                // Display checklist
+                displayChecklist(data.checklist);
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('Failed to load checklist data');
+            }
+        }
+
+        // Display checklist items
+        function displayChecklist(items) {
+            const container = document.getElementById('checklistItems');
+            
+            if (items.length === 0) {
+                container.innerHTML = '<li class="loading">No checklist items found</li>';
+                return;
+            }
+
+            container.innerHTML = items.map(item => `
+                <li class="checklist-item ${item.is_completed ? 'completed' : ''}" data-id="${item.id}">
+                    <input type="checkbox" 
+                           id="check-${item.id}" 
+                           ${item.is_completed ? 'checked' : ''}
+                           onchange="toggleChecklistItem(${item.id}, this.checked)">
+                    <div>
+                        <label for="check-${item.id}">${item.item_text}</label>
+                        ${item.is_completed ? `
+                            <div class="completion-info">
+                                Completed by ${item.completed_by_name} at ${new Date(item.completed_at).toLocaleString()}
+                            </div>
+                        ` : ''}
+                    </div>
+                </li>
+            `).join('');
+        }
+
+        // Toggle checklist item
+        async function toggleChecklistItem(itemId, isCompleted) {
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`${API_BASE}/checklist/toggle`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ itemId, isCompleted })
+                });
+
+                if (!response.ok) throw new Error('Failed to toggle item');
+
+                // Reload data to show updated completion info
+                await loadChecklistData(currentDate);
+
+            } catch (error) {
+                console.error('Error toggling item:', error);
+                alert('Failed to update checklist item');
+                // Reload to revert checkbox
+                await loadChecklistData(currentDate);
+            }
+        }
+    </script>
+</body>
+</html>

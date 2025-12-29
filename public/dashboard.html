@@ -338,13 +338,23 @@ navItems.push({
   link: '/sops.html'
 });
 
-// End of Day - Available to all users (NEW - ADD THIS)
+// Closing Checklist - Available to all users
 navItems.push({
   icon: '✅',
-  title: 'End of Day',
-  description: 'Daily checklist and report tracking',
-  link: '/end-of-day.html'
+  title: 'Closing Checklist',
+  description: 'Daily closing duties checklist',
+  link: '/checklist.html'
 });
+
+// Daily Report - Manager/Admin only
+if (currentUser.role === 'Manager' || currentUser.role === 'Admin') {
+  navItems.push({
+    icon: '📊',
+    title: 'Daily Report',
+    description: 'Cash count and end-of-day reporting',
+    link: '/daily-report.html'
+  });
+}
 
 // Admin only features
 if (currentUser.role === 'Admin') {
