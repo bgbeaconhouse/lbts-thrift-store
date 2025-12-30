@@ -282,18 +282,25 @@
     };
 
     function displayUserInfo() {
-      // Display role badge
-      const roleBadge = document.getElementById('userRole');
-      roleBadge.textContent = currentUser.role;
-      
-      if (currentUser.role === 'Admin') {
-        roleBadge.className = 'role-badge role-admin';
-      } else if (currentUser.role.includes('Manager')) {
-        roleBadge.className = 'role-badge role-manager';
-      } else {
-        roleBadge.className = 'role-badge role-employee';
-      }
-    }
+  // Display role badge
+  const roleBadge = document.getElementById('userRole');
+  
+  // Display "Associate" instead of "Employee"
+  let displayRole = currentUser.role;
+  if (displayRole === 'Employee') {
+    displayRole = 'Associate';
+  }
+  
+  roleBadge.textContent = displayRole;
+  
+  if (currentUser.role === 'Admin') {
+    roleBadge.className = 'role-badge role-admin';
+  } else if (currentUser.role.includes('Manager')) {
+    roleBadge.className = 'role-badge role-manager';
+  } else {
+    roleBadge.className = 'role-badge role-employee';
+  }
+}
 
     function buildNavigation() {
       const navGrid = document.getElementById('navGrid');
