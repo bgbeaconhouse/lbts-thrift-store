@@ -1431,10 +1431,12 @@
         const typeLabel = form.form_type.charAt(0).toUpperCase() + form.form_type.slice(1);
         
         let description = '';
+        let notes = '';
         if (form.form_type === 'donation') {
           description = form.donation_description;
-        } else if (form.form_type !== 'waiver') {
-          description = form.items_description || form.notes;
+        } else if (form.form_type === 'pickup' || form.form_type === 'delivery') {
+          description = form.items_description;
+          notes = form.notes;
         }
         
         const hasPhotos = form.picture_urls && form.picture_urls.length > 0;
@@ -1462,6 +1464,7 @@
                   ${!isDeleted ? `<span>${emailBadge}</span>` : ''}
                 </div>
                 ${description ? `<div class="form-description">${escapeHtml(description).substring(0, 150)}${description.length > 150 ? '...' : ''}</div>` : ''}
+                ${notes ? `<div class="form-description" style="background: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-top: 8px; border-radius: 4px;"><strong>📝 Notes:</strong> ${escapeHtml(notes).substring(0, 150)}${notes.length > 150 ? '...' : ''}</div>` : ''}
                 ${hasPhotos ? `
                   <div class="photos-preview">
                     ${form.picture_urls.slice(0, 5).map(url => `
