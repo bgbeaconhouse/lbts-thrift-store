@@ -1465,6 +1465,7 @@
                 </div>
                 ${description ? `<div class="form-description">${escapeHtml(description).substring(0, 150)}${description.length > 150 ? '...' : ''}</div>` : ''}
                 ${notes ? `<div class="form-description" style="background: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-top: 8px; border-radius: 4px;"><strong>📝 Notes:</strong> ${escapeHtml(notes).substring(0, 150)}${notes.length > 150 ? '...' : ''}</div>` : ''}
+                ${form.delivery_address ? `<div class="form-description" style="background: #e6f3ff; border-left: 3px solid #00a0e0; padding: 8px; margin-top: 8px; border-radius: 4px;"><strong>📍 Delivery Address:</strong> ${escapeHtml(form.delivery_address)}</div>` : ''}
                 ${hasPhotos ? `
                   <div class="photos-preview">
                     ${form.picture_urls.slice(0, 5).map(url => `
