@@ -2346,11 +2346,14 @@
     document.addEventListener('DOMContentLoaded', function() {
       const editNewPhotosInput = document.getElementById('edit_new_photos');
       if (editNewPhotosInput) {
-        editNewPhotosInput.addEventListener('change', function(e) {
+        editNewPhotosInput.addEventListener('change', async function(e) {
           const newFiles = Array.from(e.target.files);
           
-          // Add new files to existing array (accumulate instead of replace)
-          newPhotosToUpload = [...newPhotosToUpload, ...newFiles];
+          // Compress each file before adding
+          for (const file of newFiles) {
+            const compressed = await compressImage(file);
+            newPhotosToUpload.push(compressed);
+          }
           
           // Display preview of ALL photos
           displayNewPhotosPreview();
