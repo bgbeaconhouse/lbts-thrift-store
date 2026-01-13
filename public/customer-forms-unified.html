@@ -2344,33 +2344,53 @@
 
     // Handle photo selection for edit form (mimics create form approach)
     async function handleEditFileSelect(event) {
+      console.log('=== handleEditFileSelect called ===');
       const files = Array.from(event.target.files);
+      console.log('Files selected:', files.length);
       
       // Don't clear newPhotosToUpload - keep existing images and add new ones
       const previewContainer = document.getElementById('imagePreview_edit');
+      console.log('Preview container found:', !!previewContainer);
       
       for (const file of files) {
-        // Compress image
-        const compressed = await compressImage(file);
-        const newIndex = newPhotosToUpload.length;
-        newPhotosToUpload.push(compressed);
+        console.log('Processing file:', file.name, 'size:', file.size, 'type:', file.type);
         
-        // Show preview
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const div = document.createElement('div');
-          div.className = 'image-preview-item';
-          div.innerHTML = `
-            <img src="${e.target.result}" alt="Preview">
-            <button type="button" class="remove-image" onclick="removeEditImage(${newIndex})">&times;</button>
-          `;
-          previewContainer.appendChild(div);
-        };
-        reader.readAsDataURL(compressed);
+        // Compress image
+        try {
+          console.log('Starting compression...');
+          const compressed = await compressImage(file);
+          console.log('Compression complete:', compressed.name, 'size:', compressed.size, 'type:', compressed.type);
+          
+          const newIndex = newPhotosToUpload.length;
+          newPhotosToUpload.push(compressed);
+          console.log('Added to newPhotosToUpload, total count:', newPhotosToUpload.length);
+          
+          // Show preview
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            console.log('FileReader onload fired, data length:', e.target.result.length);
+            const div = document.createElement('div');
+            div.className = 'image-preview-item';
+            div.innerHTML = `
+              <img src="${e.target.result}" alt="Preview">
+              <button type="button" class="remove-image" onclick="removeEditImage(${newIndex})">&times;</button>
+            `;
+            previewContainer.appendChild(div);
+            console.log('Preview added to container');
+          };
+          reader.onerror = (e) => {
+            console.error('FileReader error:', e);
+          };
+          console.log('Starting FileReader.readAsDataURL...');
+          reader.readAsDataURL(compressed);
+        } catch (error) {
+          console.error('Error during compression:', error);
+        }
       }
       
       // Clear the file input so user can select the same file again if needed
       event.target.value = '';
+      console.log('=== handleEditFileSelect complete ===');
     }
     
     function removeEditImage(index) {
