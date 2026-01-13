@@ -1689,7 +1689,9 @@
         clientX: touch.clientX,
         clientY: touch.clientY
       });
-      if (isManager) {
+      if (isManager === 'convert') {
+        convertCanvas.dispatchEvent(mouseEvent);
+      } else if (isManager) {
         managerCanvas.dispatchEvent(mouseEvent);
       } else {
         canvas.dispatchEvent(mouseEvent);
@@ -1703,7 +1705,9 @@
         clientX: touch.clientX,
         clientY: touch.clientY
       });
-      if (isManager) {
+      if (isManager === 'convert') {
+        convertCanvas.dispatchEvent(mouseEvent);
+      } else if (isManager) {
         managerCanvas.dispatchEvent(mouseEvent);
       } else {
         canvas.dispatchEvent(mouseEvent);
