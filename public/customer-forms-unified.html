@@ -1190,9 +1190,9 @@
           <div class="form-group">
             <label for="edit_new_photos">Add New Photos (Optional)</label>
             <div style="font-size: 12px; color: #718096; margin-bottom: 5px;">You can select multiple photos at once or add more photos multiple times</div>
-            <input type="file" id="edit_new_photos" accept="image/*" multiple style="margin-top: 5px;" onchange="handleEditPhotoSelect(event)">
-            <div id="editNewPhotosPreview" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
-              <!-- New photos preview will appear here -->
+            <input type="file" id="edit_new_photos" accept="image/*" multiple style="margin-top: 5px;" onchange="handleEditFileSelect(event)">
+            <div id="imagePreview_edit" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+              <!-- Preview will appear here -->
             </div>
           </div>
 
@@ -2342,61 +2342,57 @@
       displayEditPhotos();
     }
 
-    // Handle new photo uploads in edit mode
-    async function handleEditPhotoSelect(event) {
-      const newFiles = Array.from(event.target.files);
+    // Handle photo selection for edit form (mimics create form approach)
+    async function handleEditFileSelect(event) {
+      const files = Array.from(event.target.files);
       
-      if (newFiles.length === 0) return;
+      // Don't clear newPhotosToUpload - keep existing images and add new ones
+      const previewContainer = document.getElementById('imagePreview_edit');
       
-      try {
-        // Compress each file before adding
-        for (const file of newFiles) {
-          const compressed = await compressImage(file);
-          newPhotosToUpload.push(compressed);
-        }
+      for (const file of files) {
+        // Compress image
+        const compressed = await compressImage(file);
+        const newIndex = newPhotosToUpload.length;
+        newPhotosToUpload.push(compressed);
         
-        // Display preview of ALL photos
-        displayNewPhotosPreview();
-      } catch (error) {
-        console.error('Error compressing images:', error);
-        showMessage('Error processing images. Please try again.', 'error');
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const div = document.createElement('div');
+          div.className = 'image-preview-item';
+          div.innerHTML = `
+            <img src="${e.target.result}" alt="Preview">
+            <button type="button" class="remove-image" onclick="removeEditImage(${newIndex})">&times;</button>
+          `;
+          previewContainer.appendChild(div);
+        };
+        reader.readAsDataURL(compressed);
       }
       
-      // Clear the file input so the same file can be selected again if needed
+      // Clear the file input so user can select the same file again if needed
       event.target.value = '';
     }
-
-    function displayNewPhotosPreview() {
-      const previewContainer = document.getElementById('editNewPhotosPreview');
+    
+    function removeEditImage(index) {
+      newPhotosToUpload.splice(index, 1);
+      
+      // Refresh the entire preview with updated indices
+      const previewContainer = document.getElementById('imagePreview_edit');
       previewContainer.innerHTML = '';
       
-      newPhotosToUpload.forEach((file, index) => {
-        console.log('Previewing file:', file.name, file.size, file.type);
+      newPhotosToUpload.forEach((file, idx) => {
         const reader = new FileReader();
-        
-        reader.onerror = function(error) {
-          console.error('FileReader error for file:', file.name, error);
-          showMessage('Error reading image file. Please try again.', 'error');
-        };
-        
-        reader.onload = function(e) {
-          console.log('FileReader loaded successfully for:', file.name);
-          const photoItem = document.createElement('div');
-          photoItem.className = 'edit-photo-item';
-          photoItem.innerHTML = `
-            <img src="${e.target.result}" alt="New photo ${index + 1}" onerror="console.error('Image load error:', this.src.substring(0, 50))">
-            <button type="button" class="delete-photo-btn" onclick="removeNewPhoto(${index})" title="Remove photo">×</button>
+        reader.onload = (e) => {
+          const div = document.createElement('div');
+          div.className = 'image-preview-item';
+          div.innerHTML = `
+            <img src="${e.target.result}" alt="Preview">
+            <button type="button" class="remove-image" onclick="removeEditImage(${idx})">&times;</button>
           `;
-          previewContainer.appendChild(photoItem);
+          previewContainer.appendChild(div);
         };
-        
         reader.readAsDataURL(file);
       });
-    }
-
-    function removeNewPhoto(index) {
-      newPhotosToUpload.splice(index, 1);
-      displayNewPhotosPreview();
     }
 
     function closeEditModal() {
@@ -2405,7 +2401,7 @@
       currentFormPhotos = [];
       photosToDelete = [];
       newPhotosToUpload = [];
-      document.getElementById('editNewPhotosPreview').innerHTML = '';
+      document.getElementById('imagePreview_edit').innerHTML = '';
     }
 
     async function handleEditSubmit(event) {
