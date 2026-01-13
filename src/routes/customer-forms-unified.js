@@ -70,8 +70,61 @@ const storage = multer.diskStorage({
   }
 });
 
+// Separate storage config for edit routes (type comes from URL param, not body)
+const editStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    // Extract type from URL params: /:type/:id
+    const formType = req.params.type || 'pickup';
+    const baseUploadDir = process.env.UPLOAD_DIR || 'uploads';
+    
+    // Signatures go to signatures folder, photos go to form type folder
+    let uploadDir;
+    if (file.fieldname === 'signature' || file.fieldname === 'manager_signature') {
+      uploadDir = path.isAbsolute(baseUploadDir) 
+        ? path.join(baseUploadDir, 'signatures')
+        : path.join(__dirname, '../..', baseUploadDir, 'signatures');
+    } else {
+      uploadDir = path.isAbsolute(baseUploadDir)
+        ? path.join(baseUploadDir, formType)
+        : path.join(__dirname, '../..', baseUploadDir, formType);
+    }
+    
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    // Extract type from URL params
+    const formType = req.params.type || 'pickup';
+    
+    if (file.fieldname === 'signature' || file.fieldname === 'manager_signature') {
+      cb(null, `${file.fieldname}-` + uniqueSuffix + path.extname(file.originalname));
+    } else {
+      cb(null, `${formType}-` + uniqueSuffix + path.extname(file.originalname));
+    }
+  }
+});
+
 const upload = multer({
   storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB per file
+  },
+  fileFilter: function (req, file, cb) {
+    // Signatures can be PNG, photos can be any image
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Only image files are allowed!'), false);
+    }
+    cb(null, true);
+  }
+});
+
+// Separate upload middleware for edit routes
+const editUpload = multer({
+  storage: editStorage,
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB per file
   },
@@ -732,7 +785,7 @@ router.post('/retry-email/:type/:id', async (req, res) => {
 
 // ==================== UPDATE FORM ====================
 
-router.put('/:type/:id', authenticateToken, upload.fields([
+router.put('/:type/:id', authenticateToken, editUpload.fields([
   { name: 'new_pictures', maxCount: 10 }
 ]), async (req, res) => {
   const { type, id } = req.params;
