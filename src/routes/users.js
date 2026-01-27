@@ -130,6 +130,7 @@ router.put('/:id', async (req, res) => {
     updateFields.push(`bricabrac_alerts = $${paramCount++}`);
     values.push(bricabrac_alerts || false);
 
+    // Add updated_at if the column exists (trigger will handle it, but explicit is fine too)
     updateFields.push(`updated_at = NOW()`);
 
     values.push(id);
