@@ -981,8 +981,8 @@
           ` : usage.map(u => `
             <div class="usage-item">
               <div>
-                <div class="usage-date">${new Date(u.date_used).toLocaleDateString()}</div>
-                <div class="usage-meta">Added ${new Date(u.created_at).toLocaleDateString()} by ${escapeHtml(u.created_by_username || 'Unknown')}</div>
+                <div class="usage-date">${formatDateForDisplay(u.date_used)}</div>
+                <div class="usage-meta">Added ${formatDateForDisplay(u.created_at)} by ${escapeHtml(u.created_by_username || 'Unknown')}</div>
               </div>
               <div class="usage-actions">
                 <button class="btn-delete-small" onclick="deleteUsage(${u.id})">Delete</button>
@@ -1117,6 +1117,26 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+
+    function formatDateForDisplay(dateString) {
+      if (!dateString) return 'N/A';
+      
+      // If it's a YYYY-MM-DD string, parse it manually to avoid timezone issues
+      const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        const year = match[1];
+        const month = match[2];
+        const day = match[3];
+        
+        // Create date at noon local time to prevent timezone shifts
+        const date = new Date(year, month - 1, day, 12, 0, 0);
+        
+        return date.toLocaleDateString();
+      }
+      
+      // Fallback for other formats
+      return new Date(dateString).toLocaleDateString();
     }
   </script>
 </body>

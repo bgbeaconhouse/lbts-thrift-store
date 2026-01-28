@@ -208,7 +208,7 @@ router.post('/usage', async (req, res) => {
     // Add voucher usage
     const result = await db.query(
       `INSERT INTO voucher_usage (contact_id, date_used, created_by)
-       VALUES ($1, $2, $3)
+       VALUES ($1, $2::date, $3)
        RETURNING id, contact_id, date_used, created_at`,
       [contact_id, date_used, req.user.id]
     );
