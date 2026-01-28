@@ -1116,7 +1116,7 @@
             <!-- Comments Section -->
             <div class="comments-section">
               <div class="comments-header" onclick="toggleComments(${entry.id})">
-                <span class="comments-toggle">💬 Comments (<span id="comment-count-${entry.id}">0</span>)</span>
+                <span class="comments-toggle">💬 Comments (<span id="comment-count-${entry.id}">${entry.comment_count || 0}</span>)</span>
                 <span class="comments-arrow">▼</span>
               </div>
               <div class="comments-content" id="comments-${entry.id}" style="display: none;">

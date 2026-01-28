@@ -222,7 +222,13 @@ router.get('/', async (req, res) => {
     const result = await db.query(
       `SELECT 
         c.id, c.user_id, c.note, c.category, c.pinned, c.is_urgent, c.picture_urls, c.created_at,
-        u.username, u.role
+        u.username, u.role,
+        COALESCE(
+          (SELECT COUNT(*) 
+           FROM communication_comments cc 
+           WHERE cc.note_id = c.id AND cc.deleted_at IS NULL), 
+          0
+        ) as comment_count
       FROM communication_log c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.deleted_at IS NULL 
