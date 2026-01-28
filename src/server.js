@@ -20,7 +20,8 @@ const viewFormsRoutes = require('./routes/view-forms');
 const customerFormsUnifiedRouter = require('./routes/customer-forms-unified');
 const sopsRoutes = require('./routes/sops');
 const endOfDayRoutes = require('./routes/end-of-day');
-const bannedListRoutes = require('./routes/banned-list'); 
+const bannedListRoutes = require('./routes/banned-list');
+const vouchersRoutes = require('./routes/vouchers'); 
 
 // Initialize Express app
 const app = express();
@@ -96,7 +97,8 @@ app.use('/api/view-forms', viewFormsRoutes);
 app.use('/api/customer-forms-unified', customerFormsUnifiedRouter);
 app.use('/api/sops', sopsRoutes);
 app.use('/api/end-of-day', endOfDayRoutes);
-app.use('/api/banned-list', bannedListRoutes); 
+app.use('/api/banned-list', bannedListRoutes);
+app.use('/api/vouchers', vouchersRoutes); 
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

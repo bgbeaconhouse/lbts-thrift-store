@@ -361,6 +361,14 @@ navItems.push({
   link: '/banned-list.html'
 });
 
+// Vouchers - Available to all users
+navItems.push({
+  icon: '🎟️',
+  title: 'Vouchers',
+  description: 'Track customer voucher usage',
+  link: '/vouchers.html'
+});
+
 // Daily Report - Manager/Admin only
 if (currentUser.role === 'Manager' || currentUser.role === 'Admin') {
   navItems.push({
