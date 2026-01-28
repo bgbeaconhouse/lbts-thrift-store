@@ -353,6 +353,14 @@ navItems.push({
   link: '/checklist.html'
 });
 
+// Banned List - Available to all users
+navItems.push({
+  icon: '🚫',
+  title: 'Banned List',
+  description: 'Manage banned individuals list',
+  link: '/banned-list.html'
+});
+
 // Daily Report - Manager/Admin only
 if (currentUser.role === 'Manager' || currentUser.role === 'Admin') {
   navItems.push({
