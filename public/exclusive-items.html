@@ -862,7 +862,7 @@
             <span class="week-badge week-${item.week}">Week ${item.week}</span>
             <div class="item-image">
               ${item.picture_url 
-                ? `<img src="${item.picture_url}" alt="Item">` 
+                ? `<img src="${item.picture_url}" alt="Item" loading="lazy">` 
                 : '<span>📦</span>'}
             </div>
             <div class="item-content">
@@ -1102,7 +1102,7 @@
             ${alertItems.map(item => `
               <tr>
                 <td>
-                  ${item.picture_url ? `<img src="${item.picture_url}" alt="Item">` : '📦'}
+                  ${item.picture_url ? `<img src="${item.picture_url}" alt="Item" loading="lazy">` : '📦'}
                   <div style="margin-top: 5px; font-size: 12px; color: #718096;">
                     ${escapeHtml(item.category)}<br>
                     ${item.days_since_arrival} days old
