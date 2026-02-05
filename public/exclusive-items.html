@@ -859,7 +859,7 @@
         return `
           <div class="item-card ${needsUpdate ? 'needs-update' : ''}">
             ${needsUpdate ? '<span class="alert-badge">⚠️ Update</span>' : ''}
-            <span class="week-badge week-${item.week}">Week ${item.week}</span>
+        <span class="week-badge week-${item.week}">${item.week === 1 ? '1st price' : item.week === 3 ? '2nd price' : item.week === 5 ? '3rd price' : '4th price'}</span>
             <div class="item-image">
               ${item.picture_url 
                 ? `<img src="${item.picture_url}" alt="Item" loading="lazy">` 
