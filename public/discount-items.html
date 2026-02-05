@@ -766,87 +766,124 @@
       loadItems();
     };
 
-    function previewImages(event) {
+    async function previewImages(event) {
       const files = Array.from(event.target.files);
       const previewContainer = document.getElementById('imagePreviews');
       const uploadStatus = document.getElementById('uploadStatus');
       const submitBtn = document.getElementById('submitBtn');
       
       if (files.length === 0) {
-        selectedFiles = [];
-        previewContainer.innerHTML = '';
-        uploadStatus.className = 'upload-status';
         return;
       }
       
-      if (files.length > 10) {
-        alert('Maximum 10 images allowed');
-        event.target.value = '';
+      // Check if adding new files would exceed limit
+      if (selectedFiles.length + files.length > 10) {
+        showMessage(`Cannot add ${files.length} more image(s). You can only have 10 images total. Currently have ${selectedFiles.length}.`, 'error');
+        event.target.value = ''; // Clear the input
         return;
       }
       
       // Show uploading status
       isUploading = true;
-      uploadStatus.textContent = `Processing ${files.length} image${files.length > 1 ? 's' : ''}...`;
+      uploadStatus.textContent = `Compressing ${files.length} image${files.length > 1 ? 's' : ''}...`;
       uploadStatus.className = 'upload-status active uploading';
       submitBtn.disabled = true;
       
-      selectedFiles = files;
-      previewContainer.innerHTML = '';
-      
-      let loadedCount = 0;
-      
-      files.forEach((file, index) => {
+      // Don't clear selectedFiles - keep existing images and add new ones
+      for (const file of files) {
+        // Compress image
+        const compressed = await compressImage(file);
+        const newIndex = selectedFiles.length;
+        selectedFiles.push(compressed);
+        
+        // Show preview
         const reader = new FileReader();
-        reader.onload = function(e) {
-          const previewItem = document.createElement('div');
-          previewItem.className = 'image-preview-item';
-          previewItem.innerHTML = `
-            <img src="${e.target.result}" alt="Preview ${index + 1}">
-            <button type="button" class="remove-image" onclick="removePreviewImage(${index})" title="Remove">×</button>
+        reader.onload = (e) => {
+          const div = document.createElement('div');
+          div.className = 'image-preview-item';
+          div.innerHTML = `
+            <img src="${e.target.result}" alt="Preview">
+            <button type="button" class="remove-image" onclick="removeImage(${newIndex})">&times;</button>
           `;
-          previewContainer.appendChild(previewItem);
-          
-          loadedCount++;
-          if (loadedCount === files.length) {
-            // All images processed
-            isUploading = false;
-            uploadStatus.textContent = `${files.length} image${files.length > 1 ? 's' : ''} ready to upload`;
-            uploadStatus.className = 'upload-status active success';
-            submitBtn.disabled = false;
+          previewContainer.appendChild(div);
+        };
+        reader.readAsDataURL(compressed);
+      }
+      
+      // All images processed
+      isUploading = false;
+      uploadStatus.textContent = `${selectedFiles.length} image${selectedFiles.length > 1 ? 's' : ''} ready to upload`;
+      uploadStatus.className = 'upload-status active success';
+      submitBtn.disabled = false;
+      
+      // Hide status after 2 seconds
+      setTimeout(() => {
+        uploadStatus.className = 'upload-status';
+      }, 2000);
+      
+      // Clear the file input so user can select the same file again if needed
+      event.target.value = '';
+    }
+
+    async function compressImage(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
             
-            // Hide status after 2 seconds
-            setTimeout(() => {
-              uploadStatus.className = 'upload-status';
-            }, 2000);
-          }
+            const maxDimension = 1920;
+            if (width > height && width > maxDimension) {
+              height = (height * maxDimension) / width;
+              width = maxDimension;
+            } else if (height > maxDimension) {
+              width = (width * maxDimension) / height;
+              height = maxDimension;
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            canvas.toBlob((blob) => {
+              resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+            }, 'image/jpeg', 0.85);
+          };
+          img.src = e.target.result;
         };
         reader.readAsDataURL(file);
       });
     }
 
-    function removePreviewImage(index) {
-      const fileInput = document.getElementById('pictures');
-      const dt = new DataTransfer();
+    function removeImage(index) {
+      selectedFiles.splice(index, 1);
       
-      // Rebuild file list without the removed item
-      selectedFiles.forEach((file, i) => {
-        if (i !== index) {
-          dt.items.add(file);
-        }
+      // Refresh the entire preview with updated indices
+      const previewContainer = document.getElementById('imagePreviews');
+      previewContainer.innerHTML = '';
+      
+      selectedFiles.forEach((file, idx) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const div = document.createElement('div');
+          div.className = 'image-preview-item';
+          div.innerHTML = `
+            <img src="${e.target.result}" alt="Preview">
+            <button type="button" class="remove-image" onclick="removeImage(${idx})">&times;</button>
+          `;
+          previewContainer.appendChild(div);
+        };
+        reader.readAsDataURL(file);
       });
       
-      fileInput.files = dt.files;
-      selectedFiles = Array.from(dt.files);
-      
-      // Re-render previews
-      const event = { target: { files: dt.files } };
-      if (selectedFiles.length === 0) {
-        document.getElementById('imagePreviews').innerHTML = '';
-        document.getElementById('uploadStatus').className = 'upload-status';
-      } else {
-        previewImages(event);
-      }
+      // Clear the file input
+      const input = document.getElementById('pictures');
+      if (input) input.value = '';
     }
 
     async function loadItems() {
@@ -1229,13 +1266,13 @@
       formData.append('price', document.getElementById('price').value);
       formData.append('notes', document.getElementById('notes').value);
       
-      const picturesInput = document.getElementById('pictures');
-      if (picturesInput.files.length > 0) {
-        uploadStatus.textContent = `Uploading ${picturesInput.files.length} image${picturesInput.files.length > 1 ? 's' : ''}...`;
+      // Add photos from selectedFiles array
+      if (selectedFiles.length > 0) {
+        uploadStatus.textContent = `Uploading ${selectedFiles.length} image${selectedFiles.length > 1 ? 's' : ''}...`;
         uploadStatus.className = 'upload-status active uploading';
         
         // Append all files with the same field name 'pictures'
-        Array.from(picturesInput.files).forEach(file => {
+        selectedFiles.forEach(file => {
           formData.append('pictures', file);
         });
       }
