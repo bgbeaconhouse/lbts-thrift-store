@@ -54,9 +54,15 @@ router.get('/', async (req, res) => {
     
     let query = `
       SELECT 
-        id, category, picture_url, date_arrived, current_price, week, notes,
+        id, category, picture_url, date_arrived, current_price, notes,
         created_by, created_at, updated_at,
-        CURRENT_DATE - date_arrived as days_since_arrival
+        CURRENT_DATE - date_arrived as days_since_arrival,
+        CASE 
+          WHEN CURRENT_DATE - date_arrived < 14 THEN 1
+          WHEN CURRENT_DATE - date_arrived < 28 THEN 3
+          WHEN CURRENT_DATE - date_arrived < 42 THEN 5
+          ELSE 7
+        END as week
       FROM exclusive_items 
       WHERE deleted_at IS NULL
     `;
@@ -111,15 +117,21 @@ router.get('/alerts', async (req, res) => {
  // Get items that need week updates based on days since arrival (2-week intervals)
 const result = await db.query(
   `SELECT 
-    id, category, picture_url, date_arrived, current_price, week, notes,
-    CURRENT_DATE - date_arrived as days_since_arrival
+    id, category, picture_url, date_arrived, current_price, notes,
+    CURRENT_DATE - date_arrived as days_since_arrival,
+    CASE 
+      WHEN CURRENT_DATE - date_arrived < 14 THEN 1
+      WHEN CURRENT_DATE - date_arrived < 28 THEN 3
+      WHEN CURRENT_DATE - date_arrived < 42 THEN 5
+      ELSE 7
+    END as week
   FROM exclusive_items 
   WHERE deleted_at IS NULL 
     AND category = ANY($1)
     AND (
-      (week = 1 AND CURRENT_DATE - date_arrived >= 14) OR
-      (week = 3 AND CURRENT_DATE - date_arrived >= 28) OR
-      (week = 5 AND CURRENT_DATE - date_arrived >= 42)
+      (CURRENT_DATE - date_arrived >= 14 AND CURRENT_DATE - date_arrived < 28) OR
+      (CURRENT_DATE - date_arrived >= 28 AND CURRENT_DATE - date_arrived < 42) OR
+      (CURRENT_DATE - date_arrived >= 42)
     )
   ORDER BY date_arrived ASC`,
   [categories]
@@ -141,9 +153,15 @@ router.get('/:id', async (req, res) => {
     
     const result = await db.query(
       `SELECT 
-        id, category, picture_url, date_arrived, current_price, week, notes,
+        id, category, picture_url, date_arrived, current_price, notes,
         created_by, created_at, updated_at,
-        CURRENT_DATE - date_arrived as days_since_arrival
+        CURRENT_DATE - date_arrived as days_since_arrival,
+        CASE 
+          WHEN CURRENT_DATE - date_arrived < 14 THEN 1
+          WHEN CURRENT_DATE - date_arrived < 28 THEN 3
+          WHEN CURRENT_DATE - date_arrived < 42 THEN 5
+          ELSE 7
+        END as week
       FROM exclusive_items 
       WHERE id = $1 AND deleted_at IS NULL`,
       [id]
@@ -180,9 +198,9 @@ router.post('/', upload.single('picture'), async (req, res) => {
     const pictureUrl = req.file ? `/uploads/exclusive/${req.file.filename}` : null;
 
     const result = await db.query(
-      `INSERT INTO exclusive_items (category, picture_url, date_arrived, current_price, week, notes, created_by)
-       VALUES ($1, $2, CURRENT_DATE, $3, 1, $4, $5)
-       RETURNING id, category, picture_url, date_arrived, current_price, week, notes, created_by, created_at`,
+      `INSERT INTO exclusive_items (category, picture_url, date_arrived, current_price, notes, created_by)
+       VALUES ($1, $2, CURRENT_DATE, $3, $4, $5)
+       RETURNING id, category, picture_url, date_arrived, current_price, notes, created_by, created_at`,
       [category, pictureUrl, current_price, notes || null, req.user.id]
     );
 
@@ -206,10 +224,11 @@ router.post('/', upload.single('picture'), async (req, res) => {
 // PUT /api/exclusive-items/:id - Update exclusive item
 router.put('/:id', upload.single('picture'), async (req, res) => {
   const { id } = req.params;
- let { category, current_price, week, notes } = req.body;
+  let { category, current_price, notes } = req.body;
+  
   // Validation
-  if (!category || !current_price || !week) {
-    return res.status(400).json({ error: 'Category, price, and week are required' });
+  if (!category || !current_price) {
+    return res.status(400).json({ error: 'Category and price are required' });
   }
 
   const validCategories = ['Furniture', 'Clothing', 'Bric-a-Brac'];
@@ -219,10 +238,6 @@ router.put('/:id', upload.single('picture'), async (req, res) => {
 
   try {
     const db = req.app.locals.db;
-
-if (![1, 3, 5, 7].includes(parseInt(week))) {
-  return res.status(400).json({ error: 'Week must be 1, 3, 5, or 7' });
-}
 
     // Get existing item
     const existingResult = await db.query(
@@ -253,10 +268,10 @@ if (![1, 3, 5, 7].includes(parseInt(week))) {
     // Update item
     const result = await db.query(
       `UPDATE exclusive_items 
-       SET category = $1, picture_url = $2, current_price = $3, week = $4, notes = $5, updated_at = NOW()
-       WHERE id = $6 AND deleted_at IS NULL
-       RETURNING id, category, picture_url, date_arrived, current_price, week, notes, created_by, created_at, updated_at`,
-      [category, pictureUrl, current_price, week, notes || null, id]
+       SET category = $1, picture_url = $2, current_price = $3, notes = $4, updated_at = NOW()
+       WHERE id = $5 AND deleted_at IS NULL
+       RETURNING id, category, picture_url, date_arrived, current_price, notes, created_by, created_at, updated_at`,
+      [category, pictureUrl, current_price, notes || null, id]
     );
 
     res.json({ 
@@ -275,9 +290,9 @@ if (![1, 3, 5, 7].includes(parseInt(week))) {
     res.status(500).json({ error: 'Failed to update exclusive item' });
   }
 });
-// PATCH /api/exclusive-items/bulk-update - Bulk update prices and weeks
+// PATCH /api/exclusive-items/bulk-update - Bulk update prices
 router.patch('/bulk-update', async (req, res) => {
-  const { items } = req.body; // Array of { id, current_price, week }
+  const { items } = req.body; // Array of { id, current_price }
 
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Items array is required' });
@@ -286,13 +301,13 @@ router.patch('/bulk-update', async (req, res) => {
   try {
     const db = req.app.locals.db;
 
-    // Update each item
+    // Update each item's price
     const promises = items.map(item => {
       return db.query(
         `UPDATE exclusive_items 
-         SET current_price = $1, week = $2, updated_at = NOW()
-         WHERE id = $3 AND deleted_at IS NULL`,
-        [item.current_price, item.week, item.id]
+         SET current_price = $1, updated_at = NOW()
+         WHERE id = $2 AND deleted_at IS NULL`,
+        [item.current_price, item.id]
       );
     });
 

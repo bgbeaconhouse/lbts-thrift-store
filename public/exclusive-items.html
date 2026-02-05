@@ -684,16 +684,6 @@
         </div>
 
         <div class="form-group">
-          <label for="week">Week *</label>
-          <select id="week" required>
-            <option value="1">Week 1 (New arrival)</option>
-            <option value="3">Week 3 (2 weeks old)</option>
-            <option value="5">Week 5 (4 weeks old)</option>
-            <option value="7">Week 7 (6 weeks old)</option>
-          </select>
-        </div>
-
-        <div class="form-group">
           <label for="notes">Notes</label>
           <textarea id="notes" placeholder="Item description, condition, etc."></textarea>
         </div>
@@ -715,7 +705,7 @@
       </div>
 
       <p style="color: #718096; margin-bottom: 20px;">
-        Update prices and weeks for items that need attention. Items shown below have been in their current week for 14+ days (2-week intervals).
+        Update prices for items that need attention. Items shown below have reached the next pricing tier based on their age. Week badges will update automatically.
       </p>
 
       <div class="bulk-table" id="bulkTableContainer">
@@ -862,7 +852,7 @@
             <span class="week-badge week-${item.week}">Week ${item.week}</span>
             <div class="item-image">
               ${item.picture_url 
-                ? `<img src="${item.picture_url}" alt="Item" loading="lazy">` 
+                ? `<img src="${item.picture_url}" alt="Item">` 
                 : '<span>📦</span>'}
             </div>
             <div class="item-content">
@@ -890,7 +880,6 @@
       document.getElementById('itemForm').reset();
       document.getElementById('itemId').value = '';
       document.getElementById('category').value = currentCategory;
-      document.getElementById('week').value = '1';
       document.getElementById('imagePreview').classList.remove('show');
       document.getElementById('itemModal').classList.add('active');
     }
@@ -916,7 +905,6 @@
         document.getElementById('itemId').value = item.id;
         document.getElementById('category').value = item.category;
         document.getElementById('current_price').value = item.current_price;
-        document.getElementById('week').value = item.week;
         document.getElementById('notes').value = item.notes || '';
         
         // Show existing image
@@ -1008,7 +996,6 @@
       const formData = new FormData();
       formData.append('category', document.getElementById('category').value);
       formData.append('current_price', document.getElementById('current_price').value);
-      formData.append('week', document.getElementById('week').value);
       formData.append('notes', document.getElementById('notes').value);
       
       const pictureInput = document.getElementById('picture');
@@ -1093,24 +1080,22 @@
           <thead>
             <tr>
               <th>Item</th>
-              <th>Current</th>
+              <th>Current Price</th>
               <th>New Price</th>
-              <th>New Week</th>
             </tr>
           </thead>
           <tbody>
             ${alertItems.map(item => `
               <tr>
                 <td>
-                  ${item.picture_url ? `<img src="${item.picture_url}" alt="Item" loading="lazy">` : '📦'}
+                  ${item.picture_url ? `<img src="${item.picture_url}" alt="Item">` : '📦'}
                   <div style="margin-top: 5px; font-size: 12px; color: #718096;">
                     ${escapeHtml(item.category)}<br>
-                    ${item.days_since_arrival} days old
+                    ${item.days_since_arrival} days old → Week ${item.week}
                   </div>
                 </td>
                 <td>
-                  $${parseFloat(item.current_price).toFixed(2)}<br>
-                  <span style="font-size: 12px; color: #718096;">Week ${item.week}</span>
+                  $${parseFloat(item.current_price).toFixed(2)}
                 </td>
                 <td>
                   <input type="number" 
@@ -1120,14 +1105,6 @@
                          data-item-id="${item.id}"
                          data-field="price"
                          style="width: 100px;">
-                </td>
-                <td>
-                  <select data-item-id="${item.id}" data-field="week">
-                    <option value="1" ${item.week === 1 ? 'selected' : ''}>Week 1</option>
-                    <option value="3" ${item.week === 3 ? 'selected' : ''}>Week 3</option>
-                    <option value="5" ${item.week === 5 ? 'selected' : ''}>Week 5</option>
-                    <option value="7" ${item.week === 7 ? 'selected' : ''}>Week 7</option>
-                  </select>
                 </td>
               </tr>
             `).join('')}
@@ -1146,20 +1123,17 @@
     async function saveBulkUpdate() {
       const token = localStorage.getItem('token');
       
-      // Collect updated values
+      // Collect updated prices
       const updates = [];
       const priceInputs = document.querySelectorAll('[data-field="price"]');
-      const weekSelects = document.querySelectorAll('[data-field="week"]');
 
-      priceInputs.forEach((input, index) => {
+      priceInputs.forEach((input) => {
         const itemId = input.dataset.itemId;
         const price = parseFloat(input.value);
-        const week = parseInt(weekSelects[index].value);
 
         updates.push({
           id: itemId,
-          current_price: price,
-          week: week
+          current_price: price
         });
       });
 
