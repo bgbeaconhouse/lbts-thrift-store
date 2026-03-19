@@ -1,0 +1,2 @@
+ALTER TABLE donation_forms ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id);
+ALTER TABLE waiver_forms ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id);
