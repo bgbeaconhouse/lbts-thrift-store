@@ -501,49 +501,56 @@ router.get('/:type', async (req, res) => {
     const tableName = `${type}_forms`;
     
     let query;
-    if (type === 'pickup') {
+if (type === 'pickup') {
       query = `
-        SELECT id, customer_name, phone, email, items_description, signature_url, 
-               date, 
-               to_char(date_purchased, 'YYYY-MM-DD') as date_purchased, 
-               to_char(date_stored, 'YYYY-MM-DD') as date_stored, 
-               picture_urls, notes,
-               email_sent, email_sent_at, email_error, created_at
-        FROM ${tableName}
-        WHERE deleted_at IS NULL 
-        ORDER BY created_at DESC
+        SELECT pf.id, pf.customer_name, pf.phone, pf.email, pf.items_description, pf.signature_url, 
+               pf.date, 
+               to_char(pf.date_purchased, 'YYYY-MM-DD') as date_purchased, 
+               to_char(pf.date_stored, 'YYYY-MM-DD') as date_stored, 
+               pf.picture_urls, pf.notes,
+               pf.email_sent, pf.email_sent_at, pf.email_error, pf.created_at,
+               u.username as created_by_username
+        FROM ${tableName} pf
+        LEFT JOIN users u ON u.id = pf.created_by
+        WHERE pf.deleted_at IS NULL 
+        ORDER BY pf.created_at DESC
       `;
     } else if (type === 'delivery') {
       query = `
-        SELECT id, customer_name, phone, email, items_description, delivery_address,
-               delivery_cost, 
-               to_char(delivery_date, 'YYYY-MM-DD') as delivery_date, 
-               to_char(date_scheduled, 'YYYY-MM-DD') as date_scheduled, 
-               signature_url, 
-               date, picture_urls, notes,
-               email_sent, email_sent_at, email_error, created_at
-        FROM ${tableName}
-        WHERE deleted_at IS NULL 
-        ORDER BY created_at DESC
+        SELECT pf.id, pf.customer_name, pf.phone, pf.email, pf.items_description, pf.delivery_address,
+               pf.delivery_cost, 
+               to_char(pf.delivery_date, 'YYYY-MM-DD') as delivery_date, 
+               to_char(pf.date_scheduled, 'YYYY-MM-DD') as date_scheduled, 
+               pf.signature_url, 
+               pf.date, pf.picture_urls, pf.notes,
+               pf.email_sent, pf.email_sent_at, pf.email_error, pf.created_at,
+               u.username as created_by_username
+        FROM ${tableName} pf
+        LEFT JOIN users u ON u.id = pf.created_by
+        WHERE pf.deleted_at IS NULL 
+        ORDER BY pf.created_at DESC
       `;
     } else if (type === 'donation') {
       query = `
-        SELECT id, customer_name, phone, email, donation_description, signature_url, 
-               date, email_sent, email_sent_at, email_error, created_at
-        FROM ${tableName}
-        WHERE deleted_at IS NULL 
-        ORDER BY created_at DESC
+        SELECT pf.id, pf.customer_name, pf.phone, pf.email, pf.donation_description, pf.signature_url, 
+               pf.date, pf.email_sent, pf.email_sent_at, pf.email_error, pf.created_at,
+               u.username as created_by_username
+        FROM ${tableName} pf
+        LEFT JOIN users u ON u.id = pf.created_by
+        WHERE pf.deleted_at IS NULL 
+        ORDER BY pf.created_at DESC
       `;
     } else { // waiver
       query = `
-        SELECT id, customer_name, phone, email, signature_url, manager_signature_url,
-               date, email_sent, email_sent_at, email_error, created_at
-        FROM ${tableName}
-        WHERE deleted_at IS NULL 
-        ORDER BY created_at DESC
+        SELECT pf.id, pf.customer_name, pf.phone, pf.email, pf.signature_url, pf.manager_signature_url,
+               pf.date, pf.email_sent, pf.email_sent_at, pf.email_error, pf.created_at,
+               u.username as created_by_username
+        FROM ${tableName} pf
+        LEFT JOIN users u ON u.id = pf.created_by
+        WHERE pf.deleted_at IS NULL 
+        ORDER BY pf.created_at DESC
       `;
     }
-
     const result = await db.query(query);
     res.json({ forms: result.rows });
   } catch (error) {
@@ -606,7 +613,7 @@ router.post('/create', upload.fields([
     return res.status(400).json({ error: 'Customer name and phone are required' });
   }
 
-  // Pickup-specific required field validation
+// Pickup-specific required field validation
   if (form_type === 'pickup') {
     if (!date_purchased) {
       cleanupFiles();
@@ -627,6 +634,46 @@ router.post('/create', upload.fields([
     if (!req.files['signature'] || req.files['signature'].length === 0) {
       cleanupFiles();
       return res.status(400).json({ error: 'Customer signature is required' });
+    }
+  }
+
+// Delivery-specific required field validation
+  if (form_type === 'delivery') {
+    if (!delivery_address || !delivery_address.trim()) {
+      cleanupFiles();
+      return res.status(400).json({ error: 'Delivery Address is required' });
+    }
+    if (!delivery_cost) {
+      cleanupFiles();
+      return res.status(400).json({ error: 'Delivery Cost is required' });
+    }
+    if (!date_scheduled) {
+      cleanupFiles();
+      return res.status(400).json({ error: 'Delivery Date is required' });
+    }
+    if (!items_description || !items_description.trim()) {
+      cleanupFiles();
+      return res.status(400).json({ error: 'Items Description is required' });
+    }
+    if (!req.files['pictures'] || req.files['pictures'].length === 0) {
+      cleanupFiles();
+      return res.status(400).json({ error: 'At least one photo is required' });
+    }
+    if (!req.files['signature'] || req.files['signature'].length === 0) {
+      cleanupFiles();
+      return res.status(400).json({ error: 'Customer signature is required' });
+    }
+  }
+
+  // Waiver-specific required field validation
+  if (form_type === 'waiver') {
+    if (!req.files['signature'] || req.files['signature'].length === 0) {
+      cleanupFiles();
+      return res.status(400).json({ error: 'Customer signature is required' });
+    }
+    if (!req.files['manager_signature'] || req.files['manager_signature'].length === 0) {
+      cleanupFiles();
+      return res.status(400).json({ error: 'Manager signature is required' });
     }
   }
 

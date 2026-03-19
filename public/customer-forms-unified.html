@@ -903,33 +903,31 @@
               <p>You have <strong>48 hours upon purchase</strong> to pick your item up. After 48 hours the item will be placed back on the sales floor and <strong>no refunds will be issued</strong>.</p>
               <p style="margin-top: 10px;">We will gladly assist you in loading your items. Please be aware that it is the customer's responsibility to ensure items are properly loaded and secured.</p>
             </div>
-          </div>
-
-          <!-- Delivery-specific fields -->
+<!-- Delivery-specific fields -->
           <div id="deliveryFields" style="display: none;">
             <div class="form-group">
               <label for="delivery_address">Delivery Address *</label>
-              <textarea id="delivery_address" rows="3"></textarea>
+              <textarea id="delivery_address" rows="3" required></textarea>
             </div>
 
             <div class="form-row">
               <div class="form-group">
                 <label for="delivery_cost">Delivery Cost *</label>
-                <input type="number" id="delivery_cost" step="0.01" min="0">
+                <input type="number" id="delivery_cost" step="0.01" min="0" required>
               </div>
               <div class="form-group">
                 <label for="date_scheduled">Delivery Date *</label>
-                <input type="date" id="date_scheduled">
+                <input type="date" id="date_scheduled" required>
               </div>
             </div>
 
             <div class="form-group">
-              <label for="items_description_delivery">Items Description</label>
-              <textarea id="items_description_delivery"></textarea>
+              <label for="items_description_delivery">Items Description *</label>
+              <textarea id="items_description_delivery" required></textarea>
             </div>
 
             <div class="form-group">
-              <label>Photos (optional)</label>
+              <label>Photos *</label>
               <input type="file" id="pictures_delivery" accept="image/*" multiple style="display: none;" onchange="handleFileSelect(event)">
               <div class="file-upload-area" onclick="document.getElementById('pictures_delivery').click()">
                 <div class="upload-icon">📷</div>
@@ -981,9 +979,9 @@
             </div>
           </div>
 
-          <!-- Customer Signature (all forms) -->
+        <!-- Customer Signature (all forms) -->
           <div id="signatureSection" class="form-group">
-            <label>Customer Signature</label>
+            <label>Customer Signature *</label>
             <div class="signature-pad">
               <canvas id="signatureCanvas" class="signature-canvas"></canvas>
               <div class="signature-controls">
@@ -993,9 +991,9 @@
             <div id="signatureStatus" class="upload-status"></div>
           </div>
 
-          <!-- Manager Signature (waiver only) -->
+        <!-- Manager Signature (waiver only) -->
           <div id="managerSignatureSection" class="form-group" style="display: none;">
-            <label>Manager Signature</label>
+            <label>Manager Signature *</label>
             <div class="signature-pad">
               <canvas id="managerSignatureCanvas" class="signature-canvas"></canvas>
               <div class="signature-controls">
@@ -1461,6 +1459,7 @@
                   ${form.date_purchased ? `<span>📅 Purchased: ${formatDateForDisplay(form.date_purchased)}</span>` : ''}
                  ${form.date_scheduled || form.date_stored ? `<span>🗓️ ${form.form_type === 'delivery' ? 'Delivery' : 'Pickup'}: ${formatDateForDisplay(form.date_scheduled || form.date_stored)}</span>` : ''}
                   ${form.delivery_cost ? `<span>💵 $${parseFloat(form.delivery_cost).toFixed(2)}</span>` : ''}
+                 ${form.created_by_username ? `<span>👤 ${escapeHtml(form.created_by_username)}</span>` : ''}
                   ${!isDeleted ? `<span>${emailBadge}</span>` : ''}
                 </div>
                 ${description ? `<div class="form-description">${escapeHtml(description).substring(0, 150)}${description.length > 150 ? '...' : ''}</div>` : ''}
@@ -1972,16 +1971,60 @@
           formData.append('pictures', file);
         });
         
-      } else if (formType === 'delivery') {
+    } else if (formType === 'delivery') {
         const address = document.getElementById('delivery_address').value;
         const cost = document.getElementById('delivery_cost').value;
         const dateScheduled = document.getElementById('date_scheduled').value;
         const description = document.getElementById('items_description_delivery').value;
-        
-        if (address) formData.append('delivery_address', address);
-        if (cost) formData.append('delivery_cost', cost);
-        if (dateScheduled) formData.append('date_scheduled', formatDateForSubmission(dateScheduled));
-        if (description) formData.append('items_description', description);
+
+        // Validate delivery-required fields
+        if (!address.trim()) {
+          showMessage('Delivery Address is required', 'error');
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
+          return;
+        }
+        if (!cost) {
+          showMessage('Delivery Cost is required', 'error');
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
+          return;
+        }
+        if (!dateScheduled) {
+          showMessage('Delivery Date is required', 'error');
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
+          return;
+        }
+        if (!description.trim()) {
+          showMessage('Items Description is required', 'error');
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
+          return;
+        }
+        if (selectedFiles.length === 0) {
+          showMessage('At least one photo is required', 'error');
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
+          return;
+        }
+        if (isSignatureEmpty()) {
+          showMessage('Customer signature is required', 'error');
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
+          return;
+        }
+
+        formData.append('delivery_address', address);
+        formData.append('delivery_cost', cost);
+        formData.append('date_scheduled', formatDateForSubmission(dateScheduled));
+        formData.append('items_description', description);
         
         // Add photos
         selectedFiles.forEach(file => {
@@ -1993,7 +2036,24 @@
         if (description) formData.append('donation_description', description);
       }
       
-      // Add signatures
+    // Add signatures
+      if (formType === 'waiver') {
+        if (isSignatureEmpty()) {
+          showMessage('Customer signature is required', 'error');
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
+          return;
+        }
+        if (isManagerSignatureEmpty()) {
+          showMessage('Manager signature is required', 'error');
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
+          return;
+        }
+      }
+
       if (!isSignatureEmpty()) {
         const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
         formData.append('signature', blob, 'signature.png');
