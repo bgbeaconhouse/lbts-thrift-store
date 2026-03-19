@@ -869,25 +869,25 @@
           </div>
 
           <!-- Pickup-specific fields -->
-          <div id="pickupFields" style="display: none;">
+    <div id="pickupFields" style="display: none;">
             <div class="form-row">
               <div class="form-group">
-                <label for="date_purchased">Date Purchased</label>
-                <input type="date" id="date_purchased">
+                <label for="date_purchased">Date Purchased *</label>
+                <input type="date" id="date_purchased" required>
               </div>
               <div class="form-group">
                 <label for="date_stored">Pick-Up Date *</label>
-                <input type="date" id="date_stored">
+                <input type="date" id="date_stored" required>
               </div>
             </div>
 
             <div class="form-group">
-              <label for="items_description_pickup">Items Description</label>
-              <textarea id="items_description_pickup"></textarea>
+              <label for="items_description_pickup">Items Description *</label>
+              <textarea id="items_description_pickup" required></textarea>
             </div>
 
             <div class="form-group">
-              <label>Photos (optional)</label>
+              <label>Photos *</label>
               <input type="file" id="pictures_pickup" accept="image/*" multiple style="display: none;" onchange="handleFileSelect(event)">
               <div class="file-upload-area" onclick="document.getElementById('pictures_pickup').click()">
                 <div class="upload-icon">📷</div>
@@ -1920,15 +1920,52 @@
       formData.append('phone', document.getElementById('phone').value);
       formData.append('email', document.getElementById('email').value);
       
-      // Add type-specific fields
+    // Add type-specific fields
       if (formType === 'pickup') {
         const datePurchased = document.getElementById('date_purchased').value;
         const dateStored = document.getElementById('date_stored').value;
         const description = document.getElementById('items_description_pickup').value;
-        
-        if (datePurchased) formData.append('date_purchased', formatDateForSubmission(datePurchased));
-        if (dateStored) formData.append('date_stored', formatDateForSubmission(dateStored));
-        if (description) formData.append('items_description', description);
+
+        // Validate pickup-required fields
+        if (!datePurchased) {
+          showMessage('Date Purchased is required', 'error');
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
+          return;
+        }
+        if (!dateStored) {
+          showMessage('Pick-Up Date is required', 'error');
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
+          return;
+        }
+        if (!description.trim()) {
+          showMessage('Items Description is required', 'error');
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
+          return;
+        }
+        if (selectedFiles.length === 0) {
+          showMessage('At least one photo is required', 'error');
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
+          return;
+        }
+        if (isSignatureEmpty()) {
+          showMessage('Customer signature is required', 'error');
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
+          return;
+        }
+
+        formData.append('date_purchased', formatDateForSubmission(datePurchased));
+        formData.append('date_stored', formatDateForSubmission(dateStored));
+        formData.append('items_description', description);
         
         // Add photos
         selectedFiles.forEach(file => {

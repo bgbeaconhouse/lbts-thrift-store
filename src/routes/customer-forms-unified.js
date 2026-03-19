@@ -590,9 +590,8 @@ router.post('/create', upload.fields([
     return res.status(400).json({ error: 'Invalid form type' });
   }
 
-  // Validate required fields
-  if (!customer_name || !phone) {
-    // Clean up uploaded files
+// Validate required fields
+  const cleanupFiles = () => {
     if (req.files) {
       Object.values(req.files).flat().forEach(file => {
         fs.unlink(file.path, (err) => {
@@ -600,7 +599,35 @@ router.post('/create', upload.fields([
         });
       });
     }
+  };
+
+  if (!customer_name || !phone) {
+    cleanupFiles();
     return res.status(400).json({ error: 'Customer name and phone are required' });
+  }
+
+  // Pickup-specific required field validation
+  if (form_type === 'pickup') {
+    if (!date_purchased) {
+      cleanupFiles();
+      return res.status(400).json({ error: 'Date Purchased is required' });
+    }
+    if (!date_stored) {
+      cleanupFiles();
+      return res.status(400).json({ error: 'Pick-Up Date is required' });
+    }
+    if (!items_description || !items_description.trim()) {
+      cleanupFiles();
+      return res.status(400).json({ error: 'Items Description is required' });
+    }
+    if (!req.files['pictures'] || req.files['pictures'].length === 0) {
+      cleanupFiles();
+      return res.status(400).json({ error: 'At least one photo is required' });
+    }
+    if (!req.files['signature'] || req.files['signature'].length === 0) {
+      cleanupFiles();
+      return res.status(400).json({ error: 'Customer signature is required' });
+    }
   }
 
   try {
