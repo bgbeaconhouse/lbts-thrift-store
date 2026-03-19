@@ -871,19 +871,19 @@
           <!-- Pickup-specific fields -->
     <div id="pickupFields" style="display: none;">
             <div class="form-row">
-              <div class="form-group">
+          <div class="form-group">
                 <label for="date_purchased">Date Purchased *</label>
-                <input type="date" id="date_purchased" required>
+                <input type="date" id="date_purchased">
               </div>
               <div class="form-group">
                 <label for="date_stored">Pick-Up Date *</label>
-                <input type="date" id="date_stored" required>
+                <input type="date" id="date_stored">
               </div>
             </div>
 
             <div class="form-group">
               <label for="items_description_pickup">Items Description *</label>
-              <textarea id="items_description_pickup" required></textarea>
+              <textarea id="items_description_pickup"></textarea>
             </div>
 
             <div class="form-group">
@@ -907,18 +907,23 @@
           <div id="deliveryFields" style="display: none;">
             <div class="form-group">
               <label for="delivery_address">Delivery Address *</label>
-              <textarea id="delivery_address" rows="3" required></textarea>
+              <textarea id="delivery_address" rows="3"></textarea>
             </div>
 
             <div class="form-row">
               <div class="form-group">
                 <label for="delivery_cost">Delivery Cost *</label>
-                <input type="number" id="delivery_cost" step="0.01" min="0" required>
+                <input type="number" id="delivery_cost" step="0.01" min="0">
               </div>
               <div class="form-group">
                 <label for="date_scheduled">Delivery Date *</label>
-                <input type="date" id="date_scheduled" required>
+                <input type="date" id="date_scheduled">
               </div>
+            </div>
+
+            <div class="form-group">
+              <label for="items_description_delivery">Items Description *</label>
+              <textarea id="items_description_delivery"></textarea>
             </div>
 
             <div class="form-group">
