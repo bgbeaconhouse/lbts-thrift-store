@@ -54,30 +54,31 @@ router.get('/:date', authenticateToken, async (req, res) => {
     const db = req.app.locals.db;
 
     try {
-        // Get all checklist template items
+        // Get all checklist template items for this store
         const templateResult = await db.query(
-            'SELECT * FROM checklist_templates WHERE is_active = true ORDER BY display_order'
+            'SELECT * FROM checklist_templates WHERE is_active = true AND store = $1 ORDER BY display_order',
+            [req.store]
         );
 
-        // Get or create checklist items for this date
+        // Get checklist items for this date and store
         let checklistItems = await db.query(
             `SELECT dci.*, ct.item_text, ct.display_order, u.username as completed_by_name
              FROM daily_checklist_items dci
              JOIN checklist_templates ct ON dci.template_id = ct.id
              LEFT JOIN users u ON dci.completed_by = u.id
-             WHERE dci.checklist_date = $1
+             WHERE dci.checklist_date = $1 AND dci.store = $2
              ORDER BY ct.display_order`,
-            [date]
+            [date, req.store]
         );
 
         // If no checklist items exist for this date, create them
         if (checklistItems.rows.length === 0) {
             const insertPromises = templateResult.rows.map(template => 
                 db.query(
-                    `INSERT INTO daily_checklist_items (checklist_date, template_id, is_completed)
-                     VALUES ($1, $2, false)
+                    `INSERT INTO daily_checklist_items (checklist_date, template_id, is_completed, store)
+                     VALUES ($1, $2, false, $3)
                      RETURNING *`,
-                    [date, template.id]
+                    [date, template.id, req.store]
                 )
             );
             await Promise.all(insertPromises);
@@ -88,9 +89,9 @@ router.get('/:date', authenticateToken, async (req, res) => {
                  FROM daily_checklist_items dci
                  JOIN checklist_templates ct ON dci.template_id = ct.id
                  LEFT JOIN users u ON dci.completed_by = u.id
-                 WHERE dci.checklist_date = $1
+                 WHERE dci.checklist_date = $1 AND dci.store = $2
                  ORDER BY ct.display_order`,
-                [date]
+                [date, req.store]
             );
         }
 
@@ -105,8 +106,8 @@ router.get('/:date', authenticateToken, async (req, res) => {
                  FROM daily_reports dr
                  LEFT JOIN users u1 ON dr.created_by = u1.id
                  LEFT JOIN users u2 ON dr.updated_by = u2.id
-                 WHERE dr.report_date = $1`,
-                [date]
+                 WHERE dr.report_date = $1 AND dr.store = $2`,
+                [date, req.store]
             );
 
             if (reportResult.rows.length > 0) {
@@ -174,10 +175,10 @@ router.post('/report', authenticateToken, requireManagerOrAdmin, async (req, res
     const db = req.app.locals.db;
 
     try {
-        // Check if report exists for this date
+        // Check if report exists for this date and store
         const existingReport = await db.query(
-            'SELECT * FROM daily_reports WHERE report_date = $1',
-            [reportDate]
+            'SELECT * FROM daily_reports WHERE report_date = $1 AND store = $2',
+            [reportDate, req.store]
         );
 
         let result;
@@ -191,17 +192,17 @@ router.post('/report', authenticateToken, requireManagerOrAdmin, async (req, res
                      total = $3,
                      updated_by = $4,
                      updated_at = CURRENT_TIMESTAMP
-                 WHERE report_date = $5
+                 WHERE report_date = $5 AND store = $6
                  RETURNING *`,
-                [cashCount, donationAmount, total, userId, reportDate]
+                [cashCount, donationAmount, total, userId, reportDate, req.store]
             );
         } else {
             // Create new report
             result = await db.query(
-                `INSERT INTO daily_reports (report_date, cash_count, donation_amount, total, created_by, updated_by)
-                 VALUES ($1, $2, $3, $4, $5, $5)
+                `INSERT INTO daily_reports (report_date, cash_count, donation_amount, total, created_by, updated_by, store)
+                 VALUES ($1, $2, $3, $4, $5, $5, $6)
                  RETURNING *`,
-                [reportDate, cashCount, donationAmount, total, userId]
+                [reportDate, cashCount, donationAmount, total, userId, req.store]
             );
         }
 
@@ -224,10 +225,10 @@ router.post('/report/upload-image', authenticateToken, requireManagerOrAdmin, up
     }
 
     try {
-        // Get or create report for this date
+        // Get or create report for this date and store
         let reportResult = await db.query(
-            'SELECT * FROM daily_reports WHERE report_date = $1',
-            [reportDate]
+            'SELECT * FROM daily_reports WHERE report_date = $1 AND store = $2',
+            [reportDate, req.store]
         );
 
         let reportId;
@@ -235,10 +236,10 @@ router.post('/report/upload-image', authenticateToken, requireManagerOrAdmin, up
         if (reportResult.rows.length === 0) {
             // Create report if it doesn't exist
             const newReport = await db.query(
-                `INSERT INTO daily_reports (report_date, created_by, updated_by)
-                 VALUES ($1, $2, $2)
+                `INSERT INTO daily_reports (report_date, created_by, updated_by, store)
+                 VALUES ($1, $2, $2, $3)
                  RETURNING id`,
-                [reportDate, userId]
+                [reportDate, userId, req.store]
             );
             reportId = newReport.rows[0].id;
         } else {
@@ -269,7 +270,6 @@ router.post('/report/upload-image', authenticateToken, requireManagerOrAdmin, up
 
     } catch (error) {
         console.error('Error uploading report image:', error);
-        // Delete uploaded file if database insert failed
         if (req.file) {
             fs.unlink(req.file.path, (err) => {
                 if (err) console.error('Error deleting file:', err);
@@ -294,7 +294,6 @@ router.delete('/report/delete-image/:imageId', authenticateToken, requireManager
             return res.status(404).json({ error: 'Image not found' });
         }
 
-        // Delete the physical file
         const imagePath = result.rows[0].image_data;
         if (imagePath && imagePath.startsWith('/uploads/')) {
             const baseUploadDir = process.env.UPLOAD_DIR || 'uploads';
@@ -321,10 +320,10 @@ router.delete('/report/delete-all-images/:date', authenticateToken, requireManag
     const db = req.app.locals.db;
 
     try {
-        // Get the report for this date
+        // Get the report for this date and store
         const reportResult = await db.query(
-            'SELECT id FROM daily_reports WHERE report_date = $1',
-            [date]
+            'SELECT id FROM daily_reports WHERE report_date = $1 AND store = $2',
+            [date, req.store]
         );
 
         if (reportResult.rows.length === 0) {
@@ -333,19 +332,16 @@ router.delete('/report/delete-all-images/:date', authenticateToken, requireManag
 
         const reportId = reportResult.rows[0].id;
 
-        // Get all images for this report
         const imagesResult = await db.query(
             'SELECT * FROM daily_report_images WHERE report_id = $1',
             [reportId]
         );
 
-        // Delete all images from database
         await db.query(
             'DELETE FROM daily_report_images WHERE report_id = $1',
             [reportId]
         );
 
-        // Delete physical files
         const baseUploadDir = process.env.UPLOAD_DIR || 'uploads';
         imagesResult.rows.forEach(img => {
             if (img.image_data && img.image_data.startsWith('/uploads/')) {

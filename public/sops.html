@@ -7,6 +7,7 @@
   <title>LBTS - SOPs</title>
   <script src="/js/fully-touch-fix.js"></script>
   <script src="/storage-fallback.js"></script>
+  <script src="/js/api-helper.js"></script>
   <style>
     * {
       margin: 0;
@@ -630,7 +631,7 @@
     async function loadSops() {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch('/api/sops', {
+        const response = await apiFetch('/api/sops', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -700,7 +701,7 @@
     async function viewSop(id) {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`/api/sops/${id}`, {
+        const response = await apiFetch(`/api/sops/${id}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -751,7 +752,7 @@
     async function editSop(id) {
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`/api/sops/${id}`, {
+        const response = await apiFetch(`/api/sops/${id}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -786,7 +787,7 @@
         const url = editingSopId ? `/api/sops/${editingSopId}` : '/api/sops';
         const method = editingSopId ? 'PUT' : 'POST';
 
-        const response = await fetch(url, {
+        const response = await apiFetch(url, {
           method: method,
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -820,7 +821,7 @@
 
       try {
         const token = localStorage.getItem('token');
-        const response = await fetch(`/api/sops/${id}`, {
+        const response = await apiFetch(`/api/sops/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`

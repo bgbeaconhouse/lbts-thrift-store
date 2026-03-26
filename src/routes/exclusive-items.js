@@ -67,10 +67,12 @@ router.get('/', async (req, res) => {
       WHERE deleted_at IS NULL
     `;
     
-    const params = [];
+    const params = [req.store];
     
+    query += ' AND store = $1';
+
     if (category) {
-      query += ' AND category = $1';
+      query += ' AND category = $2';
       params.push(category);
     }
     
@@ -90,8 +92,6 @@ router.get('/alerts', async (req, res) => {
   try {
     const db = req.app.locals.db;
     const userId = req.user.id;
-
- 
 
     // Get user's alert permissions
     const userResult = await db.query(
@@ -114,28 +114,29 @@ router.get('/alerts', async (req, res) => {
       return res.json({ alerts: [] });
     }
 
- // Get items that need week updates based on days since arrival (2-week intervals)
-const result = await db.query(
-  `SELECT 
-    id, category, picture_url, date_arrived, current_price, notes,
-    CURRENT_DATE - date_arrived as days_since_arrival,
-    CASE 
-      WHEN CURRENT_DATE - date_arrived < 14 THEN 1
-      WHEN CURRENT_DATE - date_arrived < 28 THEN 3
-      WHEN CURRENT_DATE - date_arrived < 42 THEN 5
-      ELSE 7
-    END as week
-  FROM exclusive_items 
-  WHERE deleted_at IS NULL 
-    AND category = ANY($1)
-    AND (
-      (CURRENT_DATE - date_arrived >= 14 AND CURRENT_DATE - date_arrived < 28) OR
-      (CURRENT_DATE - date_arrived >= 28 AND CURRENT_DATE - date_arrived < 42) OR
-      (CURRENT_DATE - date_arrived >= 42)
-    )
-  ORDER BY date_arrived ASC`,
-  [categories]
-);
+    // Get items that need week updates based on days since arrival (2-week intervals)
+    const result = await db.query(
+      `SELECT 
+        id, category, picture_url, date_arrived, current_price, notes,
+        CURRENT_DATE - date_arrived as days_since_arrival,
+        CASE 
+          WHEN CURRENT_DATE - date_arrived < 14 THEN 1
+          WHEN CURRENT_DATE - date_arrived < 28 THEN 3
+          WHEN CURRENT_DATE - date_arrived < 42 THEN 5
+          ELSE 7
+        END as week
+      FROM exclusive_items 
+      WHERE deleted_at IS NULL 
+        AND category = ANY($1)
+        AND store = $2
+        AND (
+          (CURRENT_DATE - date_arrived >= 14 AND CURRENT_DATE - date_arrived < 28) OR
+          (CURRENT_DATE - date_arrived >= 28 AND CURRENT_DATE - date_arrived < 42) OR
+          (CURRENT_DATE - date_arrived >= 42)
+        )
+      ORDER BY date_arrived ASC`,
+      [categories, req.store]
+    );
 
     res.json({ alerts: result.rows });
   } catch (error) {
@@ -182,7 +183,6 @@ router.get('/:id', async (req, res) => {
 router.post('/', upload.single('picture'), async (req, res) => {
   const { category, current_price, notes } = req.body;
 
-  // Validation
   if (!category || !current_price) {
     return res.status(400).json({ error: 'Category and price are required' });
   }
@@ -198,10 +198,10 @@ router.post('/', upload.single('picture'), async (req, res) => {
     const pictureUrl = req.file ? `/uploads/exclusive/${req.file.filename}` : null;
 
     const result = await db.query(
-      `INSERT INTO exclusive_items (category, picture_url, date_arrived, current_price, notes, created_by)
-       VALUES ($1, $2, CURRENT_DATE, $3, $4, $5)
+      `INSERT INTO exclusive_items (category, picture_url, date_arrived, current_price, notes, created_by, store)
+       VALUES ($1, $2, CURRENT_DATE, $3, $4, $5, $6)
        RETURNING id, category, picture_url, date_arrived, current_price, notes, created_by, created_at`,
-      [category, pictureUrl, current_price, notes || null, req.user.id]
+      [category, pictureUrl, current_price, notes || null, req.user.id, req.store]
     );
 
     res.status(201).json({ 
@@ -226,7 +226,6 @@ router.put('/:id', upload.single('picture'), async (req, res) => {
   const { id } = req.params;
   let { category, current_price, notes } = req.body;
   
-  // Validation
   if (!category || !current_price) {
     return res.status(400).json({ error: 'Category and price are required' });
   }
@@ -239,7 +238,6 @@ router.put('/:id', upload.single('picture'), async (req, res) => {
   try {
     const db = req.app.locals.db;
 
-    // Get existing item
     const existingResult = await db.query(
       'SELECT picture_url FROM exclusive_items WHERE id = $1 AND deleted_at IS NULL',
       [id]
@@ -251,7 +249,6 @@ router.put('/:id', upload.single('picture'), async (req, res) => {
 
     const oldPictureUrl = existingResult.rows[0].picture_url;
 
-    // Determine picture URL
     let pictureUrl = oldPictureUrl;
     
     if (req.file) {
@@ -265,7 +262,6 @@ router.put('/:id', upload.single('picture'), async (req, res) => {
       }
     }
 
-    // Update item
     const result = await db.query(
       `UPDATE exclusive_items 
        SET category = $1, picture_url = $2, current_price = $3, notes = $4, updated_at = NOW()
@@ -290,9 +286,10 @@ router.put('/:id', upload.single('picture'), async (req, res) => {
     res.status(500).json({ error: 'Failed to update exclusive item' });
   }
 });
+
 // PATCH /api/exclusive-items/bulk-update - Bulk update prices
 router.patch('/bulk-update', async (req, res) => {
-  const { items } = req.body; // Array of { id, current_price }
+  const { items } = req.body;
 
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Items array is required' });
@@ -301,7 +298,6 @@ router.patch('/bulk-update', async (req, res) => {
   try {
     const db = req.app.locals.db;
 
-    // Update each item's price
     const promises = items.map(item => {
       return db.query(
         `UPDATE exclusive_items 

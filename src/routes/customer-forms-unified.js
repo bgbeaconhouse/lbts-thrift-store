@@ -501,7 +501,7 @@ router.get('/:type', async (req, res) => {
     const tableName = `${type}_forms`;
     
     let query;
-if (type === 'pickup') {
+    if (type === 'pickup') {
       query = `
         SELECT pf.id, pf.customer_name, pf.phone, pf.email, pf.items_description, pf.signature_url, 
                pf.date, 
@@ -512,7 +512,8 @@ if (type === 'pickup') {
                u.username as created_by_username
         FROM ${tableName} pf
         LEFT JOIN users u ON u.id = pf.created_by
-        WHERE pf.deleted_at IS NULL 
+        WHERE pf.deleted_at IS NULL
+        AND pf.store = $1
         ORDER BY pf.created_at DESC
       `;
     } else if (type === 'delivery') {
@@ -527,7 +528,8 @@ if (type === 'pickup') {
                u.username as created_by_username
         FROM ${tableName} pf
         LEFT JOIN users u ON u.id = pf.created_by
-        WHERE pf.deleted_at IS NULL 
+        WHERE pf.deleted_at IS NULL
+        AND pf.store = $1
         ORDER BY pf.created_at DESC
       `;
     } else if (type === 'donation') {
@@ -537,7 +539,8 @@ if (type === 'pickup') {
                u.username as created_by_username
         FROM ${tableName} pf
         LEFT JOIN users u ON u.id = pf.created_by
-        WHERE pf.deleted_at IS NULL 
+        WHERE pf.deleted_at IS NULL
+        AND pf.store = $1
         ORDER BY pf.created_at DESC
       `;
     } else { // waiver
@@ -547,11 +550,12 @@ if (type === 'pickup') {
                u.username as created_by_username
         FROM ${tableName} pf
         LEFT JOIN users u ON u.id = pf.created_by
-        WHERE pf.deleted_at IS NULL 
+        WHERE pf.deleted_at IS NULL
+        AND pf.store = $1
         ORDER BY pf.created_at DESC
       `;
     }
-    const result = await db.query(query);
+    const result = await db.query(query, [req.store]);
     res.json({ forms: result.rows });
   } catch (error) {
     console.error(`Get ${type} forms error:`, error);
@@ -597,7 +601,7 @@ router.post('/create', upload.fields([
     return res.status(400).json({ error: 'Invalid form type' });
   }
 
-// Validate required fields
+  // Validate required fields
   const cleanupFiles = () => {
     if (req.files) {
       Object.values(req.files).flat().forEach(file => {
@@ -613,7 +617,7 @@ router.post('/create', upload.fields([
     return res.status(400).json({ error: 'Customer name and phone are required' });
   }
 
-// Pickup-specific required field validation
+  // Pickup-specific required field validation
   if (form_type === 'pickup') {
     if (!date_purchased) {
       cleanupFiles();
@@ -637,7 +641,7 @@ router.post('/create', upload.fields([
     }
   }
 
-// Delivery-specific required field validation
+  // Delivery-specific required field validation
   if (form_type === 'delivery') {
     if (!delivery_address || !delivery_address.trim()) {
       cleanupFiles();
@@ -696,41 +700,41 @@ router.post('/create', upload.fields([
         `INSERT INTO ${tableName} 
          (customer_name, phone, email, items_description, signature_url, 
           date, date_purchased, date_stored, picture_urls, notes, 
-          created_by, email_sent, email_error)
-         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6::date, $7::date, $8, $9, $10, false, NULL)
+          created_by, email_sent, email_error, store)
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6::date, $7::date, $8, $9, $10, false, NULL, $11)
          RETURNING *`,
         [customer_name, phone, email || null, items_description || notes, signatureUrl, 
-         formatDateForDB(date_purchased), formatDateForDB(date_stored), pictureUrls, notes || null, req.user.id]
+         formatDateForDB(date_purchased), formatDateForDB(date_stored), pictureUrls, notes || null, req.user.id, req.store]
       );
     } else if (form_type === 'delivery') {
       result = await db.query(
         `INSERT INTO ${tableName} 
          (customer_name, phone, email, items_description, delivery_address,
           delivery_cost, delivery_date, date_scheduled, signature_url, 
-          date, picture_urls, notes, created_by, email_sent, email_error)
-         VALUES ($1, $2, $3, $4, $5, $6, $7::date, $8::date, $9, CURRENT_DATE, $10, $11, $12, false, NULL)
+          date, picture_urls, notes, created_by, email_sent, email_error, store)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::date, $8::date, $9, CURRENT_DATE, $10, $11, $12, false, NULL, $13)
          RETURNING *`,
         [customer_name, phone, email || null, items_description || notes, delivery_address || null,
          delivery_cost || null, formatDateForDB(delivery_date), formatDateForDB(date_scheduled), signatureUrl,
-         pictureUrls, notes || null, req.user.id]
+         pictureUrls, notes || null, req.user.id, req.store]
       );
     } else if (form_type === 'donation') {
       result = await db.query(
         `INSERT INTO ${tableName} 
          (customer_name, phone, email, donation_description, signature_url, 
-          date, email_sent, email_error)
-         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, false, NULL)
+          date, email_sent, email_error, store)
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, false, NULL, $6)
          RETURNING *`,
-        [customer_name, phone, email || null, donation_description || null, signatureUrl]
+        [customer_name, phone, email || null, donation_description || null, signatureUrl, req.store]
       );
     } else { // waiver
       result = await db.query(
         `INSERT INTO ${tableName} 
          (customer_name, phone, email, signature_url, manager_signature_url,
-          date, email_sent, email_error)
-         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, false, NULL)
+          date, email_sent, email_error, store)
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, false, NULL, $6)
          RETURNING *`,
-        [customer_name, phone, email || null, signatureUrl, managerSignatureUrl]
+        [customer_name, phone, email || null, signatureUrl, managerSignatureUrl, req.store]
       );
     }
 
@@ -792,7 +796,6 @@ router.post('/create', upload.fields([
 router.post('/retry-email/:type/:id', async (req, res) => {
   const { type, id } = req.params;
   
-  // Validate type
   const validTypes = ['pickup', 'delivery', 'donation', 'waiver'];
   if (!validTypes.includes(type)) {
     return res.status(400).json({ error: 'Invalid form type' });
@@ -802,7 +805,6 @@ router.post('/retry-email/:type/:id', async (req, res) => {
     const db = req.app.locals.db;
     const tableName = `${type}_forms`;
     
-    // Get form
     const result = await db.query(
       `SELECT * FROM ${tableName} WHERE id = $1 AND deleted_at IS NULL`,
       [id]
@@ -818,11 +820,9 @@ router.post('/retry-email/:type/:id', async (req, res) => {
       return res.status(400).json({ error: 'No email address on file' });
     }
 
-    // Attempt to send email
     try {
       await sendFormEmail(form, type);
       
-      // Update database with success
       await db.query(
         `UPDATE ${tableName} 
          SET email_sent = true, email_sent_at = NOW(), email_error = NULL 
@@ -837,7 +837,6 @@ router.post('/retry-email/:type/:id', async (req, res) => {
     } catch (emailErr) {
       console.error('Failed to send email:', emailErr);
       
-      // Update database with new error
       await db.query(
         `UPDATE ${tableName} 
          SET email_error = $1 
@@ -877,7 +876,6 @@ router.put('/:type/:id', authenticateToken, editUpload.fields([
     photos_to_delete
   } = req.body;
   
-  // Parse photos_to_delete if it's a JSON string
   if (typeof photos_to_delete === 'string') {
     try {
       photos_to_delete = JSON.parse(photos_to_delete);
@@ -886,13 +884,11 @@ router.put('/:type/:id', authenticateToken, editUpload.fields([
     }
   }
   
-  // Validate type
   const validTypes = ['pickup', 'delivery'];
   if (!validTypes.includes(type)) {
     return res.status(400).json({ error: 'Invalid form type for editing' });
   }
   
-  // Validate required fields
   if (!customer_name || !phone) {
     return res.status(400).json({ error: 'Customer name and phone are required' });
   }
@@ -901,7 +897,6 @@ router.put('/:type/:id', authenticateToken, editUpload.fields([
     const db = req.app.locals.db;
     const tableName = `${type}_forms`;
     
-    // Get current photos
     const currentForm = await db.query(
       `SELECT picture_urls FROM ${tableName} WHERE id = $1`,
       [id]
@@ -912,12 +907,9 @@ router.put('/:type/:id', authenticateToken, editUpload.fields([
     if (currentForm.rows.length > 0) {
       let currentPhotos = currentForm.rows[0].picture_urls || [];
       
-      // Handle photo deletion
       if (photos_to_delete && photos_to_delete.length > 0) {
-        // Remove photos marked for deletion
         currentPhotos = currentPhotos.filter(url => !photos_to_delete.includes(url));
         
-        // Delete photo files from filesystem
         photos_to_delete.forEach(photoUrl => {
           const filePath = path.join(__dirname, '../..', photoUrl);
           fs.unlink(filePath, (err) => {
@@ -926,13 +918,11 @@ router.put('/:type/:id', authenticateToken, editUpload.fields([
         });
       }
       
-      // Handle new photo uploads
       if (req.files && req.files.new_pictures && req.files.new_pictures.length > 0) {
         const newPhotoUrls = req.files.new_pictures.map(file => `/uploads/${type}/${file.filename}`);
         currentPhotos = [...currentPhotos, ...newPhotoUrls];
       }
       
-      // Only update if we modified photos
       if ((photos_to_delete && photos_to_delete.length > 0) || 
           (req.files && req.files.new_pictures && req.files.new_pictures.length > 0)) {
         updatedPhotoUrls = currentPhotos;
@@ -942,7 +932,6 @@ router.put('/:type/:id', authenticateToken, editUpload.fields([
     let result;
     
     if (type === 'pickup') {
-      // Validate pickup-specific required fields
       if (!date_stored) {
         return res.status(400).json({ error: 'Pick-up date is required' });
       }
@@ -960,30 +949,12 @@ router.put('/:type/:id', authenticateToken, editUpload.fields([
          WHERE id = $8 AND deleted_at IS NULL
          RETURNING *`,
         updatedPhotoUrls !== null 
-          ? [
-              customer_name,
-              phone,
-              email || null,
-              items_description || null,
-              notes || null,
-              formatDateForDB(date_purchased),
-              formatDateForDB(date_stored),
-              id,
-              updatedPhotoUrls
-            ]
-          : [
-              customer_name,
-              phone,
-              email || null,
-              items_description || null,
-              notes || null,
-              formatDateForDB(date_purchased),
-              formatDateForDB(date_stored),
-              id
-            ]
+          ? [customer_name, phone, email || null, items_description || null, notes || null,
+             formatDateForDB(date_purchased), formatDateForDB(date_stored), id, updatedPhotoUrls]
+          : [customer_name, phone, email || null, items_description || null, notes || null,
+             formatDateForDB(date_purchased), formatDateForDB(date_stored), id]
       );
     } else if (type === 'delivery') {
-      // Validate delivery-specific required fields
       if (!delivery_address || !delivery_cost || !date_scheduled) {
         return res.status(400).json({ error: 'Delivery address, cost, and date are required' });
       }
@@ -1002,29 +973,10 @@ router.put('/:type/:id', authenticateToken, editUpload.fields([
          WHERE id = $9 AND deleted_at IS NULL
          RETURNING *`,
         updatedPhotoUrls !== null
-          ? [
-              customer_name,
-              phone,
-              email || null,
-              items_description || null,
-              notes || null,
-              delivery_address,
-              delivery_cost,
-              formatDateForDB(date_scheduled),
-              id,
-              updatedPhotoUrls
-            ]
-          : [
-              customer_name,
-              phone,
-              email || null,
-              items_description || null,
-              notes || null,
-              delivery_address,
-              delivery_cost,
-              formatDateForDB(date_scheduled),
-              id
-            ]
+          ? [customer_name, phone, email || null, items_description || null, notes || null,
+             delivery_address, delivery_cost, formatDateForDB(date_scheduled), id, updatedPhotoUrls]
+          : [customer_name, phone, email || null, items_description || null, notes || null,
+             delivery_address, delivery_cost, formatDateForDB(date_scheduled), id]
       );
     }
     
@@ -1048,7 +1000,6 @@ router.put('/:type/:id', authenticateToken, editUpload.fields([
 router.delete('/:type/:id', async (req, res) => {
   const { type, id } = req.params;
   
-  // Validate type
   const validTypes = ['pickup', 'delivery', 'donation', 'waiver'];
   if (!validTypes.includes(type)) {
     return res.status(400).json({ error: 'Invalid form type' });
@@ -1079,11 +1030,9 @@ router.delete('/:type/:id', async (req, res) => {
 
 // ==================== RECENTLY DELETED ====================
 
-// GET /:type/recently-deleted - Get recently deleted forms (within 7 days)
 router.get('/:type/recently-deleted', authenticateToken, async (req, res) => {
   const { type } = req.params;
   
-  // Validate type
   const validTypes = ['pickup', 'delivery', 'donation', 'waiver'];
   if (!validTypes.includes(type)) {
     return res.status(400).json({ error: 'Invalid form type' });
@@ -1099,7 +1048,9 @@ router.get('/:type/recently-deleted', authenticateToken, async (req, res) => {
        FROM ${tableName}
        WHERE deleted_at IS NOT NULL
          AND deleted_at > NOW() - INTERVAL '7 days'
-       ORDER BY deleted_at DESC`
+         AND store = $1
+       ORDER BY deleted_at DESC`,
+      [req.store]
     );
 
     res.json({ forms: result.rows });
@@ -1113,7 +1064,6 @@ router.get('/:type/recently-deleted', authenticateToken, async (req, res) => {
 router.post('/:type/:id/restore', authenticateToken, async (req, res) => {
   const { type, id } = req.params;
   
-  // Validate type
   const validTypes = ['pickup', 'delivery', 'donation', 'waiver'];
   if (!validTypes.includes(type)) {
     return res.status(400).json({ error: 'Invalid form type' });
@@ -1123,7 +1073,6 @@ router.post('/:type/:id/restore', authenticateToken, async (req, res) => {
     const db = req.app.locals.db;
     const tableName = `${type}_forms`;
 
-    // Check if form exists and was deleted within 7 days
     const checkResult = await db.query(
       `SELECT id, deleted_at
        FROM ${tableName}
@@ -1137,7 +1086,6 @@ router.post('/:type/:id/restore', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Form not found or cannot be restored (deleted more than 7 days ago)' });
     }
 
-    // Restore the form
     const result = await db.query(
       `UPDATE ${tableName}
        SET deleted_at = NULL
@@ -1163,7 +1111,6 @@ router.post('/convert', authenticateToken, upload.fields([
 ]), async (req, res) => {
   const { from_type, to_type, form_id, delivery_address, delivery_cost, date_scheduled, date_purchased, date_stored } = req.body;
   
-  // Validate types
   const validTypes = ['pickup', 'delivery'];
   if (!validTypes.includes(from_type) || !validTypes.includes(to_type)) {
     return res.status(400).json({ error: 'Invalid form types for conversion' });
@@ -1173,13 +1120,11 @@ router.post('/convert', authenticateToken, upload.fields([
     return res.status(400).json({ error: 'Cannot convert to the same type' });
   }
   
-  // Validate conversion direction
   if ((from_type === 'pickup' && to_type !== 'delivery') || 
       (from_type === 'delivery' && to_type !== 'pickup')) {
     return res.status(400).json({ error: 'Invalid conversion direction' });
   }
 
-  // Validate signature
   if (!req.files || !req.files.signature || req.files.signature.length === 0) {
     return res.status(400).json({ error: 'Customer signature is required' });
   }
@@ -1189,11 +1134,9 @@ router.post('/convert', authenticateToken, upload.fields([
     const fromTableName = `${from_type}_forms`;
     const toTableName = `${to_type}_forms`;
     
-    // Get signature URL
     const signatureFile = req.files.signature[0];
     const signatureUrl = `/uploads/signatures/${signatureFile.filename}`;
     
-    // Get original form
     const originalResult = await db.query(
       `SELECT * FROM ${fromTableName} WHERE id = $1 AND deleted_at IS NULL`,
       [form_id]
@@ -1207,11 +1150,9 @@ router.post('/convert', authenticateToken, upload.fields([
     let emailSent = false;
     let emailError = null;
 
-    // Create new form with converted type
     let newFormResult;
     
     if (to_type === 'delivery') {
-      // Convert pickup to delivery
       if (!delivery_address || !delivery_cost || !date_scheduled) {
         return res.status(400).json({ error: 'Missing required delivery fields' });
       }
@@ -1220,8 +1161,8 @@ router.post('/convert', authenticateToken, upload.fields([
         `INSERT INTO ${toTableName} 
          (customer_name, phone, email, items_description, delivery_address,
           delivery_cost, delivery_date, date_scheduled, signature_url, 
-          date, picture_urls, notes, created_by, email_sent, email_error)
-         VALUES ($1, $2, $3, $4, $5, $6, $7::date, $8::date, $9, CURRENT_DATE, $10, $11, $12, false, NULL)
+          date, picture_urls, notes, created_by, email_sent, email_error, store)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::date, $8::date, $9, CURRENT_DATE, $10, $11, $12, false, NULL, $13)
          RETURNING *`,
         [
           originalForm.customer_name,
@@ -1230,16 +1171,16 @@ router.post('/convert', authenticateToken, upload.fields([
           originalForm.items_description || originalForm.notes,
           delivery_address,
           delivery_cost,
-          formatDateForDB(date_scheduled), // Use as delivery_date
-          formatDateForDB(date_scheduled), // Also use as date_scheduled
-          signatureUrl, // Use new signature
+          formatDateForDB(date_scheduled),
+          formatDateForDB(date_scheduled),
+          signatureUrl,
           originalForm.picture_urls || null,
           originalForm.notes || null,
-          req.user.id
+          req.user.id,
+          req.store
         ]
       );
     } else {
-      // Convert delivery to pickup
       if (!date_stored) {
         return res.status(400).json({ error: 'Missing required pickup date' });
       }
@@ -1248,33 +1189,32 @@ router.post('/convert', authenticateToken, upload.fields([
         `INSERT INTO ${toTableName} 
          (customer_name, phone, email, items_description, signature_url, 
           date, date_purchased, date_stored, picture_urls, notes, 
-          created_by, email_sent, email_error)
-         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6::date, $7::date, $8, $9, $10, false, NULL)
+          created_by, email_sent, email_error, store)
+         VALUES ($1, $2, $3, $4, $5, CURRENT_DATE, $6::date, $7::date, $8, $9, $10, false, NULL, $11)
          RETURNING *`,
         [
           originalForm.customer_name,
           originalForm.phone,
           originalForm.email || null,
           originalForm.items_description || originalForm.notes,
-          signatureUrl, // Use new signature
+          signatureUrl,
           formatDateForDB(date_purchased),
           formatDateForDB(date_stored),
           originalForm.picture_urls || null,
           originalForm.notes || null,
-          req.user.id
+          req.user.id,
+          req.store
         ]
       );
     }
 
     const newForm = newFormResult.rows[0];
 
-    // Send email for new form type (if email provided)
     if (originalForm.email) {
       try {
         await sendFormEmail(newForm, to_type);
         emailSent = true;
         
-        // Update new form with email success
         await db.query(
           `UPDATE ${toTableName} 
            SET email_sent = true, email_sent_at = NOW() 
@@ -1285,7 +1225,6 @@ router.post('/convert', authenticateToken, upload.fields([
         console.error('Failed to send email:', emailErr);
         emailError = emailErr.message;
         
-        // Update new form with email error
         await db.query(
           `UPDATE ${toTableName} 
            SET email_error = $1 
@@ -1295,7 +1234,6 @@ router.post('/convert', authenticateToken, upload.fields([
       }
     }
 
-    // Delete original form (soft delete)
     await db.query(
       `UPDATE ${fromTableName} 
        SET deleted_at = NOW() 
@@ -1313,7 +1251,6 @@ router.post('/convert', authenticateToken, upload.fields([
   } catch (error) {
     console.error('Convert form error:', error);
     
-    // Clean up uploaded signature file on error
     if (req.files && req.files.signature) {
       req.files.signature.forEach(file => {
         fs.unlink(file.path, (err) => {

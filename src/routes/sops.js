@@ -24,8 +24,9 @@ router.get('/', authenticateToken, async (req, res) => {
         u.username as created_by_username
       FROM sops s
       JOIN users u ON s.created_by = u.id
+      WHERE s.store = $1
       ORDER BY s.title ASC
-    `);
+    `, [req.store]);
 
     res.json(result.rows);
   } catch (error) {
@@ -70,7 +71,6 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
     const db = req.app.locals.db;
     const { title, content } = req.body;
 
-    // Validation
     if (!title || !content) {
       return res.status(400).json({ error: 'Title and content are required' });
     }
@@ -80,10 +80,10 @@ router.post('/', authenticateToken, isAdmin, async (req, res) => {
     }
 
     const result = await db.query(`
-      INSERT INTO sops (title, content, created_by)
-      VALUES ($1, $2, $3)
+      INSERT INTO sops (title, content, created_by, store)
+      VALUES ($1, $2, $3, $4)
       RETURNING id, title, content, created_by, created_at, updated_at
-    `, [title.trim(), content.trim(), req.user.id]);
+    `, [title.trim(), content.trim(), req.user.id, req.store]);
 
     res.status(201).json({
       message: 'SOP created successfully',
@@ -102,7 +102,6 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
     const { id } = req.params;
     const { title, content } = req.body;
 
-    // Validation
     if (!title || !content) {
       return res.status(400).json({ error: 'Title and content are required' });
     }
@@ -111,13 +110,11 @@ router.put('/:id', authenticateToken, isAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Title and content cannot be empty' });
     }
 
-    // Check if SOP exists
     const checkResult = await db.query('SELECT id FROM sops WHERE id = $1', [id]);
     if (checkResult.rows.length === 0) {
       return res.status(404).json({ error: 'SOP not found' });
     }
 
-    // Update the SOP
     const result = await db.query(`
       UPDATE sops 
       SET title = $1, content = $2
@@ -141,13 +138,11 @@ router.delete('/:id', authenticateToken, isAdmin, async (req, res) => {
     const db = req.app.locals.db;
     const { id } = req.params;
 
-    // Check if SOP exists
     const checkResult = await db.query('SELECT id FROM sops WHERE id = $1', [id]);
     if (checkResult.rows.length === 0) {
       return res.status(404).json({ error: 'SOP not found' });
     }
 
-    // Delete the SOP
     await db.query('DELETE FROM sops WHERE id = $1', [id]);
 
     res.json({ message: 'SOP deleted successfully' });

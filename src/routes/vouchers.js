@@ -29,8 +29,10 @@ router.get('/contacts', async (req, res) => {
           0
         ) as voucher_count
       FROM voucher_contacts c
-      WHERE c.deleted_at IS NULL 
-      ORDER BY c.name ASC`
+      WHERE c.deleted_at IS NULL
+        AND c.store = $1
+      ORDER BY c.name ASC`,
+      [req.store]
     );
 
     res.json({ contacts: result.rows });
@@ -47,7 +49,6 @@ router.get('/contacts/:id', async (req, res) => {
   try {
     const db = req.app.locals.db;
     
-    // Get contact info
     const contactResult = await db.query(
       `SELECT 
         c.id, c.name, c.referral_agency, c.case_manager_name, 
@@ -67,7 +68,6 @@ router.get('/contacts/:id', async (req, res) => {
       return res.status(404).json({ error: 'Contact not found' });
     }
 
-    // Get usage history
     const usageResult = await db.query(
       `SELECT 
         v.id, v.contact_id, v.date_used, v.created_at,
@@ -101,10 +101,10 @@ router.post('/contacts', async (req, res) => {
     const db = req.app.locals.db;
     
     const result = await db.query(
-      `INSERT INTO voucher_contacts (name, referral_agency, case_manager_name, case_manager_phone)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO voucher_contacts (name, referral_agency, case_manager_name, case_manager_phone, store)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING id, name, referral_agency, case_manager_name, case_manager_phone, created_at`,
-      [name.trim(), referral_agency || null, case_manager_name || null, case_manager_phone || null]
+      [name.trim(), referral_agency || null, case_manager_name || null, case_manager_phone || null, req.store]
     );
 
     res.status(201).json({
@@ -195,7 +195,6 @@ router.post('/usage', async (req, res) => {
   try {
     const db = req.app.locals.db;
 
-    // Verify contact exists
     const contactCheck = await db.query(
       'SELECT id FROM voucher_contacts WHERE id = $1 AND deleted_at IS NULL',
       [contact_id]
@@ -205,12 +204,11 @@ router.post('/usage', async (req, res) => {
       return res.status(404).json({ error: 'Contact not found' });
     }
 
-    // Add voucher usage
     const result = await db.query(
-      `INSERT INTO voucher_usage (contact_id, date_used, created_by)
-       VALUES ($1, $2::date, $3)
+      `INSERT INTO voucher_usage (contact_id, date_used, created_by, store)
+       VALUES ($1, $2::date, $3, $4)
        RETURNING id, contact_id, date_used, created_at`,
-      [contact_id, date_used, req.user.id]
+      [contact_id, date_used, req.user.id, req.store]
     );
 
     res.status(201).json({

@@ -52,28 +52,24 @@ let sseClients = [];
 router.use(authenticateToken);
 
 // SSE endpoint - streams urgent note broadcasts to all connected clients
-// No role restriction - all authenticated users should receive urgent alerts
 router.get('/urgent-stream', (req, res) => {
-  // Set headers for SSE
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
 
-  // Add this client to the list
   const clientId = Date.now();
   const newClient = {
     id: clientId,
     userId: req.user.id,
+    store: req.store,
     response: res
   };
   
   sseClients.push(newClient);
   console.log(`SSE Client connected: ${clientId}, User: ${req.user.username}`);
 
-  // Send initial connection confirmation
   res.write(`data: ${JSON.stringify({ type: 'connected', clientId })}\n\n`);
 
-  // Remove client when connection closes
   req.on('close', () => {
     console.log(`SSE Client disconnected: ${clientId}`);
     sseClients = sseClients.filter(client => client.id !== clientId);
@@ -93,12 +89,13 @@ router.get('/urgent/undismissed', async (req, res) => {
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.deleted_at IS NULL 
         AND c.is_urgent = TRUE
+        AND c.store = $2
         AND NOT EXISTS (
           SELECT 1 FROM urgent_note_dismissals d
           WHERE d.note_id = c.id AND d.user_id = $1
         )
       ORDER BY c.created_at DESC`,
-      [req.user.id]
+      [req.user.id, req.store]
     );
 
     res.json({ urgentNotes: result.rows });
@@ -115,7 +112,6 @@ router.post('/urgent/:id/dismiss', async (req, res) => {
   try {
     const db = req.app.locals.db;
 
-    // Verify the note exists and is urgent
     const noteCheck = await db.query(
       'SELECT id, is_urgent FROM communication_log WHERE id = $1 AND deleted_at IS NULL',
       [id]
@@ -129,7 +125,6 @@ router.post('/urgent/:id/dismiss', async (req, res) => {
       return res.status(400).json({ error: 'Note is not marked as urgent' });
     }
 
-    // Record dismissal (ON CONFLICT prevents duplicates)
     await db.query(
       `INSERT INTO urgent_note_dismissals (note_id, user_id)
        VALUES ($1, $2)
@@ -137,7 +132,6 @@ router.post('/urgent/:id/dismiss', async (req, res) => {
       [id, req.user.id]
     );
 
-    // ALSO mark the message as read in communication_log_reads
     await db.query(
       `INSERT INTO communication_log_reads (message_id, user_id)
        VALUES ($1, $2)
@@ -152,9 +146,6 @@ router.post('/urgent/:id/dismiss', async (req, res) => {
   }
 });
 
-// Manager+ routes below
-
-
 // GET /api/communication/unread-count - Get unread message count for current user
 router.get('/unread-count', async (req, res) => {
   try {
@@ -164,12 +155,13 @@ router.get('/unread-count', async (req, res) => {
       `SELECT COUNT(*) as unread_count
        FROM communication_log c
        WHERE c.deleted_at IS NULL
+         AND c.store = $2
          AND c.user_id != $1
          AND NOT EXISTS (
            SELECT 1 FROM communication_log_reads clr
            WHERE clr.message_id = c.id AND clr.user_id = $1
          )`,
-      [req.user.id]
+      [req.user.id, req.store]
     );
 
     res.json({ unread_count: parseInt(result.rows[0].unread_count) });
@@ -184,20 +176,19 @@ router.post('/mark-all-read', async (req, res) => {
   try {
     const db = req.app.locals.db;
 
-    // Get all unread message IDs for this user
     const unreadMessages = await db.query(
       `SELECT c.id
        FROM communication_log c
        WHERE c.deleted_at IS NULL
+         AND c.store = $2
          AND c.user_id != $1
          AND NOT EXISTS (
            SELECT 1 FROM communication_log_reads clr
            WHERE clr.message_id = c.id AND clr.user_id = $1
          )`,
-      [req.user.id]
+      [req.user.id, req.store]
     );
 
-    // Insert read records for all unread messages
     for (const msg of unreadMessages.rows) {
       await db.query(
         `INSERT INTO communication_log_reads (message_id, user_id)
@@ -231,8 +222,10 @@ router.get('/', async (req, res) => {
         ) as comment_count
       FROM communication_log c
       LEFT JOIN users u ON c.user_id = u.id
-      WHERE c.deleted_at IS NULL 
-      ORDER BY c.pinned DESC, c.created_at DESC`
+      WHERE c.deleted_at IS NULL
+        AND c.store = $1
+      ORDER BY c.pinned DESC, c.created_at DESC`,
+      [req.store]
     );
 
     res.json({ entries: result.rows });
@@ -274,9 +267,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', upload.array('pictures', 10), async (req, res) => {
   const { note, category, pinned } = req.body;
 
-  // Validation
   if (!note) {
-    // Clean up uploaded files if validation fails
     if (req.files) {
       req.files.forEach(file => {
         fs.unlink(file.path, (err) => {
@@ -289,7 +280,6 @@ router.post('/', upload.array('pictures', 10), async (req, res) => {
 
   // Only admins can create urgent category notes
   if (category === 'Urgent' && req.user.role !== 'Admin') {
-    // Clean up uploaded files
     if (req.files) {
       req.files.forEach(file => {
         fs.unlink(file.path, (err) => {
@@ -303,21 +293,18 @@ router.post('/', upload.array('pictures', 10), async (req, res) => {
   try {
     const db = req.app.locals.db;
 
-    // Automatically set is_urgent to true if category is "Urgent"
     const is_urgent = (category === 'Urgent');
 
-    // Get picture URLs
     const pictureUrls = req.files ? 
       req.files.map(file => `/uploads/communication/${file.filename}`) : [];
 
     const result = await db.query(
-      `INSERT INTO communication_log (user_id, note, category, pinned, is_urgent, picture_urls)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO communication_log (user_id, note, category, pinned, is_urgent, picture_urls, store)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING id, user_id, note, category, pinned, is_urgent, picture_urls, created_at`,
-      [req.user.id, note, category || 'General', pinned || false, is_urgent, pictureUrls]
+      [req.user.id, note, category || 'General', pinned || false, is_urgent, pictureUrls, req.store]
     );
     
-    // Get user info for response
     const entryWithUser = await db.query(
       `SELECT 
         c.id, c.user_id, c.note, c.category, c.pinned, c.is_urgent, c.picture_urls, c.created_at,
@@ -330,7 +317,7 @@ router.post('/', upload.array('pictures', 10), async (req, res) => {
 
     const newEntry = entryWithUser.rows[0];
 
-    // If urgent, broadcast to all connected SSE clients
+    // If urgent, broadcast to all connected SSE clients for the same store
     if (is_urgent) {
       const urgentMessage = {
         type: 'urgent_note',
@@ -346,13 +333,15 @@ router.post('/', upload.array('pictures', 10), async (req, res) => {
 
       console.log(`Broadcasting urgent note to ${sseClients.length} clients`);
       
-      sseClients.forEach(client => {
-        try {
-          client.response.write(`data: ${JSON.stringify(urgentMessage)}\n\n`);
-        } catch (error) {
-          console.error('Error sending to SSE client:', error);
-        }
-      });
+      sseClients
+        .filter(client => client.store === req.store)
+        .forEach(client => {
+          try {
+            client.response.write(`data: ${JSON.stringify(urgentMessage)}\n\n`);
+          } catch (error) {
+            console.error('Error sending to SSE client:', error);
+          }
+        });
     }
 
     res.status(201).json({ 
@@ -362,7 +351,6 @@ router.post('/', upload.array('pictures', 10), async (req, res) => {
   } catch (error) {
     console.error('Create communication entry error:', error);
     
-    // Clean up uploaded files on error
     if (req.files) {
       req.files.forEach(file => {
         fs.unlink(file.path, (err) => {
@@ -380,9 +368,7 @@ router.put('/:id', upload.array('pictures', 10), async (req, res) => {
   const { id } = req.params;
   const { note, category, pinned, keep_existing_photos, existing_photos } = req.body;
 
-  // Validation
   if (!note) {
-    // Clean up uploaded files if validation fails
     if (req.files) {
       req.files.forEach(file => {
         fs.unlink(file.path, (err) => {
@@ -395,7 +381,6 @@ router.put('/:id', upload.array('pictures', 10), async (req, res) => {
 
   // Only admins can modify to urgent category
   if (category === 'Urgent' && req.user.role !== 'Admin') {
-    // Clean up uploaded files
     if (req.files) {
       req.files.forEach(file => {
         fs.unlink(file.path, (err) => {
@@ -409,14 +394,12 @@ router.put('/:id', upload.array('pictures', 10), async (req, res) => {
   try {
     const db = req.app.locals.db;
 
-    // Get existing entry to check for old photos
     const existingEntry = await db.query(
       'SELECT picture_urls FROM communication_log WHERE id = $1 AND deleted_at IS NULL',
       [id]
     );
 
     if (existingEntry.rows.length === 0) {
-      // Clean up uploaded files
       if (req.files) {
         req.files.forEach(file => {
           fs.unlink(file.path, (err) => {
@@ -427,10 +410,8 @@ router.put('/:id', upload.array('pictures', 10), async (req, res) => {
       return res.status(404).json({ error: 'Entry not found' });
     }
 
-    // Determine final picture URLs
     let finalPictureUrls = [];
     
-    // Add kept existing photos
     if (keep_existing_photos === 'true' && existing_photos) {
       try {
         const keptPhotos = JSON.parse(existing_photos);
@@ -440,13 +421,11 @@ router.put('/:id', upload.array('pictures', 10), async (req, res) => {
       }
     }
     
-    // Add new photos
     if (req.files && req.files.length > 0) {
       const newPictureUrls = req.files.map(file => `/uploads/communication/${file.filename}`);
       finalPictureUrls = [...finalPictureUrls, ...newPictureUrls];
     }
 
-    // Delete old photos that are not being kept
     const oldPictureUrls = existingEntry.rows[0].picture_urls || [];
     const photosToDelete = oldPictureUrls.filter(url => !finalPictureUrls.includes(url));
     
@@ -463,7 +442,6 @@ router.put('/:id', upload.array('pictures', 10), async (req, res) => {
       });
     });
 
-    // Automatically set is_urgent based on category
     const is_urgent = (category === 'Urgent');
 
     const result = await db.query(
@@ -478,7 +456,6 @@ router.put('/:id', upload.array('pictures', 10), async (req, res) => {
       return res.status(404).json({ error: 'Entry not found' });
     }
 
-    // Get updated entry with user info
     const entryWithUser = await db.query(
       `SELECT 
         c.id, c.user_id, c.note, c.category, c.pinned, c.is_urgent, c.picture_urls, c.created_at,
@@ -496,7 +473,6 @@ router.put('/:id', upload.array('pictures', 10), async (req, res) => {
   } catch (error) {
     console.error('Update communication entry error:', error);
     
-    // Clean up uploaded files on error
     if (req.files) {
       req.files.forEach(file => {
         fs.unlink(file.path, (err) => {
@@ -509,14 +485,13 @@ router.put('/:id', upload.array('pictures', 10), async (req, res) => {
   }
 });
 
-// PATCH /api/communication/:id/pin - Toggle pin status (Admins can pin any note)
+// PATCH /api/communication/:id/pin - Toggle pin status
 router.patch('/:id/pin', async (req, res) => {
   const { id } = req.params;
 
   try {
     const db = req.app.locals.db;
 
-    // Check if entry exists and get owner info
     const entryCheck = await db.query(
       'SELECT user_id FROM communication_log WHERE id = $1 AND deleted_at IS NULL',
       [id]
@@ -526,7 +501,6 @@ router.patch('/:id/pin', async (req, res) => {
       return res.status(404).json({ error: 'Entry not found' });
     }
 
-    // Only admins can pin/unpin other people's notes
     const isOwner = entryCheck.rows[0].user_id === req.user.id;
     const isAdmin = req.user.role === 'Admin';
 
@@ -555,14 +529,13 @@ router.patch('/:id/pin', async (req, res) => {
   }
 });
 
-// DELETE /api/communication/:id - Soft delete entry (Admins can delete any note)
+// DELETE /api/communication/:id - Soft delete entry
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
     const db = req.app.locals.db;
 
-    // Get the entry to check ownership and delete its photos
     const entry = await db.query(
       'SELECT user_id, picture_urls FROM communication_log WHERE id = $1 AND deleted_at IS NULL',
       [id]
@@ -572,7 +545,6 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Entry not found' });
     }
 
-    // Only admins can delete other people's notes
     const isOwner = entry.rows[0].user_id === req.user.id;
     const isAdmin = req.user.role === 'Admin';
 
@@ -580,7 +552,6 @@ router.delete('/:id', async (req, res) => {
       return res.status(403).json({ error: 'Only admins can delete other users\' notes' });
     }
 
-    // Delete photos from filesystem
     const pictureUrls = entry.rows[0].picture_urls || [];
     
     const baseUploadDir = process.env.UPLOAD_DIR || 'uploads';
@@ -596,7 +567,6 @@ router.delete('/:id', async (req, res) => {
       });
     });
 
-    // Soft delete the entry (this will cascade delete comments via ON DELETE CASCADE)
     const result = await db.query(
       'UPDATE communication_log SET deleted_at = NOW() WHERE id = $1 RETURNING id',
       [id]
@@ -624,7 +594,6 @@ router.get('/:id/comments', async (req, res) => {
   try {
     const db = req.app.locals.db;
 
-    // Verify the note exists
     const noteCheck = await db.query(
       'SELECT id FROM communication_log WHERE id = $1 AND deleted_at IS NULL',
       [id]
@@ -634,7 +603,6 @@ router.get('/:id/comments', async (req, res) => {
       return res.status(404).json({ error: 'Note not found' });
     }
 
-    // Get all comments for this note
     const result = await db.query(
       `SELECT 
         cc.id, cc.note_id, cc.user_id, cc.comment, cc.created_at,
@@ -658,7 +626,6 @@ router.post('/:id/comments', async (req, res) => {
   const { id } = req.params;
   const { comment } = req.body;
 
-  // Validation
   if (!comment || comment.trim().length === 0) {
     return res.status(400).json({ error: 'Comment cannot be empty' });
   }
@@ -670,7 +637,6 @@ router.post('/:id/comments', async (req, res) => {
   try {
     const db = req.app.locals.db;
 
-    // Verify the note exists
     const noteCheck = await db.query(
       'SELECT id FROM communication_log WHERE id = $1 AND deleted_at IS NULL',
       [id]
@@ -680,7 +646,6 @@ router.post('/:id/comments', async (req, res) => {
       return res.status(404).json({ error: 'Note not found' });
     }
 
-    // Insert the comment
     const result = await db.query(
       `INSERT INTO communication_comments (note_id, user_id, comment)
        VALUES ($1, $2, $3)
@@ -688,7 +653,6 @@ router.post('/:id/comments', async (req, res) => {
       [id, req.user.id, comment.trim()]
     );
 
-    // Get the comment with user info
     const commentWithUser = await db.query(
       `SELECT 
         cc.id, cc.note_id, cc.user_id, cc.comment, cc.created_at,
@@ -709,14 +673,13 @@ router.post('/:id/comments', async (req, res) => {
   }
 });
 
-// DELETE /api/communication/:noteId/comments/:commentId - Delete a comment (owner or admin)
+// DELETE /api/communication/:noteId/comments/:commentId - Delete a comment
 router.delete('/:noteId/comments/:commentId', async (req, res) => {
   const { noteId, commentId } = req.params;
 
   try {
     const db = req.app.locals.db;
 
-    // Get the comment to check ownership
     const comment = await db.query(
       'SELECT user_id FROM communication_comments WHERE id = $1 AND note_id = $2 AND deleted_at IS NULL',
       [commentId, noteId]
@@ -726,7 +689,6 @@ router.delete('/:noteId/comments/:commentId', async (req, res) => {
       return res.status(404).json({ error: 'Comment not found' });
     }
 
-    // Only the comment owner or an admin can delete
     const isOwner = comment.rows[0].user_id === req.user.id;
     const isAdmin = req.user.role === 'Admin';
 
@@ -734,7 +696,6 @@ router.delete('/:noteId/comments/:commentId', async (req, res) => {
       return res.status(403).json({ error: 'Only the comment owner or admins can delete comments' });
     }
 
-    // Soft delete the comment
     const result = await db.query(
       'UPDATE communication_comments SET deleted_at = NOW() WHERE id = $1 RETURNING id',
       [commentId]

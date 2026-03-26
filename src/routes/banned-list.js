@@ -57,8 +57,10 @@ router.get('/', async (req, res) => {
         u.username as created_by_username
       FROM banned_list b
       LEFT JOIN users u ON b.created_by = u.id
-      WHERE b.deleted_at IS NULL 
-      ORDER BY b.created_at DESC`
+      WHERE b.deleted_at IS NULL
+        AND b.store = $1
+      ORDER BY b.created_at DESC`,
+      [req.store]
     );
 
     res.json({ entries: result.rows });
@@ -113,10 +115,10 @@ router.post('/', upload.single('picture'), async (req, res) => {
     }
 
     const result = await db.query(
-      `INSERT INTO banned_list (name, picture_url, notes, created_by)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO banned_list (name, picture_url, notes, created_by, store)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING id, name, picture_url, notes, created_at`,
-      [name.trim(), pictureUrl, notes || null, req.user.id]
+      [name.trim(), pictureUrl, notes || null, req.user.id, req.store]
     );
 
     res.status(201).json({

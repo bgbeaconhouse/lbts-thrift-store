@@ -6,6 +6,7 @@
   <title>LBTS - Send Emails</title>
   <script src="/js/fully-touch-fix.js"></script>
   <script src="/storage-fallback.js"></script>
+  <script src="/js/api-helper.js"></script>
   <style>
     * {
       margin: 0;
@@ -481,7 +482,7 @@
   const token = localStorage.getItem('token');
 
   try {
-    const response = await fetch('/api/send-emails/pending', {
+    const response = await apiFetch('/api/send-emails/pending', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -547,7 +548,7 @@
       resultsDiv.classList.remove('show');
 
       try {
-        const response = await fetch('/api/send-emails/send', {
+        const response = await apiFetch('/api/send-emails/send', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -625,7 +626,7 @@
       resultsDiv.classList.remove('show');
 
       try {
-        const response = await fetch('/api/send-emails/test', {
+        const response = await apiFetch('/api/send-emails/test', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,

@@ -6,6 +6,7 @@
     <title>Daily Report - LBTS</title>
    <script src="/js/fully-touch-fix.js"></script>
     <script src="/storage-fallback.js"></script>
+    <script src="/js/api-helper.js"></script>
     <style>
         * {
             margin: 0;
@@ -505,7 +506,7 @@
         async function loadReportData(date) {
             const token = localStorage.getItem('token');
             try {
-                const response = await fetch(`${API_BASE}/${date}`, {
+                const response = await apiFetch(`${API_BASE}/${date}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -600,7 +601,7 @@
             const total = document.getElementById('total').value;
 
             try {
-                const response = await fetch(`${API_BASE}/report`, {
+                const response = await apiFetch(`${API_BASE}/report`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -673,7 +674,7 @@
                     formData.append('reportDate', currentDate);
 
                     // Upload to server
-                    const response = await fetch(`${API_BASE}/report/upload-image`, {
+                    const response = await apiFetch(`${API_BASE}/report/upload-image`, {
                         method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${token}`
@@ -757,7 +758,7 @@
         async function loadImagesOnly(date) {
             const token = localStorage.getItem('token');
             try {
-                const response = await fetch(`${API_BASE}/${date}`, {
+                const response = await apiFetch(`${API_BASE}/${date}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -803,7 +804,7 @@
 
             const token = localStorage.getItem('token');
             try {
-                const response = await fetch(`${API_BASE}/report/delete-image/${imageId}`, {
+                const response = await apiFetch(`${API_BASE}/report/delete-image/${imageId}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -838,7 +839,7 @@
             const token = localStorage.getItem('token');
             
             try {
-                const response = await fetch(`${API_BASE}/report/delete-all-images/${currentDate}`, {
+                const response = await apiFetch(`${API_BASE}/report/delete-all-images/${currentDate}`, {
                     method: 'DELETE',
                     headers: {
                         'Authorization': `Bearer ${token}`

@@ -64,10 +64,12 @@ router.get('/', async (req, res) => {
       FROM discount_items di
       LEFT JOIN users u_created ON di.created_by = u_created.id
       LEFT JOIN users u_approved ON di.approved_by = u_approved.id
-      WHERE di.deleted_at IS NULL 
+      WHERE di.deleted_at IS NULL
+        AND di.store = $1
       ORDER BY 
         CASE WHEN di.approval_status = 'pending' THEN 0 ELSE 1 END,
-        di.date_added DESC`
+        di.date_added DESC`,
+      [req.store]
     );
 
     res.json({ items: result.rows });
@@ -128,10 +130,10 @@ router.post('/', upload.array('pictures', 10), async (req, res) => {
       : [];
 
     const result = await db.query(
-      `INSERT INTO discount_items (picture_urls, price, notes, date_added, created_by, approval_status)
-       VALUES ($1, $2, $3, CURRENT_DATE, $4, 'pending')
+      `INSERT INTO discount_items (picture_urls, price, notes, date_added, created_by, approval_status, store)
+       VALUES ($1, $2, $3, CURRENT_DATE, $4, 'pending', $5)
        RETURNING id, picture_urls, price, notes, date_added, created_by, created_at, approval_status`,
-      [pictureUrls, price, notes || null, req.user.id]
+      [pictureUrls, price, notes || null, req.user.id, req.store]
     );
 
     res.status(201).json({ 

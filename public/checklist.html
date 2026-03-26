@@ -6,6 +6,7 @@
     <title>Closing Checklist - LBTS</title>
    <script src="/js/fully-touch-fix.js"></script>
     <script src="/storage-fallback.js"></script>
+    <script src="/js/api-helper.js"></script>
     <style>
         * {
             margin: 0;
@@ -216,7 +217,7 @@
         async function loadChecklistData(date) {
             const token = localStorage.getItem('token');
             try {
-                const response = await fetch(`${API_BASE}/${date}`, {
+                const response = await apiFetch(`${API_BASE}/${date}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
@@ -266,7 +267,7 @@
         async function toggleChecklistItem(itemId, isCompleted) {
             const token = localStorage.getItem('token');
             try {
-                const response = await fetch(`${API_BASE}/checklist/toggle`, {
+                const response = await apiFetch(`${API_BASE}/checklist/toggle`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${token}`,

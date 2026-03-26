@@ -10,6 +10,7 @@
   
   <!-- Image Compression Library -->
   <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.0/dist/browser-image-compression.js"></script>
+  <script src="/js/api-helper.js"></script>
   
   <style>
     * {
@@ -545,7 +546,7 @@
       const token = localStorage.getItem('token');
 
       try {
-        const response = await fetch('/api/banned-list', {
+        const response = await apiFetch('/api/banned-list', {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -630,7 +631,7 @@
       const token = localStorage.getItem('token');
 
       try {
-        const response = await fetch(`/api/banned-list/${entryId}`, {
+        const response = await apiFetch(`/api/banned-list/${entryId}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -779,7 +780,7 @@
         const url = isEdit ? `/api/banned-list/${entryId}` : '/api/banned-list';
         const method = isEdit ? 'PUT' : 'POST';
 
-        const response = await fetch(url, {
+        const response = await apiFetch(url, {
           method: method,
           headers: {
             'Authorization': `Bearer ${token}`
@@ -816,7 +817,7 @@
       const token = localStorage.getItem('token');
 
       try {
-        const response = await fetch(`/api/banned-list/${entryId}`, {
+        const response = await apiFetch(`/api/banned-list/${entryId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`

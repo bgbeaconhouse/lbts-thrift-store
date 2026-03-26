@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LBTS - Customer Forms</title>
+  <script src="/js/api-helper.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     
@@ -1276,7 +1277,7 @@
       
       for (const type of types) {
         try {
-          const response = await fetch(`/api/customer-forms-unified/${type}`, {
+          const response = await apiFetch(`/api/customer-forms-unified/${type}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           
@@ -1306,7 +1307,7 @@
       
       for (const type of types) {
         try {
-          const response = await fetch(`/api/customer-forms-unified/${type}/recently-deleted`, {
+          const response = await apiFetch(`/api/customer-forms-unified/${type}/recently-deleted`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           
@@ -2067,7 +2068,7 @@
       }
       
       try {
-        const response = await fetch('/api/customer-forms-unified/create', {
+        const response = await apiFetch('/api/customer-forms-unified/create', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -2108,7 +2109,7 @@
       const token = localStorage.getItem('token');
       
       try {
-        const response = await fetch(`/api/customer-forms-unified/retry-email/${type}/${id}`, {
+        const response = await apiFetch(`/api/customer-forms-unified/retry-email/${type}/${id}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -2138,7 +2139,7 @@
       const token = localStorage.getItem('token');
       
       try {
-        const response = await fetch(`/api/customer-forms-unified/${type}/${id}`, {
+        const response = await apiFetch(`/api/customer-forms-unified/${type}/${id}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -2167,7 +2168,7 @@
       const token = localStorage.getItem('token');
       
       try {
-        const response = await fetch(`/api/customer-forms-unified/${type}/${id}/restore`, {
+        const response = await apiFetch(`/api/customer-forms-unified/${type}/${id}/restore`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -2569,7 +2570,7 @@
       });
       
       try {
-        const response = await fetch(`/api/customer-forms-unified/${formType}/${formId}`, {
+        const response = await apiFetch(`/api/customer-forms-unified/${formType}/${formId}`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -2642,7 +2643,7 @@
       formData.append('signature', blob, 'signature.png');
       
       try {
-        const response = await fetch('/api/customer-forms-unified/convert', {
+        const response = await apiFetch('/api/customer-forms-unified/convert', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`

@@ -17,11 +17,12 @@ const authenticateToken = (req, res, next) => {
     return res.status(401).json({ error: 'Access token required' });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
     if (err) {
       return res.status(403).json({ error: 'Invalid or expired token' });
     }
     req.user = user; // Add user info to request
+    req.store = req.headers['x-store'] || 'long_beach'; // Add store to request
     next();
   });
 };
