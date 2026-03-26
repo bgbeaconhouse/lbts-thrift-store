@@ -161,7 +161,7 @@ const STORE_INFO = {
   san_pedro: {
     name: 'Beacon House Association of San Pedro',
     address: '1003 S. Beacon St, San Pedro, CA 90731',
-    phone: '(310) 514-4940',
+    phone: '(310) 547-2332',
     fromLabel: 'Beacon House San Pedro Thrift Store'
   }
 };
