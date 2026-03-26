@@ -150,8 +150,29 @@ function createTransporter() {
   });
 }
 
+// Store contact info config
+const STORE_INFO = {
+  long_beach: {
+    name: 'Beacon House Long Beach Thrift Store',
+    address: null, // Long Beach doesn't show a street address in emails
+    phone: '(562) 343-7804',
+    fromLabel: 'Beacon House Long Beach Thrift Store'
+  },
+  san_pedro: {
+    name: 'Beacon House Association of San Pedro',
+    address: '1003 S. Beacon St, San Pedro, CA 90731',
+    phone: '(310) 514-4940',
+    fromLabel: 'Beacon House San Pedro Thrift Store'
+  }
+};
+
+function getStoreInfo(store) {
+  return STORE_INFO[store] || STORE_INFO['long_beach'];
+}
+
 // Email templates
-function getPickupEmailTemplate(form) {
+function getPickupEmailTemplate(form, store) {
+  const s = getStoreInfo(store);
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="text-align:center;padding:20px;background:#ffffff;color:#2d3748">
@@ -164,7 +185,7 @@ function getPickupEmailTemplate(form) {
         <!--[if mso]>
         <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
         <h1 style="margin:0 0 5px 0;color:#2d3748;font-size:28px;font-family:Arial,sans-serif">Beacon House</h1>
-        <p style="margin:0;color:#2d3748;font-size:18px;font-family:Arial,sans-serif">Long Beach Thrift Store</p>
+        <p style="margin:0;color:#2d3748;font-size:18px;font-family:Arial,sans-serif">${s.name}</p>
         </td></tr></table>
         <![endif]-->
         <h2 style="margin:10px 0 0;font-weight:400;color:#2d3748">Pick-Up Receipt</h2>
@@ -209,24 +230,26 @@ function getPickupEmailTemplate(form) {
         </div>
         
         <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-top: 30px;">
-          If you have any questions, please contact us at <strong>(562) 343-7804</strong>.
+          If you have any questions, please contact us at <strong>${s.phone}</strong>.
         </p>
         
         <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 30px;">
           Thank you,<br>
-          <strong>Beacon House Long Beach Thrift Store</strong>
+          <strong>${s.name}</strong>
         </p>
       </div>
       
       <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
-        <p style="margin: 0;">Beacon House Long Beach Thrift Store</p>
-        <p style="margin: 5px 0;">Phone: (562) 343-7804</p>
+        <p style="margin: 0;">${s.name}</p>
+        ${s.address ? `<p style="margin: 5px 0;">${s.address}</p>` : ''}
+        <p style="margin: 5px 0;">Phone: ${s.phone}</p>
       </div>
     </div>
   `;
 }
 
-function getDeliveryEmailTemplate(form) {
+function getDeliveryEmailTemplate(form, store) {
+  const s = getStoreInfo(store);
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="text-align:center;padding:20px;background:#ffffff;color:#2d3748">
@@ -239,7 +262,7 @@ function getDeliveryEmailTemplate(form) {
         <!--[if mso]>
         <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
         <h1 style="margin:0 0 5px 0;color:#2d3748;font-size:28px;font-family:Arial,sans-serif">Beacon House</h1>
-        <p style="margin:0;color:#2d3748;font-size:18px;font-family:Arial,sans-serif">Long Beach Thrift Store</p>
+        <p style="margin:0;color:#2d3748;font-size:18px;font-family:Arial,sans-serif">${s.name}</p>
         </td></tr></table>
         <![endif]-->
         <h2 style="margin:10px 0 0;font-weight:400;color:#2d3748">Delivery Receipt</h2>
@@ -279,24 +302,26 @@ function getDeliveryEmailTemplate(form) {
         </div>
         
         <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-top: 30px;">
-          If you have any questions, please contact us at <strong>(562) 343-7804</strong>.
+          If you have any questions, please contact us at <strong>${s.phone}</strong>.
         </p>
         
         <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 30px;">
           Thank you,<br>
-          <strong>Beacon House Long Beach Thrift Store</strong>
+          <strong>${s.name}</strong>
         </p>
       </div>
       
       <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
-        <p style="margin: 0;">Beacon House Long Beach Thrift Store</p>
-        <p style="margin: 5px 0;">Phone: (562) 343-7804</p>
+        <p style="margin: 0;">${s.name}</p>
+        ${s.address ? `<p style="margin: 5px 0;">${s.address}</p>` : ''}
+        <p style="margin: 5px 0;">Phone: ${s.phone}</p>
       </div>
     </div>
   `;
 }
 
-function getDonationEmailTemplate(form) {
+function getDonationEmailTemplate(form, store) {
+  const s = getStoreInfo(store);
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="text-align:center;padding:20px;background:#ffffff;color:#2d3748">
@@ -309,7 +334,7 @@ function getDonationEmailTemplate(form) {
         <!--[if mso]>
         <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
         <h1 style="margin:0 0 5px 0;color:#2d3748;font-size:28px;font-family:Arial,sans-serif">Beacon House</h1>
-        <p style="margin:0;color:#2d3748;font-size:18px;font-family:Arial,sans-serif">Long Beach Thrift Store</p>
+        <p style="margin:0;color:#2d3748;font-size:18px;font-family:Arial,sans-serif">${s.name}</p>
         </td></tr></table>
         <![endif]-->
         <h2 style="margin:10px 0 0;font-weight:400;color:#2d3748">Donation Receipt</h2>
@@ -349,15 +374,16 @@ function getDonationEmailTemplate(form) {
       </div>
       
       <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
-        <p style="margin: 0;">The Beacon House Association of San Pedro</p>
-        <p style="margin: 5px 0;">1003 S. Beacon St, San Pedro, CA 90731</p>
+        <p style="margin: 0;">${s.name}</p>
+        ${s.address ? `<p style="margin: 5px 0;">${s.address}</p>` : ''}
         <p style="margin: 5px 0;">Tax ID: #23-7376148</p>
       </div>
     </div>
   `;
 }
 
-function getWaiverEmailTemplate(form) {
+function getWaiverEmailTemplate(form, store) {
+  const s = getStoreInfo(store);
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <div style="text-align:center;padding:20px;background:#ffffff;color:#2d3748">
@@ -370,7 +396,7 @@ function getWaiverEmailTemplate(form) {
         <!--[if mso]>
         <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center">
         <h1 style="margin:0 0 5px 0;color:#2d3748;font-size:28px;font-family:Arial,sans-serif">Beacon House</h1>
-        <p style="margin:0;color:#2d3748;font-size:18px;font-family:Arial,sans-serif">Long Beach Thrift Store</p>
+        <p style="margin:0;color:#2d3748;font-size:18px;font-family:Arial,sans-serif">${s.name}</p>
         </td></tr></table>
         <![endif]-->
         <h2 style="margin:10px 0 0;font-weight:400;color:#2d3748">Waiver Receipt</h2>
@@ -418,26 +444,26 @@ function getWaiverEmailTemplate(form) {
         </div>
         
         <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-top: 30px;">
-          Please keep this email for your records. If you have any questions, please contact us at <strong>(562) 343-7804</strong>.
+          Please keep this email for your records. If you have any questions, please contact us at <strong>${s.phone}</strong>.
         </p>
         
         <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 30px;">
           Thank you,<br>
-          <strong>Beacon House Association of San Pedro</strong>
+          <strong>${s.name}</strong>
         </p>
       </div>
       
       <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
-        <p style="margin: 0;">Beacon House Association of San Pedro</p>
-        <p style="margin: 5px 0;">1003 S. Beacon St, San Pedro, CA 90731</p>
-        <p style="margin: 5px 0;">Phone: (310) 514-4940</p>
+        <p style="margin: 0;">${s.name}</p>
+        ${s.address ? `<p style="margin: 5px 0;">${s.address}</p>` : ''}
+        <p style="margin: 5px 0;">Phone: ${s.phone}</p>
       </div>
     </div>
   `;
 }
 
 // Function to send email immediately
-async function sendFormEmail(form, formType) {
+async function sendFormEmail(form, formType, store) {
   // Check if email is configured
   if (!process.env.SMTP_USER || !process.env.SMTP_PASSWORD) {
     throw new Error('Email not configured');
@@ -449,25 +475,26 @@ async function sendFormEmail(form, formType) {
   }
 
   const transporter = createTransporter();
+  const s = getStoreInfo(store || form.store || 'long_beach');
 
   // Get appropriate template and subject
   let subject, html;
   switch(formType) {
     case 'pickup':
       subject = 'Beacon House - Pick-Up Receipt';
-      html = getPickupEmailTemplate(form);
+      html = getPickupEmailTemplate(form, store);
       break;
     case 'delivery':
       subject = 'Beacon House - Delivery Receipt';
-      html = getDeliveryEmailTemplate(form);
+      html = getDeliveryEmailTemplate(form, store);
       break;
     case 'donation':
       subject = 'Beacon House - Donation Receipt';
-      html = getDonationEmailTemplate(form);
+      html = getDonationEmailTemplate(form, store);
       break;
     case 'waiver':
       subject = 'Beacon House - Release of Liability Form';
-      html = getWaiverEmailTemplate(form);
+      html = getWaiverEmailTemplate(form, store);
       break;
     default:
       throw new Error('Invalid form type');
@@ -475,7 +502,7 @@ async function sendFormEmail(form, formType) {
 
   // Send email
   await transporter.sendMail({
-    from: process.env.SMTP_FROM || 'Beacon House Long Beach Thrift Store <noreply@lbts.local>',
+    from: process.env.SMTP_FROM || `${s.fromLabel} <noreply@lbts.local>`,
     to: form.email,
     subject: subject,
     html: html
@@ -743,7 +770,7 @@ router.post('/create', upload.fields([
     // Attempt to send email immediately (if email provided)
     if (email) {
       try {
-        await sendFormEmail(createdForm, form_type);
+        await sendFormEmail(createdForm, form_type, req.store);
         emailSent = true;
         
         // Update database with email success
@@ -821,7 +848,7 @@ router.post('/retry-email/:type/:id', async (req, res) => {
     }
 
     try {
-      await sendFormEmail(form, type);
+      await sendFormEmail(form, type, req.store);
       
       await db.query(
         `UPDATE ${tableName} 
@@ -1212,7 +1239,7 @@ router.post('/convert', authenticateToken, upload.fields([
 
     if (originalForm.email) {
       try {
-        await sendFormEmail(newForm, to_type);
+        await sendFormEmail(newForm, to_type, req.store);
         emailSent = true;
         
         await db.query(
