@@ -1,6 +1,7 @@
 // cleanup-deleted-items.js
-// Script to permanently delete pickup and delivery items that were soft-deleted more than 7 days ago
-// Run this script periodically (e.g., daily via cron job)
+// Permanently deletes pickup and delivery forms that were soft-deleted more than 7 days ago
+// Also deletes their associated image files from disk
+// Waivers, donations, discount items, and communication posts are NOT touched
 
 const { Pool } = require('pg');
 const path = require('path');
@@ -11,100 +12,97 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-async function cleanupOldDeletedItems() {
+async function cleanupOldDeletedForms() {
   const client = await pool.connect();
-  
+
   try {
-    console.log('Starting cleanup of old deleted items...');
+    console.log('Starting cleanup of old deleted forms...');
     console.log('Current time:', new Date().toISOString());
-    
-    // Get pickup items to permanently delete (older than 7 days)
-    const pickupItems = await client.query(
-      `SELECT id, picture_urls, deleted_at 
-       FROM pickup_inventory 
-       WHERE deleted_at IS NOT NULL 
-         AND deleted_at <= NOW() - INTERVAL '7 days'`
-    );
-    
-    console.log(`Found ${pickupItems.rows.length} pickup items to permanently delete`);
-    
-    // Delete pickup item photos from filesystem
+
     const baseUploadDir = process.env.UPLOAD_DIR || 'uploads';
-    const uploadPath = path.isAbsolute(baseUploadDir) 
+    const uploadPath = path.isAbsolute(baseUploadDir)
       ? baseUploadDir
       : path.join(__dirname, baseUploadDir);
-    
-    for (const item of pickupItems.rows) {
-      const pictureUrls = item.picture_urls || [];
+
+    // ── PICKUP FORMS ──────────────────────────────────────────────
+    const pickupForms = await client.query(
+      `SELECT id, picture_urls, deleted_at
+       FROM pickup_forms
+       WHERE deleted_at IS NOT NULL
+         AND deleted_at <= NOW() - INTERVAL '7 days'`
+    );
+
+    console.log(`Found ${pickupForms.rows.length} pickup forms to permanently delete`);
+
+    for (const form of pickupForms.rows) {
+      const pictureUrls = form.picture_urls || [];
       pictureUrls.forEach(url => {
         const filename = url.split('/').pop();
         const filepath = path.join(uploadPath, 'pickup', filename);
         fs.unlink(filepath, (err) => {
           if (err && err.code !== 'ENOENT') {
             console.error(`Error deleting pickup photo ${filename}:`, err);
-          } else {
+          } else if (!err) {
             console.log(`Deleted pickup photo: ${filename}`);
           }
         });
       });
     }
-    
-    // Permanently delete pickup items from database
+
     const deletePickupResult = await client.query(
-      `DELETE FROM pickup_inventory 
-       WHERE deleted_at IS NOT NULL 
+      `DELETE FROM pickup_forms
+       WHERE deleted_at IS NOT NULL
          AND deleted_at <= NOW() - INTERVAL '7 days'
        RETURNING id`
     );
-    
-    console.log(`Permanently deleted ${deletePickupResult.rows.length} pickup items from database`);
-    
-    // Get delivery items to permanently delete (older than 7 days)
-    const deliveryItems = await client.query(
-      `SELECT id, picture_urls, deleted_at 
-       FROM delivery_inventory 
-       WHERE deleted_at IS NOT NULL 
+
+    console.log(`Permanently deleted ${deletePickupResult.rows.length} pickup forms from database`);
+
+    // ── DELIVERY FORMS ────────────────────────────────────────────
+    const deliveryForms = await client.query(
+      `SELECT id, picture_urls, deleted_at
+       FROM delivery_forms
+       WHERE deleted_at IS NOT NULL
          AND deleted_at <= NOW() - INTERVAL '7 days'`
     );
-    
-    console.log(`Found ${deliveryItems.rows.length} delivery items to permanently delete`);
-    
-    // Delete delivery item photos from filesystem
-    for (const item of deliveryItems.rows) {
-      const pictureUrls = item.picture_urls || [];
+
+    console.log(`Found ${deliveryForms.rows.length} delivery forms to permanently delete`);
+
+    for (const form of deliveryForms.rows) {
+      const pictureUrls = form.picture_urls || [];
       pictureUrls.forEach(url => {
         const filename = url.split('/').pop();
         const filepath = path.join(uploadPath, 'delivery', filename);
         fs.unlink(filepath, (err) => {
           if (err && err.code !== 'ENOENT') {
             console.error(`Error deleting delivery photo ${filename}:`, err);
-          } else {
+          } else if (!err) {
             console.log(`Deleted delivery photo: ${filename}`);
           }
         });
       });
     }
-    
-    // Permanently delete delivery items from database
+
     const deleteDeliveryResult = await client.query(
-      `DELETE FROM delivery_inventory 
-       WHERE deleted_at IS NOT NULL 
+      `DELETE FROM delivery_forms
+       WHERE deleted_at IS NOT NULL
          AND deleted_at <= NOW() - INTERVAL '7 days'
        RETURNING id`
     );
-    
-    console.log(`Permanently deleted ${deleteDeliveryResult.rows.length} delivery items from database`);
-    
+
+    console.log(`Permanently deleted ${deleteDeliveryResult.rows.length} delivery forms from database`);
+
+    // ── SUMMARY ───────────────────────────────────────────────────
     const totalDeleted = deletePickupResult.rows.length + deleteDeliveryResult.rows.length;
-    console.log(`\nCleanup complete! Total items permanently deleted: ${totalDeleted}`);
+    console.log(`\nCleanup complete! Total forms permanently deleted: ${totalDeleted}`);
     console.log('Finished at:', new Date().toISOString());
-    
+
     return {
       pickupDeleted: deletePickupResult.rows.length,
       deliveryDeleted: deleteDeliveryResult.rows.length,
       totalDeleted
     };
-    
+
   } catch (error) {
     console.error('Cleanup error:', error);
     throw error;
@@ -113,9 +111,8 @@ async function cleanupOldDeletedItems() {
   }
 }
 
-// Run cleanup if executed directly
 if (require.main === module) {
-  cleanupOldDeletedItems()
+  cleanupOldDeletedForms()
     .then(result => {
       console.log('\nSummary:', result);
       process.exit(0);
@@ -126,4 +123,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { cleanupOldDeletedItems };
+module.exports = { cleanupOldDeletedForms };
