@@ -2179,6 +2179,7 @@
         
         if (response.ok) {
           showMessage(data.message + ' - Form restored successfully', 'success');
+          await loadForms();
           loadRecentlyDeletedForms(); // Reload the recently deleted list
         } else {
           showMessage(data.error || 'Restore failed', 'error');
