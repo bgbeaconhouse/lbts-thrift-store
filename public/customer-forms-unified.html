@@ -1464,6 +1464,8 @@
                   ${form.delivery_cost ? `<span>💵 $${parseFloat(form.delivery_cost).toFixed(2)}</span>` : ''}
                  ${form.created_by_username ? `<span>👤 ${escapeHtml(form.created_by_username)}</span>` : ''}
                   ${!isDeleted ? `<span>${emailBadge}</span>` : ''}
+                  ${!isDeleted && form.form_type === 'pickup' && form.due_today_sent ? `<span><span class="badge" style="background:#d69e2e;color:white;">📅 Due Today Sent</span></span>` : ''}
+                  ${!isDeleted && form.form_type === 'pickup' && form.final_notice_sent ? `<span><span class="badge" style="background:#c53030;color:white;">🚨 Final Notice Sent</span></span>` : ''}
                 </div>
                 ${description ? `<div class="form-description">${escapeHtml(description).substring(0, 150)}${description.length > 150 ? '...' : ''}</div>` : ''}
                 ${notes ? `<div class="form-description" style="background: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-top: 8px; border-radius: 4px;"><strong>📝 Notes:</strong> ${escapeHtml(notes).substring(0, 150)}${notes.length > 150 ? '...' : ''}</div>` : ''}
@@ -1490,8 +1492,12 @@
                   ${(form.form_type === 'pickup' || form.form_type === 'delivery') ? `
                     <button class="btn btn-secondary" onclick="openEditModal('${form.form_type}', ${form.id})">Edit</button>
                   ` : ''}
-                  ${form.form_type === 'pickup' ? `
+                ${form.form_type === 'pickup' ? `
                     <button class="btn btn-secondary" onclick="openConvertModal('${form.form_type}', ${form.id})">Switch to Delivery</button>
+                  ` : ''}
+                  ${form.form_type === 'pickup' && form.email ? `
+                    <button class="btn" style="background:#d69e2e;color:white;" onclick="sendDueTodayEmail(${form.id}, '${escapeHtml(form.customer_name)}', '${escapeHtml(form.email)}')">📅 Send Due Today</button>
+                    <button class="btn" style="background:#c53030;color:white;" onclick="sendFinalNoticeEmail(${form.id}, '${escapeHtml(form.customer_name)}', '${escapeHtml(form.email)}')">🚨 Send Final Notice</button>
                   ` : ''}
                   ${form.form_type === 'delivery' ? `
                     <button class="btn btn-secondary" onclick="openConvertModal('${form.form_type}', ${form.id})">Switch to Pickup</button>
@@ -2101,6 +2107,53 @@
         isSubmitting = false;
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalBtnText;
+      }
+    }
+
+
+// Send due today email
+    async function sendDueTodayEmail(formId, customerName, customerEmail) {
+      if (!confirm(`Send "Due Today" reminder to ${customerName} (${customerEmail})?`)) return;
+
+      const token = localStorage.getItem('token');
+      try {
+        const response = await apiFetch(`/api/customer-forms-unified/send-due-today/${formId}`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (response.ok) {
+          showMessage(`Due today email sent to ${customerEmail}`, 'success');
+          loadAllForms();
+        } else {
+          showMessage(data.error || 'Failed to send due today email', 'error');
+        }
+      } catch (error) {
+        console.error('Send due today email error:', error);
+        showMessage('Network error. Please try again.', 'error');
+      }
+    }
+
+    // Send final notice email
+    async function sendFinalNoticeEmail(formId, customerName, customerEmail) {
+      if (!confirm(`Send "Final Notice" to ${customerName} (${customerEmail})?\n\nThis will warn them their items will be resold if not picked up today.`)) return;
+
+      const token = localStorage.getItem('token');
+      try {
+        const response = await apiFetch(`/api/customer-forms-unified/send-final-notice/${formId}`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (response.ok) {
+          showMessage(`Final notice email sent to ${customerEmail}`, 'success');
+          loadAllForms();
+        } else {
+          showMessage(data.error || 'Failed to send final notice email', 'error');
+        }
+      } catch (error) {
+        console.error('Send final notice email error:', error);
+        showMessage('Network error. Please try again.', 'error');
       }
     }
 

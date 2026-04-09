@@ -536,6 +536,8 @@ router.get('/:type', async (req, res) => {
                to_char(pf.date_stored, 'YYYY-MM-DD') as date_stored, 
                pf.picture_urls, pf.notes,
                pf.email_sent, pf.email_sent_at, pf.email_error, pf.created_at,
+               pf.due_today_sent, pf.due_today_sent_at,
+               pf.final_notice_sent, pf.final_notice_sent_at,
                u.username as created_by_username
         FROM ${tableName} pf
         LEFT JOIN users u ON u.id = pf.created_by
@@ -880,6 +882,233 @@ router.post('/retry-email/:type/:id', async (req, res) => {
   } catch (error) {
     console.error('Retry email error:', error);
     res.status(500).json({ error: 'Failed to retry email' });
+  }
+});
+
+
+// ==================== SEND DUE TODAY EMAIL ====================
+
+router.post('/send-due-today/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const db = req.app.locals.db;
+
+    const result = await db.query(
+      `SELECT * FROM pickup_forms WHERE id = $1 AND deleted_at IS NULL AND store = $2`,
+      [id, req.store]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Pickup form not found' });
+    }
+
+    const form = result.rows[0];
+
+    if (!form.email) {
+      return res.status(400).json({ error: 'No email address on file' });
+    }
+
+    const s = getStoreInfo(req.store);
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="text-align:center;padding:20px;background:#ffffff;color:#2d3748">
+          <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png"
+               alt="Beacon House Logo"
+               width="200"
+               style="display:block;width:200px;max-width:100%;height:auto;margin:0 auto 10px">
+          <h2 style="margin:10px 0 0;font-weight:400;color:#2d3748">Pick-Up Reminder</h2>
+        </div>
+
+        <div style="padding: 30px; background: white;">
+          <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
+            Dear ${form.customer_name},
+          </p>
+
+          <p style="color: #2d3748; font-size: 18px; line-height: 1.6; font-weight: bold;">
+            Your items are due for pick-up today.
+          </p>
+
+          <div style="background: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #2d3748; margin-top: 0;">Purchase Details:</h3>
+            <p style="color: #4a5568; line-height: 1.8; margin: 5px 0;">
+              <strong>Name:</strong> ${form.customer_name}<br>
+              <strong>Phone:</strong> ${form.phone}<br>
+              <strong>Purchase Date:</strong> ${form.date_purchased ? new Date(form.date_purchased).toLocaleDateString() : 'N/A'}<br>
+              <strong>Pick-Up Date:</strong> ${form.date_stored ? new Date(form.date_stored).toLocaleDateString() : 'N/A'}
+            </p>
+            ${form.items_description ? `
+              <p style="color: #4a5568; line-height: 1.8; margin-top: 15px;">
+                <strong>Items:</strong><br>
+                ${form.items_description}
+              </p>
+            ` : ''}
+          </div>
+
+          <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <h3 style="color: #856404; margin-top: 0;">⚠️ Terms & Conditions</h3>
+            <p style="color: #856404; line-height: 1.8; margin-bottom: 15px;">
+              You have <strong>48 hours upon purchase</strong> to pick your item up. After 48 hours the item will be placed back on the sales floor and <strong>no refunds will be issued</strong>.
+            </p>
+            <p style="color: #856404; line-height: 1.8; margin-bottom: 15px;">
+              We will gladly assist you in loading your items. Please be aware that it is the customer's responsibility to ensure items are properly loaded and secured. We are not responsible for any damage caused by loading or failure to secure items.
+            </p>
+            <p style="color: #856404; line-height: 1.8; margin: 0;">
+              Your signature acknowledges that you have read and understand the terms and conditions covered above.
+            </p>
+          </div>
+
+          <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-top: 30px;">
+            If you have any questions, please contact us at <strong>${s.phone}</strong>.
+          </p>
+
+          <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 30px;">
+            Thank you,<br>
+            <strong>${s.name}</strong>
+          </p>
+        </div>
+
+        <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
+          <p style="margin: 0;">${s.name}</p>
+          ${s.address ? `<p style="margin: 5px 0;">${s.address}</p>` : ''}
+          <p style="margin: 5px 0;">Phone: ${s.phone}</p>
+        </div>
+      </div>
+    `;
+
+    const transporter = createTransporter();
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || `${s.fromLabel} <noreply@lbts.local>`,
+      to: form.email,
+      subject: 'Beacon House - Your Pick-Up is Due Today',
+      html
+    });
+
+    await db.query(
+      `UPDATE pickup_forms SET due_today_sent = true, due_today_sent_at = NOW() WHERE id = $1`,
+      [id]
+    );
+
+    res.json({ message: 'Due today email sent successfully', dueTodaySent: true });
+
+  } catch (error) {
+    console.error('Send due today email error:', error);
+    res.status(500).json({ error: 'Failed to send due today email' });
+  }
+});
+
+// ==================== SEND FINAL NOTICE EMAIL ====================
+
+router.post('/send-final-notice/:id', async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const db = req.app.locals.db;
+
+    const result = await db.query(
+      `SELECT * FROM pickup_forms WHERE id = $1 AND deleted_at IS NULL AND store = $2`,
+      [id, req.store]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Pickup form not found' });
+    }
+
+    const form = result.rows[0];
+
+    if (!form.email) {
+      return res.status(400).json({ error: 'No email address on file' });
+    }
+
+    const s = getStoreInfo(req.store);
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="text-align:center;padding:20px;background:#ffffff;color:#2d3748">
+          <img src="https://raw.githubusercontent.com/bgbeaconhouse/lbts-thrift-store/1ba0b20578bee0123684923c41c8193d7f308c65/public/images/BHdarklogo1.png"
+               alt="Beacon House Logo"
+               width="200"
+               style="display:block;width:200px;max-width:100%;height:auto;margin:0 auto 10px">
+          <h2 style="margin:10px 0 0;font-weight:400;color:#c53030">⚠️ Final Notice</h2>
+        </div>
+
+        <div style="padding: 30px; background: white;">
+          <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
+            Dear ${form.customer_name},
+          </p>
+
+          <div style="background: #fff5f5; border: 2px solid #fc8181; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <p style="color: #c53030; font-size: 17px; line-height: 1.6; margin: 0; font-weight: bold;">
+              This is your final notice to pick up your items. If you do not come in today, we will be placing your items back on the sales floor for resale. No refunds will be issued.
+            </p>
+          </div>
+
+          <div style="background: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #2d3748; margin-top: 0;">Purchase Details:</h3>
+            <p style="color: #4a5568; line-height: 1.8; margin: 5px 0;">
+              <strong>Name:</strong> ${form.customer_name}<br>
+              <strong>Phone:</strong> ${form.phone}<br>
+              <strong>Purchase Date:</strong> ${form.date_purchased ? new Date(form.date_purchased).toLocaleDateString() : 'N/A'}<br>
+              <strong>Pick-Up Date:</strong> ${form.date_stored ? new Date(form.date_stored).toLocaleDateString() : 'N/A'}
+            </p>
+            ${form.items_description ? `
+              <p style="color: #4a5568; line-height: 1.8; margin-top: 15px;">
+                <strong>Items:</strong><br>
+                ${form.items_description}
+              </p>
+            ` : ''}
+          </div>
+
+          <div style="background: #fff3cd; border: 2px solid #ffc107; border-radius: 8px; padding: 20px; margin: 20px 0;">
+            <h3 style="color: #856404; margin-top: 0;">⚠️ Terms & Conditions</h3>
+            <p style="color: #856404; line-height: 1.8; margin-bottom: 15px;">
+              You have <strong>48 hours upon purchase</strong> to pick your item up. After 48 hours the item will be placed back on the sales floor and <strong>no refunds will be issued</strong>.
+            </p>
+            <p style="color: #856404; line-height: 1.8; margin-bottom: 15px;">
+              We will gladly assist you in loading your items. Please be aware that it is the customer's responsibility to ensure items are properly loaded and secured. We are not responsible for any damage caused by loading or failure to secure items.
+            </p>
+            <p style="color: #856404; line-height: 1.8; margin: 0;">
+              Your signature acknowledges that you have read and understand the terms and conditions covered above.
+            </p>
+          </div>
+
+          <p style="color: #4a5568; font-size: 14px; line-height: 1.6; margin-top: 30px;">
+            If you have any questions, please contact us at <strong>${s.phone}</strong>.
+          </p>
+
+          <p style="color: #2d3748; font-size: 16px; line-height: 1.6; margin-top: 30px;">
+            Thank you,<br>
+            <strong>${s.name}</strong>
+          </p>
+        </div>
+
+        <div style="padding: 20px; background: #f7fafc; text-align: center; color: #718096; font-size: 12px;">
+          <p style="margin: 0;">${s.name}</p>
+          ${s.address ? `<p style="margin: 5px 0;">${s.address}</p>` : ''}
+          <p style="margin: 5px 0;">Phone: ${s.phone}</p>
+        </div>
+      </div>
+    `;
+
+    const transporter = createTransporter();
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || `${s.fromLabel} <noreply@lbts.local>`,
+      to: form.email,
+      subject: 'Beacon House - FINAL NOTICE: Pick Up Your Items Today',
+      html
+    });
+
+    await db.query(
+      `UPDATE pickup_forms SET final_notice_sent = true, final_notice_sent_at = NOW() WHERE id = $1`,
+      [id]
+    );
+
+    res.json({ message: 'Final notice email sent successfully', finalNoticeSent: true });
+
+  } catch (error) {
+    console.error('Send final notice email error:', error);
+    res.status(500).json({ error: 'Failed to send final notice email' });
   }
 });
 
