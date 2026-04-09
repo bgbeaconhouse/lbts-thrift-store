@@ -926,8 +926,8 @@ router.post('/send-due-today/:id', async (req, res) => {
             Dear ${form.customer_name},
           </p>
 
-          <p style="color: #2d3748; font-size: 18px; line-height: 1.6; font-weight: bold;">
-            Your items are due for pick-up today.
+         <p style="color: #2d3748; font-size: 16px; line-height: 1.6;">
+            This is a reminder that your item(s) are due for pickup today. In accordance with the Terms and Conditions previously acknowledged, failure to collect your item(s) within the 48-hour timeframe will result in the item(s) being returned to inventory for resale or recycled without refund.
           </p>
 
           <div style="background: #f7fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
@@ -1039,8 +1039,10 @@ router.post('/send-final-notice/:id', async (req, res) => {
           </p>
 
           <div style="background: #fff5f5; border: 2px solid #fc8181; border-radius: 8px; padding: 20px; margin: 20px 0;">
-            <p style="color: #c53030; font-size: 17px; line-height: 1.6; margin: 0; font-weight: bold;">
-              This is your final notice to pick up your items. If you do not come in today, we will be placing your items back on the sales floor for resale. No refunds will be issued.
+         <p style="color: #c53030; font-size: 16px; line-height: 1.6; margin: 0;">
+              This communication serves as your final notice regarding the pickup of your purchased item(s). As outlined in the Terms and Conditions agreed to at the time of purchase, all items must be collected within 48 hours.<br><br>
+              If your item(s) are not picked up by the end of today, they will be returned to the sales floor and made available for resale or recycle. Please note that, in accordance with the agreed Terms and Conditions, no refunds or credits will be issued.<br><br>
+              Your prompt attention to this matter is appreciated.
             </p>
           </div>
 
