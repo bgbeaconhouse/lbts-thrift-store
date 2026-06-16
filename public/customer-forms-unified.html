@@ -1462,7 +1462,8 @@
                   ${form.date_purchased ? `<span>📅 Purchased: ${formatDateForDisplay(form.date_purchased)}</span>` : ''}
                  ${form.date_scheduled || form.date_stored ? `<span>🗓️ ${form.form_type === 'delivery' ? 'Delivery' : 'Pickup'}: ${formatDateForDisplay(form.date_scheduled || form.date_stored)}</span>` : ''}
                   ${form.delivery_cost ? `<span>💵 $${parseFloat(form.delivery_cost).toFixed(2)}</span>` : ''}
-                 ${form.created_by_username ? `<span>👤 ${escapeHtml(form.created_by_username)}</span>` : ''}
+                ${form.created_by_username ? `<span>👤 ${escapeHtml(form.created_by_username)}</span>` : ''}
+                  ${form.created_at ? `<span>🕐 Created: ${new Date(form.created_at).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' })} ${new Date(form.created_at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}</span>` : ''}
                   ${!isDeleted ? `<span>${emailBadge}</span>` : ''}
                   ${!isDeleted && form.form_type === 'pickup' && form.due_today_sent ? `<span><span class="badge" style="background:#d69e2e;color:white;">📅 Due Today Sent</span></span>` : ''}
                   ${!isDeleted && form.form_type === 'pickup' && form.final_notice_sent ? `<span><span class="badge" style="background:#c53030;color:white;">🚨 Final Notice Sent</span></span>` : ''}
