@@ -453,8 +453,14 @@
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
-    let currentDate = `${year}-${month}-${day}`;
+let currentDate = `${year}-${month}-${day}`;
     let currentUser = null;
+
+    // Format a YYYY-MM-DD string for display without UTC-shift issues
+    function formatDateDisplay(dateStr) {
+        const [y, m, d] = dateStr.split('-');
+        return `${parseInt(m)}/${parseInt(d)}/${y}`;
+    }
 
         // Initialize page
         document.addEventListener('DOMContentLoaded', async () => {
@@ -536,7 +542,7 @@
                 form.classList.add('hidden');
 
                 // Update summary
-                document.getElementById('summaryDate').textContent = ` - ${new Date(currentDate).toLocaleDateString()}`;
+              document.getElementById('summaryDate').textContent = ` - ${formatDateDisplay(currentDate)}`;
                 document.getElementById('summaryCash').textContent = report.cash_count ? parseFloat(report.cash_count).toFixed(2) : '0.00';
                 document.getElementById('summaryDonation').textContent = report.donation_amount ? parseFloat(report.donation_amount).toFixed(2) : '0.00';
                 document.getElementById('summaryTotal').textContent = report.total ? parseFloat(report.total).toFixed(2) : '0.00';
