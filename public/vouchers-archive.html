@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LBTS - Archived Vouchers</title>
+
+  <!-- Fully Kiosk Touch Fix - MUST LOAD FIRST -->
+  <script src="/js/fully-touch-fix.js"></script>
+  <script src="/js/api-helper.js"></script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f7fa;
+      min-height: 100vh;
+      touch-action: pan-y pinch-zoom;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #718096 0%, #2d3748 100%);
+      color: white;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .header h1 {
+      font-size: 24px;
+    }
+
+    .back-link {
+      color: white;
+      text-decoration: none;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .archive-banner {
+      background: #edf2f7;
+      border-bottom: 1px solid #cbd5e0;
+      padding: 12px 20px;
+      text-align: center;
+      font-size: 13px;
+      color: #4a5568;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 30px 20px;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .search-box {
+      flex: 1;
+      min-width: 250px;
+      max-width: 400px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 12px 20px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: #718096;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary {
+      background: #718096;
+      color: white;
+      padding: 8px 16px;
+      font-size: 13px;
+    }
+
+    .btn-secondary:hover {
+      background: #4a5568;
+    }
+
+    .contacts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+
+    .contact-card {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      transition: all 0.3s;
+      cursor: pointer;
+      position: relative;
+      opacity: 0.9;
+    }
+
+    .contact-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    }
+
+    .contact-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 15px;
+      word-wrap: break-word;
+    }
+
+    .voucher-count {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 16px;
+      margin-bottom: 15px;
+      background: #e2e8f0;
+      color: #4a5568;
+    }
+
+    .contact-info {
+      font-size: 13px;
+      color: #718096;
+      margin-bottom: 5px;
+    }
+
+    .contact-info strong {
+      color: #4a5568;
+    }
+
+    .archived-date {
+      font-size: 12px;
+      color: #a0aec0;
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #e2e8f0;
+      font-style: italic;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+      opacity: 0.5;
+    }
+
+    .empty-state h3 {
+      color: #2d3748;
+      margin-bottom: 10px;
+    }
+
+    .empty-state p {
+      color: #718096;
+      font-size: 14px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      overflow-y: auto;
+    }
+
+    .modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 10px;
+      padding: 30px;
+      max-width: 800px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+    }
+
+    .modal-header h2 {
+      color: #2d3748;
+      font-size: 24px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 28px;
+      color: #718096;
+      cursor: pointer;
+      padding: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-close:hover {
+      color: #2d3748;
+    }
+
+    .contact-details-header {
+      background: #f7fafc;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 25px;
+    }
+
+    .contact-details-name {
+      font-size: 24px;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 15px;
+    }
+
+    .contact-details-info {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 15px;
+    }
+
+    .detail-item {
+      font-size: 14px;
+    }
+
+    .detail-label {
+      color: #718096;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .detail-value {
+      color: #2d3748;
+      font-weight: 600;
+    }
+
+    .usage-section-header {
+      margin-bottom: 20px;
+    }
+
+    .usage-section-header h3 {
+      color: #2d3748;
+      font-size: 18px;
+    }
+
+    .usage-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .usage-item {
+      background: #f7fafc;
+      padding: 15px;
+      border-radius: 8px;
+    }
+
+    .usage-date {
+      font-size: 16px;
+      font-weight: 600;
+      color: #2d3748;
+    }
+
+    .usage-meta {
+      font-size: 12px;
+      color: #718096;
+      margin-top: 4px;
+    }
+
+    .no-usage {
+      text-align: center;
+      padding: 30px;
+      color: #718096;
+      font-style: italic;
+    }
+
+    .message {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 25px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 2000;
+      display: none;
+      max-width: 400px;
+    }
+
+    .message.error {
+      background: #f56565;
+      color: white;
+    }
+
+    @media (max-width: 768px) {
+      .header-content {
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .top-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .search-box {
+        max-width: 100%;
+      }
+
+      .contacts-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .contact-details-info {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="header-content">
+      <h1>🗄️ Archived Vouchers</h1>
+      <a href="/dashboard.html" class="back-link">← Back to Dashboard</a>
+    </div>
+  </div>
+
+  <div class="archive-banner">
+    This is a read-only view of past voucher contacts. No changes can be made here.
+  </div>
+
+  <!-- Main Container -->
+  <div class="container">
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 Search by name..." oninput="handleSearch()">
+      </div>
+    </div>
+
+    <!-- Contacts Grid -->
+    <div class="contacts-grid" id="contactsGrid">
+      <!-- Contacts will be dynamically added here -->
+    </div>
+  </div>
+
+  <!-- Contact Details Modal -->
+  <div class="modal" id="detailsModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Archived Contact Details</h2>
+        <button class="modal-close" onclick="closeDetailsModal()">&times;</button>
+      </div>
+
+      <div id="detailsContent">
+        <!-- Details will be loaded here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Message -->
+  <div class="message" id="message"></div>
+
+  <script>
+    let allContacts = [];
+
+    // Check authentication AND admin role on load
+    window.onload = function() {
+      const token = localStorage.getItem('token');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+      if (!token || user.role !== 'Admin') {
+        alert('Access denied. Admin only.');
+        window.location.href = '/dashboard.html';
+        return;
+      }
+
+      loadContacts();
+    };
+
+    async function loadContacts() {
+      const token = localStorage.getItem('token');
+
+      try {
+        const response = await apiFetch('/api/vouchers/archived/contacts', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to load archived contacts');
+
+        const data = await response.json();
+        allContacts = data.contacts;
+        displayContacts(allContacts);
+      } catch (error) {
+        console.error('Load archived contacts error:', error);
+        showMessage('Failed to load archived contacts', 'error');
+      }
+    }
+
+    function displayContacts(contacts) {
+      const grid = document.getElementById('contactsGrid');
+
+      if (contacts.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">🗄️</div>
+            <h3>No Archived Contacts</h3>
+            <p>Nothing has been archived yet</p>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = contacts.map(contact => {
+        const voucherCount = parseInt(contact.voucher_count);
+
+        return `
+          <div class="contact-card" onclick="openDetailsModal(${contact.id})">
+            <div class="contact-name">${escapeHtml(contact.name)}</div>
+            <div class="voucher-count">${voucherCount} vouchers on record</div>
+
+            ${contact.referral_agency ? `
+              <div class="contact-info">
+                <strong>Agency:</strong> ${escapeHtml(contact.referral_agency)}
+              </div>
+            ` : ''}
+
+            ${contact.case_manager_name ? `
+              <div class="contact-info">
+                <strong>Case Manager:</strong> ${escapeHtml(contact.case_manager_name)}
+              </div>
+            ` : ''}
+
+            ${contact.case_manager_phone ? `
+              <div class="contact-info">
+                <strong>Phone:</strong> ${escapeHtml(contact.case_manager_phone)}
+              </div>
+            ` : ''}
+
+            <div class="archived-date">Archived ${formatDateForDisplay(contact.deleted_at)}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function handleSearch() {
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+      if (!searchTerm) {
+        displayContacts(allContacts);
+        return;
+      }
+
+      const filtered = allContacts.filter(contact =>
+        contact.name.toLowerCase().includes(searchTerm)
+      );
+
+      displayContacts(filtered);
+    }
+
+    async function openDetailsModal(contactId) {
+      const token = localStorage.getItem('token');
+
+      try {
+        const response = await apiFetch(`/api/vouchers/archived/contacts/${contactId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) throw new Error('Failed to load details');
+
+        const data = await response.json();
+        displayContactDetails(data);
+        document.getElementById('detailsModal').classList.add('active');
+      } catch (error) {
+        console.error('Load details error:', error);
+        showMessage('Failed to load details', 'error');
+      }
+    }
+
+    function displayContactDetails(data) {
+      const contact = data.contact;
+      const usage = data.usage;
+      const voucherCount = parseInt(contact.voucher_count);
+
+      let detailsHtml = `
+        <div class="contact-details-header">
+          <div class="contact-details-name">${escapeHtml(contact.name)}</div>
+
+          <div class="voucher-count">${voucherCount} vouchers on record</div>
+
+          <div class="contact-details-info">
+            ${contact.referral_agency ? `
+              <div class="detail-item">
+                <div class="detail-label">Referral Agency</div>
+                <div class="detail-value">${escapeHtml(contact.referral_agency)}</div>
+              </div>
+            ` : ''}
+
+            ${contact.case_manager_name ? `
+              <div class="detail-item">
+                <div class="detail-label">Case Manager</div>
+                <div class="detail-value">${escapeHtml(contact.case_manager_name)}</div>
+              </div>
+            ` : ''}
+
+            ${contact.case_manager_phone ? `
+              <div class="detail-item">
+                <div class="detail-label">Case Manager Phone</div>
+                <div class="detail-value">${escapeHtml(contact.case_manager_phone)}</div>
+              </div>
+            ` : ''}
+
+            <div class="detail-item">
+              <div class="detail-label">Archived On</div>
+              <div class="detail-value">${formatDateForDisplay(contact.deleted_at)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="usage-section-header">
+          <h3>Voucher Usage History</h3>
+        </div>
+
+        <div class="usage-list">
+          ${usage.length === 0 ? `
+            <div class="no-usage">No voucher usage recorded</div>
+          ` : usage.map(u => `
+            <div class="usage-item">
+              <div class="usage-date">${formatDateForDisplay(u.date_used)}</div>
+              <div class="usage-meta">Added ${formatDateForDisplay(u.created_at)} by ${escapeHtml(u.created_by_username || 'Unknown')}</div>
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      document.getElementById('detailsContent').innerHTML = detailsHtml;
+    }
+
+    function closeDetailsModal() {
+      document.getElementById('detailsModal').classList.remove('active');
+    }
+
+    function showMessage(text, type) {
+      const messageDiv = document.getElementById('message');
+      messageDiv.textContent = text;
+      messageDiv.className = `message ${type}`;
+      messageDiv.style.display = 'block';
+
+      setTimeout(() => {
+        messageDiv.style.display = 'none';
+      }, 5000);
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function formatDateForDisplay(dateString) {
+      if (!dateString) return 'N/A';
+
+      const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        const year = match[1];
+        const month = match[2];
+        const day = match[3];
+
+        const date = new Date(year, month - 1, day, 12, 0, 0);
+
+        return date.toLocaleDateString();
+      }
+
+      return new Date(dateString).toLocaleDateString();
+    }
+  </script>
+</body>
+</html>

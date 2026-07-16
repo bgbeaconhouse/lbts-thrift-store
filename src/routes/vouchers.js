@@ -2,7 +2,7 @@
 // API routes for Voucher Tracking
 
 const express = require('express');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -243,5 +243,87 @@ router.delete('/usage/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete voucher usage' });
   }
 });
+
+
+// ============================================================================
+// ARCHIVED VOUCHER ROUTES (Admin only, read-only)
+// ============================================================================
+
+// GET /api/vouchers/archived/contacts - Get all archived contacts (Admin only)
+router.get('/archived/contacts', requireRole('Admin'), async (req, res) => {
+  try {
+    const db = req.app.locals.db;
+
+    const result = await db.query(
+      `SELECT 
+        c.id, c.name, c.referral_agency, c.case_manager_name, 
+        c.case_manager_phone, c.created_at, c.updated_at, c.deleted_at,
+        COALESCE(
+          (SELECT COUNT(*) 
+           FROM voucher_usage v 
+           WHERE v.contact_id = c.id AND v.deleted_at IS NOT NULL), 
+          0
+        ) as voucher_count
+      FROM voucher_contacts c
+      WHERE c.deleted_at IS NOT NULL
+        AND c.store = $1
+      ORDER BY c.name ASC`,
+      [req.store]
+    );
+
+    res.json({ contacts: result.rows });
+  } catch (error) {
+    console.error('Get archived voucher contacts error:', error);
+    res.status(500).json({ error: 'Failed to get archived contacts' });
+  }
+});
+
+// GET /api/vouchers/archived/contacts/:id - Get single archived contact with usage history (Admin only)
+router.get('/archived/contacts/:id', requireRole('Admin'), async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const db = req.app.locals.db;
+
+    const contactResult = await db.query(
+      `SELECT 
+        c.id, c.name, c.referral_agency, c.case_manager_name, 
+        c.case_manager_phone, c.created_at, c.updated_at, c.deleted_at,
+        COALESCE(
+          (SELECT COUNT(*) 
+           FROM voucher_usage v 
+           WHERE v.contact_id = c.id AND v.deleted_at IS NOT NULL), 
+          0
+        ) as voucher_count
+      FROM voucher_contacts c
+      WHERE c.id = $1 AND c.deleted_at IS NOT NULL`,
+      [id]
+    );
+
+    if (contactResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Archived contact not found' });
+    }
+
+    const usageResult = await db.query(
+      `SELECT 
+        v.id, v.contact_id, v.date_used, v.created_at,
+        u.username as created_by_username
+      FROM voucher_usage v
+      LEFT JOIN users u ON v.created_by = u.id
+      WHERE v.contact_id = $1 AND v.deleted_at IS NOT NULL
+      ORDER BY v.date_used DESC`,
+      [id]
+    );
+
+    res.json({
+      contact: contactResult.rows[0],
+      usage: usageResult.rows
+    });
+  } catch (error) {
+    console.error('Get archived contact details error:', error);
+    res.status(500).json({ error: 'Failed to get archived contact details' });
+  }
+});
+
 
 module.exports = router;
