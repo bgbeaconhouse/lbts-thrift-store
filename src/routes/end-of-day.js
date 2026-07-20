@@ -60,20 +60,26 @@ router.get('/:date', authenticateToken, async (req, res) => {
             [req.store]
         );
 
-        // Get checklist items for this date and store
+// Get checklist items for this date and store
         let checklistItems = await db.query(
-            `SELECT dci.*, ct.item_text, ct.display_order, u.username as completed_by_name
+            `SELECT dci.*, ct.item_text, ct.display_order, ct.section, u.username as completed_by_name
              FROM daily_checklist_items dci
              JOIN checklist_templates ct ON dci.template_id = ct.id
              LEFT JOIN users u ON dci.completed_by = u.id
              WHERE dci.checklist_date = $1 AND dci.store = $2
-             ORDER BY ct.display_order`,
+             ORDER BY ct.section, ct.display_order`,
             [date, req.store]
         );
 
-        // If no checklist items exist for this date, create them
-        if (checklistItems.rows.length === 0) {
-            const insertPromises = templateResult.rows.map(template => 
+        // Make sure every active template for this store has a row for this date.
+        // Using a "missing" diff instead of "rows.length === 0" so that adding a
+        // brand new section (like Opening Duties) still shows up on a date that
+        // already had Closing Duties items created for it.
+        const existingTemplateIds = new Set(checklistItems.rows.map(row => row.template_id));
+        const missingTemplates = templateResult.rows.filter(t => !existingTemplateIds.has(t.id));
+
+        if (missingTemplates.length > 0) {
+            const insertPromises = missingTemplates.map(template =>
                 db.query(
                     `INSERT INTO daily_checklist_items (checklist_date, template_id, is_completed, store)
                      VALUES ($1, $2, false, $3)
@@ -83,14 +89,14 @@ router.get('/:date', authenticateToken, async (req, res) => {
             );
             await Promise.all(insertPromises);
 
-            // Fetch the newly created items
+            // Re-fetch the full, up-to-date list for this date
             checklistItems = await db.query(
-                `SELECT dci.*, ct.item_text, ct.display_order, u.username as completed_by_name
+                `SELECT dci.*, ct.item_text, ct.display_order, ct.section, u.username as completed_by_name
                  FROM daily_checklist_items dci
                  JOIN checklist_templates ct ON dci.template_id = ct.id
                  LEFT JOIN users u ON dci.completed_by = u.id
                  WHERE dci.checklist_date = $1 AND dci.store = $2
-                 ORDER BY ct.display_order`,
+                 ORDER BY ct.section, ct.display_order`,
                 [date, req.store]
             );
         }

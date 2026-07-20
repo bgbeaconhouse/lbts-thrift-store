@@ -168,12 +168,11 @@
             </div>
         </div>
 
-        <!-- Checklist Section -->
-        <div id="checklistSection" class="section">
-            <h2>Closing Duties Checklist</h2>
-            <ul id="checklistItems" class="checklist">
-                <li class="loading">Loading checklist...</li>
-            </ul>
+        <!-- Checklist Sections (built dynamically based on what's returned) -->
+        <div id="checklistContainer">
+            <div class="section">
+                <p class="loading">Loading checklist...</p>
+            </div>
         </div>
     </div>
 
@@ -236,31 +235,56 @@
             }
         }
 
-        // Display checklist items
+        // Section keys, in the order they should appear, mapped to display titles
+        const SECTION_TITLES = {
+            opening: 'Opening Duties',
+            closing: 'Closing Duties',
+            daily_display: 'Daily Display Duties'
+        };
+
+        // Display checklist items, grouped into sections. A section only renders
+        // if there's at least one item for it, so stores without Opening/Daily
+        // Display items (e.g. Long Beach) just see Closing Duties, unchanged.
         function displayChecklist(items) {
-            const container = document.getElementById('checklistItems');
-            
+            const container = document.getElementById('checklistContainer');
+
             if (items.length === 0) {
-                container.innerHTML = '<li class="loading">No checklist items found</li>';
+                container.innerHTML = '<div class="section"><p class="loading">No checklist items found</p></div>';
                 return;
             }
 
-            container.innerHTML = items.map(item => `
-                <li class="checklist-item ${item.is_completed ? 'completed' : ''}" data-id="${item.id}">
-                    <input type="checkbox" 
-                           id="check-${item.id}" 
-                           ${item.is_completed ? 'checked' : ''}
-                           onchange="toggleChecklistItem(${item.id}, this.checked)">
-                    <div>
-                        <label for="check-${item.id}">${item.item_text}</label>
-                        ${item.is_completed ? `
-                            <div class="completion-info">
-                                Completed by ${item.completed_by_name} at ${new Date(item.completed_at).toLocaleString()}
-                            </div>
-                        ` : ''}
+            const grouped = {};
+            items.forEach(item => {
+                const key = item.section || 'closing';
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(item);
+            });
+
+            container.innerHTML = Object.keys(SECTION_TITLES)
+                .filter(key => grouped[key] && grouped[key].length > 0)
+                .map(key => `
+                    <div class="section">
+                        <h2>${SECTION_TITLES[key]}</h2>
+                        <ul class="checklist">
+                            ${grouped[key].map(item => `
+                                <li class="checklist-item ${item.is_completed ? 'completed' : ''}" data-id="${item.id}">
+                                    <input type="checkbox" 
+                                           id="check-${item.id}" 
+                                           ${item.is_completed ? 'checked' : ''}
+                                           onchange="toggleChecklistItem(${item.id}, this.checked)">
+                                    <div>
+                                        <label for="check-${item.id}">${item.item_text}</label>
+                                        ${item.is_completed ? `
+                                            <div class="completion-info">
+                                                Completed by ${item.completed_by_name} at ${new Date(item.completed_at).toLocaleString()}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </li>
+                            `).join('')}
+                        </ul>
                     </div>
-                </li>
-            `).join('');
+                `).join('');
         }
 
         // Toggle checklist item
