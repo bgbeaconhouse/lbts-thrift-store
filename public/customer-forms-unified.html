@@ -1495,6 +1495,7 @@
                   ` : ''}
                 ${form.form_type === 'pickup' ? `
                     <button class="btn btn-secondary" onclick="openConvertModal('${form.form_type}', ${form.id})">Switch to Delivery</button>
+                    <button class="btn btn-secondary" onclick="openWaiverFromForm('${form.form_type}', ${form.id})">📝 Add Waiver</button>
                   ` : ''}
                   ${form.form_type === 'pickup' && form.email ? `
                     <button class="btn" style="background:#d69e2e;color:white;" onclick="sendDueTodayEmail(${form.id}, '${escapeHtml(form.customer_name)}', '${escapeHtml(form.email)}')">📅 Send Due Today</button>
@@ -1542,7 +1543,7 @@
       document.getElementById('imagePreviews_pickup').innerHTML = '';
       document.getElementById('imagePreviews_delivery').innerHTML = '';
       
-      document.getElementById('formModal').classList.add('active');
+     document.getElementById('formModal').classList.add('active');
       
       // Re-initialize canvas and phone formatting after modal is visible
       setTimeout(() => {
@@ -1550,6 +1551,27 @@
         initManagerSignaturePad();
         initPhoneFormatting();
       }, 100);
+    }
+
+    // Open the waiver create modal pre-filled from an existing pickup/delivery form
+    function openWaiverFromForm(fromType, formId) {
+      const sourceForm = allForms.find(f => f.form_type === fromType && f.id === formId);
+      if (!sourceForm) {
+        showMessage('Could not find that form to pull info from', 'error');
+        return;
+      }
+
+      // Switch the dropdown to Waiver, then open the normal create modal
+      document.getElementById('formTypeSelect').value = 'waiver';
+      openCreateModal();
+
+      // Pre-fill customer info from the source form
+      document.getElementById('customer_name').value = sourceForm.customer_name || '';
+      document.getElementById('phone').value = sourceForm.phone || '';
+      document.getElementById('email').value = sourceForm.email || '';
+
+      document.getElementById('modalTitle').textContent =
+        `New Waiver Form (from ${fromType === 'pickup' ? 'Pick-Up' : 'Delivery'} - ${sourceForm.customer_name})`;
     }
 
     function closeModal() {
