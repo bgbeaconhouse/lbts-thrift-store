@@ -55,9 +55,14 @@ router.get('/:date', authenticateToken, async (req, res) => {
 
     try {
         // Get all checklist template items for this store
+        // Daily Display items only apply on their assigned day of the week
+        // (day_of_week IS NULL = applies every day, used for opening/closing items)
         const templateResult = await db.query(
-            'SELECT * FROM checklist_templates WHERE is_active = true AND store = $1 ORDER BY display_order',
-            [req.store]
+            `SELECT * FROM checklist_templates 
+             WHERE is_active = true AND store = $1 
+               AND (day_of_week IS NULL OR day_of_week = EXTRACT(DOW FROM $2::date))
+             ORDER BY section, display_order`,
+            [req.store, date]
         );
 
 // Get checklist items for this date and store
@@ -67,6 +72,7 @@ router.get('/:date', authenticateToken, async (req, res) => {
              JOIN checklist_templates ct ON dci.template_id = ct.id
              LEFT JOIN users u ON dci.completed_by = u.id
              WHERE dci.checklist_date = $1 AND dci.store = $2
+               AND (ct.day_of_week IS NULL OR ct.day_of_week = EXTRACT(DOW FROM dci.checklist_date))
              ORDER BY ct.section, ct.display_order`,
             [date, req.store]
         );
@@ -96,6 +102,7 @@ router.get('/:date', authenticateToken, async (req, res) => {
                  JOIN checklist_templates ct ON dci.template_id = ct.id
                  LEFT JOIN users u ON dci.completed_by = u.id
                  WHERE dci.checklist_date = $1 AND dci.store = $2
+                   AND (ct.day_of_week IS NULL OR ct.day_of_week = EXTRACT(DOW FROM dci.checklist_date))
                  ORDER BY ct.section, ct.display_order`,
                 [date, req.store]
             );
