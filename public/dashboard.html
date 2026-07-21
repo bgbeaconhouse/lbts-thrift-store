@@ -317,7 +317,7 @@
 
       navItems.push({
         icon: '🪑',
-        title: 'Furniture Approvals',
+        title: localStorage.getItem('selectedStore') === 'san_pedro' ? 'Red Tag Approvals' : 'Furniture Approvals',
         description: 'Review and approve furniture items',
         link: '/discount-items.html'
       });
@@ -347,9 +347,11 @@ navItems.push({
 });
 
 // Closing Checklist - Available to all users
+// San Pedro now has Opening/Closing/Daily Display sections, not just closing,
+// so it gets a more general title. Long Beach keeps the original title.
 navItems.push({
   icon: '✅',
-  title: 'Closing Checklist',
+  title: localStorage.getItem('selectedStore') === 'san_pedro' ? 'Duties Checklist' : 'Closing Checklist',
   description: 'Daily closing duties checklist',
   link: '/checklist.html'
 });
