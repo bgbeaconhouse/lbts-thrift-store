@@ -79,6 +79,22 @@
       background: rgba(255,255,255,0.3);
     }
 
+        .store-switch-btn {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+
+    .store-switch-btn:hover {
+      background: rgba(255,255,255,0.35);
+    }
+
     /* Container */
     .container {
       max-width: 1200px;
@@ -246,7 +262,8 @@
   <div class="header">
     <div class="header-content">
     <h1><img src="/images/BeaconLogoNoText.png" alt="Beacon House Logo" class="header-logo"> Thrift Shift</h1>
-      <div class="header-right">
+     <div class="header-right">
+        <button class="store-switch-btn" id="storeSwitchBtn" onclick="switchStore()"></button>
         <div class="user-badge" id="userDisplay">
           <span id="userName"></span>
           <span class="role-badge" id="userRole"></span>
@@ -268,7 +285,7 @@
     let currentUser = null;
 
     // Check authentication on load
-    window.onload = function() {
+  window.onload = function() {
       const token = localStorage.getItem('token');
       const user = JSON.parse(localStorage.getItem('user') || 'null');
 
@@ -279,8 +296,32 @@
 
       currentUser = user;
       displayUserInfo();
+      displayStoreSwitchButton();
       buildNavigation();
     };
+
+    function displayStoreSwitchButton() {
+      const store = localStorage.getItem('selectedStore') || 'long_beach';
+      const btn = document.getElementById('storeSwitchBtn');
+      // Show the OTHER store — clicking it takes you there
+      if (store === 'san_pedro') {
+        btn.textContent = '🏪 Switch to Long Beach';
+      } else {
+        btn.textContent = '🏬 Switch to San Pedro';
+      }
+    }
+
+    function switchStore() {
+      const current = localStorage.getItem('selectedStore') || 'long_beach';
+      const next = current === 'san_pedro' ? 'long_beach' : 'san_pedro';
+
+      if (!confirm(`Switch to ${next === 'san_pedro' ? 'San Pedro' : 'Long Beach'}?`)) {
+        return;
+      }
+
+      localStorage.setItem('selectedStore', next);
+      window.location.reload();
+    }
 
     function displayUserInfo() {
   // Display role badge
