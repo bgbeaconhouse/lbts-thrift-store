@@ -247,7 +247,7 @@
     .category-general { background: #e2e8f0; color: #2d3748; }
     .category-urgent { background: #fed7d7; color: #742a2a; }
     .category-important { background: #feebc8; color: #7c2d12; }
-
+    .category-app-bugs-suggestions { background: #e9d8fd; color: #44337a; }
     .entry-note {
       color: #2d3748;
       line-height: 1.6;
@@ -898,6 +898,7 @@
         <button class="filter-btn" data-category="General" onclick="filterByCategory('General')">General</button>
         <button class="filter-btn" id="urgentFilterBtn" data-category="Urgent" onclick="filterByCategory('Urgent')">Urgent</button>
         <button class="filter-btn" data-category="Important" onclick="filterByCategory('Important')">Important</button>
+                <button class="filter-btn" data-category="App Bugs/Suggestions" onclick="filterByCategory('App Bugs/Suggestions')">App Bugs/Suggestions</button>
       </div>
       <button class="btn btn-primary" onclick="openCreateModal()">+ Add Note</button>
     </div>
@@ -925,6 +926,7 @@
             <option value="General">General</option>
             <option value="Urgent" id="urgentCategoryOption">Urgent (Admin Only)</option>
             <option value="Important">Important</option>
+                        <option value="App Bugs/Suggestions">App Bugs/Suggestions</option>
           </select>
         </div>
 
@@ -1110,8 +1112,7 @@
                 ` : ''}
               </div>
             </div>
-            <div class="category-badge category-${entry.category.toLowerCase()}">${escapeHtml(entry.category)}</div>
-            <div class="entry-note">${escapeHtml(entry.note)}</div>
+            <div class="category-badge category-${entry.category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}">${escapeHtml(entry.category)}</div>            <div class="entry-note">${escapeHtml(entry.note)}</div>
             ${imagesHtml}
             
             <!-- Comments Section -->
